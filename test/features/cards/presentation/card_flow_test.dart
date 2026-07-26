@@ -1,0 +1,291 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:cardfolio_app/app/app_router.dart';
+import 'package:cardfolio_app/app/cardfolio_app.dart';
+import 'package:cardfolio_app/core/id/id_generator.dart';
+import 'package:cardfolio_app/features/cards/data/card_providers.dart';
+import 'package:cardfolio_app/features/cards/data/files/managed_image_store.dart';
+import 'package:cardfolio_app/features/cards/domain/card_models.dart';
+import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
+import 'package:cardfolio_app/features/cards/domain/gallery_picker.dart';
+import 'package:cardfolio_app/features/cards/presentation/create/create_card_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+const SelectedGalleryImage _selectedImage = SelectedGalleryImage(
+  path: 'C:/test/card-front.jpg',
+  displayName: 'card-front.jpg',
+);
+
+final CardSummary _summary = CardSummary(
+  cardItemId: 'card-1',
+  name: '东京 Metro 樱花纪念卡',
+  quantity: 1,
+  createdAt: DateTime.utc(2026, 7, 26),
+  city: '东京',
+  issuedAt: PartialDate.tryParse('2025'),
+);
+
+final CardDetail _detail = CardDetail(
+  cardItemId: 'card-1',
+  definitionId: 'definition-1',
+  name: '东京 Metro 樱花纪念卡',
+  quantity: 1,
+  createdAt: DateTime.utc(2026, 7, 26),
+  updatedAt: DateTime.utc(2026, 7, 26),
+  images: const <CardImageRef>[],
+  city: '东京',
+  issuer: 'Tokyo Metro',
+  issuedAt: PartialDate.tryParse('2025'),
+);
+
+class _FakeGalleryPicker implements GalleryPicker {
+  const _FakeGalleryPicker(this.selection);
+
+  final SelectedGalleryImage? selection;
+
+  @override
+  Future<SelectedGalleryImage?> pickOne() async => selection;
+
+  @override
+  Future<SelectedGalleryImage?> recoverLost() async => null;
+}
+
+class _SequenceIdGenerator implements IdGenerator {
+  int _next = 0;
+
+  @override
+  String newId() => 'generated-${_next++}';
+}
+
+class _FakeCardRepository implements CardRepository {
+  _FakeCardRepository({
+    List<CardSummary> cards = const <CardSummary>[],
+    Map<String, CardDetail> details = const <String, CardDetail>{},
+    this.holdSave = false,
+  }) : cards = List<CardSummary>.of(cards),
+       details = Map<String, CardDetail>.of(details);
+
+  final List<CardSummary> cards;
+  final Map<String, CardDetail> details;
+  final bool holdSave;
+  final Completer<void> saveGate = Completer<void>();
+  int createCalls = 0;
+
+  @override
+  Future<String> createCard(CreateCardRequest request) async {
+    createCalls++;
+    if (holdSave) await saveGate.future;
+
+    final id = request.ids.cardItemId;
+    final now = DateTime.utc(2026, 7, 26);
+    cards.insert(
+      0,
+      CardSummary(
+        cardItemId: id,
+        name: request.name,
+        quantity: request.quantity,
+        createdAt: now,
+        city: request.city,
+        issuedAt: request.issuedAt,
+      ),
+    );
+    details[id] = CardDetail(
+      cardItemId: id,
+      definitionId: request.ids.definitionId,
+      name: request.name,
+      quantity: request.quantity,
+      createdAt: now,
+      updatedAt: now,
+      images: const <CardImageRef>[],
+      city: request.city,
+      issuer: request.issuer,
+      issuedAt: request.issuedAt,
+      code: request.code,
+      notes: request.notes,
+    );
+    return id;
+  }
+
+  @override
+  Future<Set<String>> referencedImagePaths() async => const <String>{};
+
+  @override
+  Stream<List<CardSummary>> watchCards() =>
+      Stream<List<CardSummary>>.value(List<CardSummary>.unmodifiable(cards));
+
+  @override
+  Stream<CardDetail?> watchCard(String cardItemId) =>
+      Stream<CardDetail?>.value(details[cardItemId]);
+}
+
+class CardFlowHarness {
+  CardFlowHarness._({
+    required this._repository,
+    required this.selection,
+    required this.imageRoot,
+  });
+
+  factory CardFlowHarness.empty({
+    SelectedGalleryImage? selection = _selectedImage,
+    bool holdSave = false,
+  }) {
+    return CardFlowHarness._(
+      repository: _FakeCardRepository(holdSave: holdSave),
+      selection: selection,
+      imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
+    );
+  }
+
+  factory CardFlowHarness.withCards(List<CardSummary> cards) {
+    return CardFlowHarness._(
+      repository: _FakeCardRepository(
+        cards: cards,
+        details: <String, CardDetail>{_detail.cardItemId: _detail},
+      ),
+      selection: _selectedImage,
+      imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
+    );
+  }
+
+  factory CardFlowHarness.withMissingDetail() => CardFlowHarness._(
+    repository: _FakeCardRepository(),
+    selection: _selectedImage,
+    imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
+  );
+
+  final _FakeCardRepository _repository;
+  final SelectedGalleryImage? selection;
+  final Directory imageRoot;
+  ProviderContainer? _container;
+
+  bool get hasDraft =>
+      _container?.read(createCardControllerProvider).hasImage ?? false;
+
+  int get createCalls => _repository.createCalls;
+
+  void completeSave() => _repository.saveGate.complete();
+
+  Future<void> pump(
+    WidgetTester tester, {
+    String initialLocation = libraryPath,
+  }) async {
+    _container = ProviderContainer(
+      overrides: [
+        galleryPickerProvider.overrideWithValue(_FakeGalleryPicker(selection)),
+        cardRepositoryProvider.overrideWithValue(_repository),
+        managedImageStoreProvider.overrideWithValue(
+          ManagedImageStore(imageRoot),
+        ),
+        idGeneratorProvider.overrideWithValue(_SequenceIdGenerator()),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: _container!,
+        child: CardfolioApp(
+          router: createAppRouter(initialLocation: initialLocation),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  void dispose() {
+    _container?.dispose();
+    if (imageRoot.existsSync()) {
+      imageRoot.deleteSync(recursive: true);
+    }
+  }
+}
+
+void main() {
+  testWidgets('empty library starts gallery import', (tester) async {
+    final harness = CardFlowHarness.empty();
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+
+    await tester.tap(find.text('从相册导入'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('新建卡片'), findsOneWidget);
+  });
+
+  testWidgets('disabled capture modes announce 后续开放', (tester) async {
+    final harness = CardFlowHarness.empty();
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: capturePath);
+
+    expect(find.text('后续开放'), findsNWidgets(3));
+  });
+
+  testWidgets('blank card name shows 名称不能为空', (tester) async {
+    final harness = CardFlowHarness.empty();
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: capturePath);
+    await tester.tap(find.text('从相册导入'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('保存'));
+    await tester.pump();
+
+    expect(find.text('名称不能为空'), findsOneWidget);
+    expect(harness.createCalls, 0);
+  });
+
+  testWidgets('saving disables repeated submission', (tester) async {
+    final harness = CardFlowHarness.empty(holdSave: true);
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: capturePath);
+    await tester.tap(find.text('从相册导入'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('card-name-field')), '樱花纪念卡');
+
+    await tester.tap(find.text('保存'));
+    await tester.pump();
+    await tester.tap(find.text('保存'), warnIfMissed: false);
+    await tester.pump();
+
+    expect(harness.createCalls, 1);
+    harness.completeSave();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('successful creation opens card detail', (tester) async {
+    final harness = CardFlowHarness.empty();
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: capturePath);
+    await tester.tap(find.text('从相册导入'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('card-name-field')), '樱花纪念卡');
+
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('卡片详情'), findsOneWidget);
+    expect(find.text('樱花纪念卡'), findsOneWidget);
+  });
+
+  testWidgets('library renders a persisted card summary', (tester) async {
+    final harness = CardFlowHarness.withCards(<CardSummary>[_summary]);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+
+    expect(find.text('东京 Metro 樱花纪念卡'), findsOneWidget);
+  });
+
+  testWidgets('missing detail returns to the library', (tester) async {
+    final harness = CardFlowHarness.withMissingDetail();
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: '/cards/missing');
+
+    expect(find.text('这张卡片不存在'), findsOneWidget);
+    await tester.tap(find.text('返回收藏'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('我的收藏'), findsOneWidget);
+  });
+}

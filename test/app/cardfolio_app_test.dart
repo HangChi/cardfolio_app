@@ -1,14 +1,40 @@
 import 'package:cardfolio_app/app/app_router.dart';
 import 'package:cardfolio_app/app/cardfolio_app.dart';
+import 'package:cardfolio_app/features/cards/data/card_providers.dart';
+import 'package:cardfolio_app/features/cards/domain/card_models.dart';
+import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _EmptyCardRepository implements CardRepository {
+  @override
+  Future<String> createCard(CreateCardRequest request) async =>
+      request.ids.cardItemId;
+
+  @override
+  Future<Set<String>> referencedImagePaths() async => const <String>{};
+
+  @override
+  Stream<List<CardSummary>> watchCards() =>
+      Stream<List<CardSummary>>.value(const <CardSummary>[]);
+
+  @override
+  Stream<CardDetail?> watchCard(String cardItemId) =>
+      Stream<CardDetail?>.value(null);
+}
 
 void main() {
   Future<void> pumpShell(WidgetTester tester, {String? initialLocation}) async {
     await tester.pumpWidget(
-      CardfolioApp(
-        router: createAppRouter(
-          initialLocation: initialLocation ?? libraryPath,
+      ProviderScope(
+        overrides: [
+          cardRepositoryProvider.overrideWithValue(_EmptyCardRepository()),
+        ],
+        child: CardfolioApp(
+          router: createAppRouter(
+            initialLocation: initialLocation ?? libraryPath,
+          ),
         ),
       ),
     );

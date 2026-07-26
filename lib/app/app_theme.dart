@@ -158,10 +158,41 @@ ThemeData buildCardfolioTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.background,
+    fontFamilyFallback: const <String>['Noto Sans SC', 'Microsoft YaHei'],
   );
 
   return base.copyWith(
     extensions: const <ThemeExtension<dynamic>>[tokens],
+    textTheme: base.textTheme.copyWith(
+      headlineMedium: base.textTheme.headlineMedium?.copyWith(
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+      headlineSmall: base.textTheme.headlineSmall?.copyWith(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+      titleLarge: base.textTheme.titleLarge?.copyWith(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+      titleMedium: base.textTheme.titleMedium?.copyWith(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+      bodyMedium: base.textTheme.bodyMedium?.copyWith(
+        fontSize: 14,
+        color: AppColors.textPrimary,
+      ),
+      bodySmall: base.textTheme.bodySmall?.copyWith(
+        fontSize: 12,
+        color: AppColors.textSecondary,
+      ),
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.background,
       foregroundColor: AppColors.textPrimary,
@@ -201,9 +232,18 @@ ThemeData buildCardfolioTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
         borderSide: const BorderSide(color: AppColors.outline),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        borderSide: const BorderSide(color: AppColors.outline),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
     ),
   );

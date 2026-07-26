@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/cards/presentation/capture/capture_entry_screen.dart';
+import '../features/cards/presentation/create/create_card_screen.dart';
+import '../features/cards/presentation/detail/card_detail_screen.dart';
+import '../features/cards/presentation/library/card_library_screen.dart';
 import '../features/cards/presentation/widgets/phase_placeholder_screen.dart';
 import 'navigation/app_shell.dart';
 
@@ -35,20 +39,8 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
               description: '收藏总览与最近录入将在首页统计能力开放后可用。',
             ),
           ),
-          _branch(
-            libraryPath,
-            const PhasePlaceholderScreen(
-              title: '我的收藏',
-              description: '卡片列表将在本迭代实现。',
-            ),
-          ),
-          _branch(
-            capturePath,
-            const PhasePlaceholderScreen(
-              title: '快速建档',
-              description: '录入方式选择将在本迭代实现。',
-            ),
-          ),
+          _branch(libraryPath, const CardLibraryScreen()),
+          _branch(capturePath, const CaptureEntryScreen()),
           _branch(
             statsPath,
             const PhasePlaceholderScreen(
@@ -64,6 +56,15 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: createCardPath,
+        builder: (context, state) => const CreateCardScreen(),
+      ),
+      GoRoute(
+        path: '/cards/:id',
+        builder: (context, state) =>
+            CardDetailScreen(cardItemId: state.pathParameters['id']!),
       ),
     ],
   );
