@@ -1,0 +1,9 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # 时间戳以 UTC epoch 整数存储，与 docs/architecture/database-schema.md §1 一致。
+          store_date_time_values_as_text: false
+          databases:
+            app: lib/features/cards/data/local/card_database.dart

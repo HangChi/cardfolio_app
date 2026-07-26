@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Drift 生成文件保留在版本库中，构建缓存不保留
+.dart_tool/build/
