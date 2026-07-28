@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/card_sets/presentation/detail/card_set_detail_screen.dart';
+import '../features/card_sets/presentation/form/card_set_form_screen.dart';
 import '../features/cards/presentation/capture/capture_entry_screen.dart';
 import '../features/cards/presentation/create/create_card_screen.dart';
 import '../features/cards/presentation/detail/card_detail_screen.dart';
@@ -14,8 +16,11 @@ const String capturePath = '/capture';
 const String statsPath = '/stats';
 const String profilePath = '/profile';
 const String createCardPath = '/cards/new';
+const String createCardSetPath = '/sets/new';
 
 String cardDetailPath(String id) => '/cards/$id';
+String cardSetDetailPath(String id) => '/sets/$id';
+String editCardSetPath(String id) => '/sets/$id/edit';
 
 /// Feature 001 的路由骨架。
 ///
@@ -65,6 +70,20 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
         path: '/cards/:id',
         builder: (context, state) =>
             CardDetailScreen(cardItemId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: createCardSetPath,
+        builder: (context, state) => const CardSetFormScreen(),
+      ),
+      GoRoute(
+        path: '/sets/:id/edit',
+        builder: (context, state) =>
+            CardSetFormScreen(setId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/sets/:id',
+        builder: (context, state) =>
+            CardSetDetailScreen(setId: state.pathParameters['id']!),
       ),
     ],
   );

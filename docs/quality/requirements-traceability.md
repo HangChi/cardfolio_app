@@ -10,7 +10,7 @@
 | FR-IMG-002..005 | 009 | 相机与处理 Spike、设备测试 |
 | FR-IMG-006..007 | 002、009 | 多图顺序、封面、原图/派生图 |
 | FR-CARD-001..005 | 001、004、007 | 创建、编辑模型、查询、删除 |
-| FR-SET-001..003 | 003 | 套卡关系与完成度 |
+| FR-SET-001..003 | 003 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md)：关系、完成度与 Widget 自动化通过；设备验收待执行 |
 | FR-SER-001 | 004 | 多对多关联 |
 | FR-TAG-001..002 | 004 | 标签合并、删除、筛选 |
 | FR-CF-001 | 004 | 类型、值与删除影响 |
@@ -53,7 +53,7 @@
 |---|---:|---|
 | AC-P0-001..003 | 001 | [Feature 001 测试矩阵](../features/001-local-card-creation/test-matrix.md) |
 | AC-P0-004 | 002 | [Feature 002 测试矩阵](../features/002-multi-image-management/test-matrix.md)；设备验收待执行 |
-| AC-P0-005 | 003 | 套卡 3/4 固定夹具 |
+| AC-P0-005 | 003 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md) T07：4 个必需、3 个拥有、1 个重复仍为 3/4 |
 | AC-P0-006 | 005 | 总价 500 与分摊不重复夹具 |
 | AC-P0-007 | 007 | 删除/恢复前后数量与进度 |
 | AC-P0-008 | 008 | 全实体导出导入一致性报告 |

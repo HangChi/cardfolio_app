@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
+import '../../../card_sets/presentation/library/card_set_collection_view.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
 import '../create/create_card_controller.dart';
@@ -68,16 +69,44 @@ class CardLibraryScreen extends ConsumerWidget {
             ),
           ),
           Expanded(
-            child: cards.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(semanticsLabel: '正在加载收藏'),
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: tokens.spaceLg),
+                    child: const TabBar(
+                      tabs: <Widget>[
+                        Tab(text: '卡片'),
+                        Tab(text: '套卡'),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: tokens.spaceMd),
+                  Expanded(
+                    child: TabBarView(
+                      children: <Widget>[
+                        cards.when(
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(
+                              semanticsLabel: '正在加载收藏',
+                            ),
+                          ),
+                          error: (error, stackTrace) => _LibraryError(
+                            onRetry: () => ref.invalidate(cardListProvider),
+                          ),
+                          data: (items) => items.isEmpty
+                              ? _EmptyLibrary(
+                                  onImport: () => _startImport(context, ref),
+                                )
+                              : _CardList(items: items),
+                        ),
+                        const CardSetCollectionView(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              error: (error, stackTrace) => _LibraryError(
-                onRetry: () => ref.invalidate(cardListProvider),
-              ),
-              data: (items) => items.isEmpty
-                  ? _EmptyLibrary(onImport: () => _startImport(context, ref))
-                  : _CardList(items: items),
             ),
           ),
         ],

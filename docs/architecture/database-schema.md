@@ -1,7 +1,7 @@
 # 数据库模型与迁移规范
 
-状态：逻辑 schema 基线
-日期：2026-07-26
+状态：schema v3 已实现
+日期：2026-07-28
 存储实现：Drift + SQLite
 
 ## 1. 通用列
@@ -32,8 +32,8 @@
 
 | 表 | 关键列 | 约束/索引 |
 |---|---|---|
-| card_sets | name, expected_count, count_known, issue_info, cover_image_id | count_known=false 时 expected_count 为空 |
-| card_set_members | set_id, definition_id, member_no, required, sort_order | set+definition 唯一 |
+| card_sets | name, expected_count, count_known, issue_info, notes, cover_image_id, version, deleted_at | count_known=false 时 expected_count 为空；已知时 expected_count > 0；索引 created_at/deleted_at |
+| card_set_members | set_id, definition_id, member_no, required, sort_order, version, deleted_at | FK set/definition；活跃 set+definition 部分唯一；索引 set、set+sort、deleted_at |
 | series | name, description, cover_image_id | 规范化名称索引 |
 | series_memberships | series_id, target_type, target_id | 组合唯一 |
 | tags | name, normalized_name | normalized_name 唯一 |
@@ -94,6 +94,7 @@ MVP 必须覆盖：
 
 - 卡片款式、实例和图片元数据：同一事务。
 - 套卡及成员批量调整：同一事务。
+- 删除被套卡引用的图片时，同一事务先清空 `card_sets.cover_image_id`，再软删或物理删除图片。
 - 购买及购买项目：同一事务。
 - 业务实体变更及同步记录：同一事务。
 - 导入：先在隔离数据库或暂存表验证，最终合并为可回滚事务批次。

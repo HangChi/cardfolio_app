@@ -105,6 +105,82 @@ class CardImages extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 }
 
+@TableIndex(name: 'idx_card_sets_created_at', columns: {#createdAt})
+@TableIndex(name: 'idx_card_sets_deleted_at', columns: {#deletedAt})
+class CardSets extends Table {
+  TextColumn get id => text()();
+
+  TextColumn get name => text().withLength(min: 1, max: 100)();
+
+  IntColumn get expectedCount => integer().nullable()();
+
+  BoolColumn get countKnown => boolean()();
+
+  TextColumn get issueInfo => text().nullable()();
+
+  TextColumn get notes => text().nullable()();
+
+  TextColumn get coverImageId =>
+      text().nullable().references(CardImages, #id)();
+
+  IntColumn get version => integer()
+      .withDefault(const Constant(1))
+      // ignore: recursive_getters, Drift 的 check() 按设计引用列自身。
+      .check(version.isBiggerThanValue(0))();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK ((count_known = 0 AND expected_count IS NULL) OR '
+        '(count_known = 1 AND expected_count > 0))',
+  ];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+@TableIndex(name: 'idx_card_set_members_set_id', columns: {#setId})
+@TableIndex(
+  name: 'idx_card_set_members_set_sort',
+  columns: {#setId, #sortOrder},
+)
+@TableIndex(
+  name: 'idx_card_set_members_definition_id',
+  columns: {#definitionId},
+)
+class CardSetMembers extends Table {
+  TextColumn get id => text()();
+
+  TextColumn get setId => text().references(CardSets, #id)();
+
+  TextColumn get definitionId => text().references(CardDefinitions, #id)();
+
+  TextColumn get memberNo => text().nullable()();
+
+  BoolColumn get required => boolean().withDefault(const Constant(true))();
+
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+
+  IntColumn get version => integer()
+      .withDefault(const Constant(1))
+      // ignore: recursive_getters, Drift 的 check() 按设计引用列自身。
+      .check(version.isBiggerThanValue(0))();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
 /// 一次建卡写入涉及的全部行。三张表在同一事务内插入。
 class CardRowGraph {
   const CardRowGraph({
@@ -131,18 +207,27 @@ class RemovedImageRecord {
   final bool wasCover;
 }
 
-@DriftDatabase(tables: <Type>[CardDefinitions, CardItems, CardImages])
+@DriftDatabase(
+  tables: <Type>[
+    CardDefinitions,
+    CardItems,
+    CardImages,
+    CardSets,
+    CardSetMembers,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
       await _createImageIndexes();
+      await _createCardSetIndexes();
     },
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
@@ -154,6 +239,11 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(schema.cardImages, schema.cardImages.deletedAt);
         await customStatement('UPDATE card_images SET is_cover = 1;');
         await _createImageIndexes();
+      },
+      from2To3: (m, schema) async {
+        await m.createTable(schema.cardSets);
+        await m.createTable(schema.cardSetMembers);
+        await _createCardSetIndexes();
       },
     ),
     beforeOpen: (details) async {
@@ -172,6 +262,35 @@ class AppDatabase extends _$AppDatabase {
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_card_images_derived_path '
       'ON card_images(derived_relative_path) '
       'WHERE derived_relative_path IS NOT NULL;',
+    );
+  }
+
+  Future<void> _createCardSetIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_sets_created_at '
+      'ON card_sets(created_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_sets_deleted_at '
+      'ON card_sets(deleted_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_set_members_set_id '
+      'ON card_set_members(set_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_set_members_set_sort '
+      'ON card_set_members(set_id, sort_order);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_set_members_definition_id '
+      'ON card_set_members(definition_id);',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS '
+      'idx_card_set_members_active_definition '
+      'ON card_set_members(set_id, definition_id) '
+      'WHERE deleted_at IS NULL;',
     );
   }
 
@@ -391,6 +510,21 @@ class AppDatabase extends _$AppDatabase {
       );
       if (target == null) throw StateError('图片不存在。');
 
+      final coveringSets = await (select(
+        cardSets,
+      )..where((set) => set.coverImageId.equals(imageId))).get();
+      for (final set in coveringSets) {
+        await (update(
+          cardSets,
+        )..where((entry) => entry.id.equals(set.id))).write(
+          CardSetsCompanion(
+            coverImageId: const Value<String?>(null),
+            updatedAt: Value(deletedAt),
+            version: Value(set.version + 1),
+          ),
+        );
+      }
+
       if (keepOriginal) {
         await (update(
           cardImages,
@@ -504,9 +638,14 @@ class AppDatabase extends _$AppDatabase {
     return (await query.getSingle()).read(count)!;
   }
 
-  /// 仅供测试构造回收站状态。Feature 001 的生产代码不提供删除。
+  /// 仅供测试构造回收站状态。Feature 007 才提供生产删除与恢复入口。
   @visibleForTesting
   Future<void> softDeleteItemForTest(String cardItemId, DateTime deletedAt) {
+    return setItemDeletedAtForTest(cardItemId, deletedAt);
+  }
+
+  @visibleForTesting
+  Future<void> setItemDeletedAtForTest(String cardItemId, DateTime? deletedAt) {
     return (update(cardItems)..where((item) => item.id.equals(cardItemId)))
         .write(CardItemsCompanion(deletedAt: Value(deletedAt)));
   }

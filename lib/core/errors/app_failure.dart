@@ -23,6 +23,16 @@ final class ValidationFailure extends AppFailure {
   final CardField field;
 }
 
+/// 套卡表单与关系操作可定位的字段。
+enum CardSetField { name, expectedCount, issueInfo, notes, member, cover }
+
+/// 套卡输入或成员关系不满足业务约束。
+final class CardSetValidationFailure extends AppFailure {
+  const CardSetValidationFailure(this.field, super.userMessage, [super.cause]);
+
+  final CardSetField field;
+}
+
 /// 相册选择器不可用、权限被拒绝或返回了无法使用的结果。
 final class GalleryAccessFailure extends AppFailure {
   const GalleryAccessFailure([
