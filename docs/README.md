@@ -1,7 +1,7 @@
 # Cardfolio 文档中心
 
-状态：M0 文档基线完成
-更新日期：2026-07-26
+状态：M1 本地卡片闭环实现中
+更新日期：2026-07-28
 
 ## 从这里开始
 
@@ -37,12 +37,14 @@
 
 - [Feature 总索引](features/README.md)
 - [Feature 001 九件套](features/001-local-card-creation/spec.md)
-- Feature 002–010 各自包含目标、范围、需求追踪、数据影响、风险和 Definition of Ready。
+- [Feature 002 九件套](features/002-multi-image-management/spec.md)
+- Feature 003–010 各自包含目标、范围、需求追踪、数据影响、风险和 Definition of Ready。
 
 ## 工程
 
 - [开发指南](engineering/development-guide.md)
 - [Git 协作约定](engineering/git-conventions.md)
+- [开发日志](engineering/development-log.md)
 
 ## 质量
 
@@ -79,4 +81,4 @@
 
 ## 当前边界
 
-本轮只完成文档，没有实现业务功能。Figma 页面结构和节点映射已记录；由于当前 Figma Starter MCP 调用额度用尽，精确视觉令牌需在 UI 开发前恢复访问后提取。
+Feature 001 已完成本地单卡闭环；Feature 002 已完成多图、用途、排序、封面、删除策略与 schema v2，待 Android/iOS 设备验收。相机、裁切增强和真实大图性能仍属于 Feature 009。

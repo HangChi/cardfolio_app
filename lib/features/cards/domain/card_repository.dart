@@ -16,6 +16,36 @@ abstract interface class CardRepository {
   /// 以 `request.ids.cardItemId` 为幂等键：重复提交返回既有 ID，不产生第二组数据。
   Future<String> createCard(CreateCardRequest request);
 
+  /// 向既有藏品追加一批图片。
+  Future<void> addImages(AddCardImagesRequest request);
+
+  Future<void> updateImageKind({
+    required String cardItemId,
+    required String imageId,
+    required CardImageKind kind,
+  });
+
+  /// 调整全部活跃图片的顺序。ID 必须完整且不重复。
+  Future<void> reorderImages({
+    required String cardItemId,
+    required List<String> orderedImageIds,
+  });
+
+  /// 设置封面；不改变图片顺序。
+  Future<void> setCover({required String cardItemId, required String imageId});
+
+  Future<ImageDeletionImpact> getImageDeletionImpact({
+    required String cardItemId,
+    required String imageId,
+  });
+
+  /// 从图集移除图片；[keepOriginal] 为真时保留受管原图。
+  Future<void> deleteImage({
+    required String cardItemId,
+    required String imageId,
+    required bool keepOriginal,
+  });
+
   /// 当前被数据库引用的全部图片相对路径，供启动时清理孤儿文件。
   Future<Set<String>> referencedImagePaths();
 }

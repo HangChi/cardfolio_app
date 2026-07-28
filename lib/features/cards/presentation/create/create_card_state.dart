@@ -24,12 +24,34 @@ enum CreateCardPhase {
   failure,
 }
 
+/// 建卡草稿中的一张有稳定 ID 的图片。
+@immutable
+final class DraftCardImage {
+  const DraftCardImage({
+    required this.id,
+    required this.selection,
+    required this.kind,
+  });
+
+  final String id;
+  final SelectedGalleryImage selection;
+  final CardImageKind kind;
+
+  DraftCardImage copyWith({CardImageKind? kind}) {
+    return DraftCardImage(
+      id: id,
+      selection: selection,
+      kind: kind ?? this.kind,
+    );
+  }
+}
+
 /// 建卡页的不可变状态。
 @immutable
 final class CreateCardState {
   const CreateCardState({
     this.phase = CreateCardPhase.idle,
-    this.image,
+    this.images = const <DraftCardImage>[],
     this.ids,
     this.name = '',
     this.city = '',
@@ -43,7 +65,10 @@ final class CreateCardState {
   });
 
   final CreateCardPhase phase;
-  final SelectedGalleryImage? image;
+  final List<DraftCardImage> images;
+
+  SelectedGalleryImage? get image =>
+      images.isEmpty ? null : images.first.selection;
 
   /// 首次选图时生成，之后保持不变，使重试保存保持幂等。
   final CardDraftIds? ids;
@@ -61,11 +86,11 @@ final class CreateCardState {
 
   bool get isSaving => phase == CreateCardPhase.saving;
 
-  bool get hasImage => image != null && ids != null;
+  bool get hasImage => images.isNotEmpty && ids != null;
 
   CreateCardState copyWith({
     CreateCardPhase? phase,
-    SelectedGalleryImage? image,
+    List<DraftCardImage>? images,
     CardDraftIds? ids,
     String? name,
     String? city,
@@ -80,7 +105,7 @@ final class CreateCardState {
   }) {
     return CreateCardState(
       phase: phase ?? this.phase,
-      image: image ?? this.image,
+      images: images ?? this.images,
       ids: ids ?? this.ids,
       name: name ?? this.name,
       city: city ?? this.city,

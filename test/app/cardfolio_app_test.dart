@@ -9,11 +9,51 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _EmptyCardRepository implements CardRepository {
   @override
+  Future<void> addImages(AddCardImagesRequest request) async {}
+
+  @override
   Future<String> createCard(CreateCardRequest request) async =>
       request.ids.cardItemId;
 
   @override
+  Future<void> deleteImage({
+    required String cardItemId,
+    required String imageId,
+    required bool keepOriginal,
+  }) async {}
+
+  @override
+  Future<ImageDeletionImpact> getImageDeletionImpact({
+    required String cardItemId,
+    required String imageId,
+  }) async => const ImageDeletionImpact(
+    imageId: 'image-1',
+    byteSize: 0,
+    isCover: true,
+    remainingImageCount: 1,
+  );
+
+  @override
   Future<Set<String>> referencedImagePaths() async => const <String>{};
+
+  @override
+  Future<void> reorderImages({
+    required String cardItemId,
+    required List<String> orderedImageIds,
+  }) async {}
+
+  @override
+  Future<void> setCover({
+    required String cardItemId,
+    required String imageId,
+  }) async {}
+
+  @override
+  Future<void> updateImageKind({
+    required String cardItemId,
+    required String imageId,
+    required CardImageKind kind,
+  }) async {}
 
   @override
   Stream<List<CardSummary>> watchCards() =>

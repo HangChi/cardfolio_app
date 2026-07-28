@@ -14,11 +14,11 @@ class ImagePickerGallery implements GalleryPicker {
   final ImagePicker _picker;
 
   @override
-  Future<SelectedGalleryImage?> pickOne() async {
+  Future<List<SelectedGalleryImage>> pickMany({required int limit}) async {
     try {
-      final file = await _picker.pickImage(source: ImageSource.gallery);
-      // 用户取消返回 null，不是错误。
-      return file == null ? null : _toDomain(file);
+      final files = await _picker.pickMultiImage(limit: limit);
+      // 用户取消返回空列表，不是错误。
+      return files.map(_toDomain).toList(growable: false);
     } on PlatformException catch (error) {
       throw GalleryAccessFailure(_messageFor(error), error);
     } catch (error) {
@@ -27,16 +27,16 @@ class ImagePickerGallery implements GalleryPicker {
   }
 
   @override
-  Future<SelectedGalleryImage?> recoverLost() async {
+  Future<List<SelectedGalleryImage>> recoverLost() async {
     // Android 在低内存时可能回收宿主 Activity，选择结果需要在重启后取回。
     try {
       final response = await _picker.retrieveLostData();
-      if (response.isEmpty) return null;
+      if (response.isEmpty) return const <SelectedGalleryImage>[];
       if (response.exception != null) {
         throw GalleryAccessFailure('上次选择的图片已失效，请重新选择。', response.exception);
       }
-      final file = response.file;
-      return file == null ? null : _toDomain(file);
+      return response.files?.map(_toDomain).toList(growable: false) ??
+          const <SelectedGalleryImage>[];
     } on GalleryAccessFailure {
       rethrow;
     } on PlatformException catch (error) {

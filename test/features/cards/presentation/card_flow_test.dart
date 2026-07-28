@@ -42,15 +42,17 @@ final CardDetail _detail = CardDetail(
 );
 
 class _FakeGalleryPicker implements GalleryPicker {
-  const _FakeGalleryPicker(this.selection);
+  const _FakeGalleryPicker(this.selections);
 
-  final SelectedGalleryImage? selection;
-
-  @override
-  Future<SelectedGalleryImage?> pickOne() async => selection;
+  final List<SelectedGalleryImage> selections;
 
   @override
-  Future<SelectedGalleryImage?> recoverLost() async => null;
+  Future<List<SelectedGalleryImage>> pickMany({required int limit}) async =>
+      selections.take(limit).toList(growable: false);
+
+  @override
+  Future<List<SelectedGalleryImage>> recoverLost() async =>
+      const <SelectedGalleryImage>[];
 }
 
 class _SequenceIdGenerator implements IdGenerator {
@@ -110,6 +112,46 @@ class _FakeCardRepository implements CardRepository {
   }
 
   @override
+  Future<void> addImages(AddCardImagesRequest request) async {}
+
+  @override
+  Future<void> deleteImage({
+    required String cardItemId,
+    required String imageId,
+    required bool keepOriginal,
+  }) async {}
+
+  @override
+  Future<ImageDeletionImpact> getImageDeletionImpact({
+    required String cardItemId,
+    required String imageId,
+  }) async => const ImageDeletionImpact(
+    imageId: 'image-1',
+    byteSize: 0,
+    isCover: true,
+    remainingImageCount: 1,
+  );
+
+  @override
+  Future<void> reorderImages({
+    required String cardItemId,
+    required List<String> orderedImageIds,
+  }) async {}
+
+  @override
+  Future<void> setCover({
+    required String cardItemId,
+    required String imageId,
+  }) async {}
+
+  @override
+  Future<void> updateImageKind({
+    required String cardItemId,
+    required String imageId,
+    required CardImageKind kind,
+  }) async {}
+
+  @override
   Future<Set<String>> referencedImagePaths() async => const <String>{};
 
   @override
@@ -124,17 +166,18 @@ class _FakeCardRepository implements CardRepository {
 class CardFlowHarness {
   CardFlowHarness._({
     required this._repository,
-    required this.selection,
+    required this.selections,
     required this.imageRoot,
   });
 
   factory CardFlowHarness.empty({
     SelectedGalleryImage? selection = _selectedImage,
+    List<SelectedGalleryImage>? selections,
     bool holdSave = false,
   }) {
     return CardFlowHarness._(
       repository: _FakeCardRepository(holdSave: holdSave),
-      selection: selection,
+      selections: selections ?? <SelectedGalleryImage>[?selection],
       imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
     );
   }
@@ -145,19 +188,19 @@ class CardFlowHarness {
         cards: cards,
         details: <String, CardDetail>{_detail.cardItemId: _detail},
       ),
-      selection: _selectedImage,
+      selections: const <SelectedGalleryImage>[_selectedImage],
       imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
     );
   }
 
   factory CardFlowHarness.withMissingDetail() => CardFlowHarness._(
     repository: _FakeCardRepository(),
-    selection: _selectedImage,
+    selections: const <SelectedGalleryImage>[_selectedImage],
     imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
   );
 
   final _FakeCardRepository _repository;
-  final SelectedGalleryImage? selection;
+  final List<SelectedGalleryImage> selections;
   final Directory imageRoot;
   ProviderContainer? _container;
 
@@ -174,7 +217,7 @@ class CardFlowHarness {
   }) async {
     _container = ProviderContainer(
       overrides: [
-        galleryPickerProvider.overrideWithValue(_FakeGalleryPicker(selection)),
+        galleryPickerProvider.overrideWithValue(_FakeGalleryPicker(selections)),
         cardRepositoryProvider.overrideWithValue(_repository),
         managedImageStoreProvider.overrideWithValue(
           ManagedImageStore(imageRoot),

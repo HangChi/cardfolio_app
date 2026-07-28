@@ -17,26 +17,37 @@ const SelectedGalleryImage selectedImage = SelectedGalleryImage(
 );
 
 class FakeGalleryPicker implements GalleryPicker {
-  FakeGalleryPicker({this.selection, this.lost, this.error});
+  FakeGalleryPicker({
+    SelectedGalleryImage? selection,
+    List<SelectedGalleryImage>? selections,
+    SelectedGalleryImage? lost,
+    List<SelectedGalleryImage>? lostSelections,
+    this.error,
+    this.ignoreLimit = false,
+  }) : selections = selections ?? <SelectedGalleryImage>[?selection],
+       lostSelections = lostSelections ?? <SelectedGalleryImage>[?lost];
 
-  final SelectedGalleryImage? selection;
-  final SelectedGalleryImage? lost;
+  final List<SelectedGalleryImage> selections;
+  final List<SelectedGalleryImage> lostSelections;
   final AppFailure? error;
+  final bool ignoreLimit;
 
   int pickCalls = 0;
   int recoverCalls = 0;
 
   @override
-  Future<SelectedGalleryImage?> pickOne() async {
+  Future<List<SelectedGalleryImage>> pickMany({required int limit}) async {
     pickCalls++;
     if (error != null) throw error!;
-    return selection;
+    return (ignoreLimit ? selections : selections.take(limit)).toList(
+      growable: false,
+    );
   }
 
   @override
-  Future<SelectedGalleryImage?> recoverLost() async {
+  Future<List<SelectedGalleryImage>> recoverLost() async {
     recoverCalls++;
-    return lost;
+    return lostSelections;
   }
 }
 
@@ -58,6 +69,46 @@ class FakeCardRepository implements CardRepository {
     if (failure != null) throw failure!;
     return request.ids.cardItemId;
   }
+
+  @override
+  Future<void> addImages(AddCardImagesRequest request) async {}
+
+  @override
+  Future<void> deleteImage({
+    required String cardItemId,
+    required String imageId,
+    required bool keepOriginal,
+  }) async {}
+
+  @override
+  Future<ImageDeletionImpact> getImageDeletionImpact({
+    required String cardItemId,
+    required String imageId,
+  }) async => const ImageDeletionImpact(
+    imageId: 'image-1',
+    byteSize: 0,
+    isCover: true,
+    remainingImageCount: 1,
+  );
+
+  @override
+  Future<void> reorderImages({
+    required String cardItemId,
+    required List<String> orderedImageIds,
+  }) async {}
+
+  @override
+  Future<void> setCover({
+    required String cardItemId,
+    required String imageId,
+  }) async {}
+
+  @override
+  Future<void> updateImageKind({
+    required String cardItemId,
+    required String imageId,
+    required CardImageKind kind,
+  }) async {}
 
   @override
   Stream<List<CardSummary>> watchCards() =>
@@ -144,6 +195,92 @@ void main() {
       expect(ids.issuedCount, 3);
     });
 
+    test(
+      'a multi-selection keeps order and generates one id per image',
+      () async {
+        picker = FakeGalleryPicker(
+          selections: const <SelectedGalleryImage>[
+            selectedImage,
+            SelectedGalleryImage(path: '/tmp/IMG_0002.jpg'),
+            SelectedGalleryImage(path: '/tmp/IMG_0003.jpg'),
+          ],
+        );
+        container = buildContainer();
+
+        expect(await controller().pickImage(), isTrue);
+
+        expect(state().images.map((image) => image.selection.path), <String>[
+          '/tmp/IMG_0001.jpg',
+          '/tmp/IMG_0002.jpg',
+          '/tmp/IMG_0003.jpg',
+        ]);
+        expect(state().images.map((image) => image.kind), <CardImageKind>[
+          CardImageKind.front,
+          CardImageKind.other,
+          CardImageKind.other,
+        ]);
+        expect(ids.issuedCount, 5);
+      },
+    );
+
+    test(
+      'additional selection appends without changing existing ids',
+      () async {
+        container = buildContainer();
+        await controller().pickImage();
+        final firstId = state().images.single.id;
+        picker = FakeGalleryPicker(
+          selections: const <SelectedGalleryImage>[
+            SelectedGalleryImage(path: '/tmp/IMG_0002.jpg'),
+          ],
+        );
+        container.updateOverrides([
+          galleryPickerProvider.overrideWithValue(picker),
+          cardRepositoryProvider.overrideWithValue(repository),
+          idGeneratorProvider.overrideWithValue(ids),
+        ]);
+
+        expect(await controller().addImages(), isTrue);
+
+        expect(state().images, hasLength(2));
+        expect(state().images.first.id, firstId);
+        expect(state().images.last.selection.path, '/tmp/IMG_0002.jpg');
+      },
+    );
+
+    test('caps results when a platform ignores the picker limit', () async {
+      picker = FakeGalleryPicker(
+        ignoreLimit: true,
+        selections: List<SelectedGalleryImage>.generate(
+          CreateCardRequest.maxImages + 1,
+          (index) => SelectedGalleryImage(path: '/tmp/IMG_$index.jpg'),
+        ),
+      );
+      container = buildContainer();
+
+      expect(await controller().pickImage(), isTrue);
+
+      expect(state().images, hasLength(CreateCardRequest.maxImages));
+    });
+
+    test('changes image kind and order in the draft', () async {
+      picker = FakeGalleryPicker(
+        selections: const <SelectedGalleryImage>[
+          selectedImage,
+          SelectedGalleryImage(path: '/tmp/IMG_0002.jpg'),
+        ],
+      );
+      container = buildContainer();
+      await controller().pickImage();
+      final secondId = state().images.last.id;
+
+      controller().updateImageKind(secondId, CardImageKind.back);
+      controller().moveImage(secondId, -1);
+
+      expect(state().images.first.id, secondId);
+      expect(state().images.first.kind, CardImageKind.back);
+    });
+
     test('exposes a stable failure when the picker throws', () async {
       picker = FakeGalleryPicker(error: const GalleryAccessFailure());
       container = buildContainer();
@@ -210,6 +347,30 @@ void main() {
       expect(state().savedCardItemId, id);
       expect(state().failure, isNull);
       expect(repository.requests.single.name, '樱花纪念卡');
+    });
+
+    test('passes every ordered draft image to the repository', () async {
+      picker = FakeGalleryPicker(
+        selections: const <SelectedGalleryImage>[
+          selectedImage,
+          SelectedGalleryImage(path: '/tmp/IMG_0002.jpg'),
+          SelectedGalleryImage(path: '/tmp/IMG_0003.jpg'),
+        ],
+      );
+      container = buildContainer();
+      await pickAndName('樱花纪念卡');
+      controller().updateImageKind(state().images[1].id, CardImageKind.back);
+
+      await controller().save();
+
+      final request = repository.requests.single;
+      expect(request.images, hasLength(3));
+      expect(request.images[1].kind, CardImageKind.back);
+      expect(request.images.map((image) => image.sourcePath), <String>[
+        '/tmp/IMG_0001.jpg',
+        '/tmp/IMG_0002.jpg',
+        '/tmp/IMG_0003.jpg',
+      ]);
     });
 
     test('passes optional fields through to the repository', () async {

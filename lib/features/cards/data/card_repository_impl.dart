@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 
 import '../../../core/errors/app_failure.dart';
@@ -53,22 +55,202 @@ class CardRepositoryImpl implements CardRepository {
       return cardItemId;
     }
 
-    final image = await _images.importImage(
-      sourcePath: normalized.sourceImagePath,
-      cardItemId: cardItemId,
-      imageId: normalized.ids.imageId,
-    );
+    final imported = await _importImages(cardItemId, normalized.images);
 
     final now = clock.nowUtc();
     try {
-      await _db.insertCardGraph(_buildGraph(normalized, image, now));
+      await _db.insertCardGraph(_buildGraph(normalized, imported, now));
     } catch (error) {
       // 事务已回滚，补偿删除本次复制的文件，避免留下孤儿。
-      await _images.delete(image.relativePath);
+      await _deleteImported(imported);
       throw PersistenceFailure('保存失败，请重试。', error);
     }
 
     return cardItemId;
+  }
+
+  @override
+  Future<void> addImages(AddCardImagesRequest request) async {
+    final normalized = request.normalized();
+    final current = await _detail(normalized.cardItemId);
+    if (current == null) {
+      throw const ValidationFailure(CardField.image, '卡片不存在，请返回收藏后重试。');
+    }
+    if (current.images.length + normalized.images.length >
+        CreateCardRequest.maxImages) {
+      throw const ValidationFailure(CardField.image, '每张卡片最多保存 20 张图片。');
+    }
+
+    final imported = await _importImages(
+      normalized.cardItemId,
+      normalized.images,
+    );
+    final now = clock.nowUtc();
+    try {
+      await _db.addImages(
+        cardItemId: normalized.cardItemId,
+        images: <CardImagesCompanion>[
+          for (var index = 0; index < imported.length; index++)
+            _imageCompanion(
+              input: normalized.images[index],
+              image: imported[index],
+              cardItemId: normalized.cardItemId,
+              sortOrder: current.images.length + index,
+              isCover: false,
+              createdAt: now,
+            ),
+        ],
+        updatedAt: now,
+      );
+    } catch (error) {
+      await _deleteImported(imported);
+      if (error is StateError) {
+        throw ValidationFailure(CardField.image, error.message);
+      }
+      throw PersistenceFailure('添加图片失败，请重试。', error);
+    }
+  }
+
+  @override
+  Future<void> updateImageKind({
+    required String cardItemId,
+    required String imageId,
+    required CardImageKind kind,
+  }) {
+    return _mutate(
+      () => _db.updateImageKind(
+        cardItemId: cardItemId,
+        imageId: imageId,
+        kind: kind,
+        updatedAt: clock.nowUtc(),
+      ),
+    );
+  }
+
+  @override
+  Future<void> reorderImages({
+    required String cardItemId,
+    required List<String> orderedImageIds,
+  }) {
+    return _mutate(
+      () => _db.reorderImages(
+        cardItemId: cardItemId,
+        orderedImageIds: orderedImageIds,
+        updatedAt: clock.nowUtc(),
+      ),
+    );
+  }
+
+  @override
+  Future<void> setCover({required String cardItemId, required String imageId}) {
+    return _mutate(
+      () => _db.setCover(
+        cardItemId: cardItemId,
+        imageId: imageId,
+        updatedAt: clock.nowUtc(),
+      ),
+    );
+  }
+
+  @override
+  Future<ImageDeletionImpact> getImageDeletionImpact({
+    required String cardItemId,
+    required String imageId,
+  }) async {
+    final detail = await _detail(cardItemId);
+    final image = detail?.images.cast<CardImageRef?>().firstWhere(
+      (entry) => entry!.id == imageId,
+      orElse: () => null,
+    );
+    if (detail == null || image == null) {
+      throw const ValidationFailure(CardField.image, '图片不存在，请刷新后重试。');
+    }
+    final int byteSize;
+    try {
+      byteSize = await _images.resolve(image.relativePath).length();
+    } on FileSystemException catch (error) {
+      throw ImageImportFailure('原图文件缺失，无法计算空间影响。', error);
+    }
+    return ImageDeletionImpact(
+      imageId: imageId,
+      byteSize: byteSize,
+      isCover: image.isCover,
+      remainingImageCount: detail.images.length - 1,
+    );
+  }
+
+  @override
+  Future<void> deleteImage({
+    required String cardItemId,
+    required String imageId,
+    required bool keepOriginal,
+  }) async {
+    final RemovedImageRecord removed;
+    try {
+      removed = await _db.removeImage(
+        cardItemId: cardItemId,
+        imageId: imageId,
+        keepOriginal: keepOriginal,
+        deletedAt: clock.nowUtc(),
+      );
+    } on StateError catch (error) {
+      throw ValidationFailure(CardField.image, error.message);
+    } catch (error) {
+      throw PersistenceFailure('移除图片失败，请重试。', error);
+    }
+
+    if (!keepOriginal) {
+      await _images.delete(removed.relativePath);
+      if (removed.derivedRelativePath case final derived?) {
+        await _images.delete(derived);
+      }
+    }
+  }
+
+  Future<CardDetail?> _detail(String cardItemId) async {
+    try {
+      return await _db.watchCardDetail(cardItemId).first;
+    } catch (error) {
+      throw DatabaseUnavailableFailure('收藏库暂时无法读取，请重试。', error);
+    }
+  }
+
+  Future<void> _mutate(Future<void> Function() action) async {
+    try {
+      await action();
+    } on StateError catch (error) {
+      throw ValidationFailure(CardField.image, error.message);
+    } catch (error) {
+      throw PersistenceFailure('更新图片失败，请重试。', error);
+    }
+  }
+
+  Future<List<ManagedImage>> _importImages(
+    String cardItemId,
+    List<PendingCardImage> inputs,
+  ) async {
+    final imported = <ManagedImage>[];
+    try {
+      for (final input in inputs) {
+        imported.add(
+          await _images.importImage(
+            sourcePath: input.sourcePath,
+            cardItemId: cardItemId,
+            imageId: input.id,
+          ),
+        );
+      }
+      return imported;
+    } catch (_) {
+      await _deleteImported(imported);
+      rethrow;
+    }
+  }
+
+  Future<void> _deleteImported(List<ManagedImage> imported) async {
+    for (final image in imported.reversed) {
+      await _images.delete(image.relativePath);
+    }
   }
 
   Future<bool> _cardExists(String cardItemId) async {
@@ -81,7 +263,7 @@ class CardRepositoryImpl implements CardRepository {
 
   CardRowGraph _buildGraph(
     CreateCardRequest request,
-    ManagedImage image,
+    List<ManagedImage> images,
     DateTime now,
   ) {
     return CardRowGraph(
@@ -104,15 +286,36 @@ class CardRepositoryImpl implements CardRepository {
         updatedAt: now,
       ),
       images: <CardImagesCompanion>[
-        CardImagesCompanion.insert(
-          id: request.ids.imageId,
-          cardItemId: request.ids.cardItemId,
-          kind: CardImageKind.front,
-          relativePath: image.relativePath,
-          checksum: image.checksum,
-          createdAt: now,
-        ),
+        for (var index = 0; index < images.length; index++)
+          _imageCompanion(
+            input: request.images[index],
+            image: images[index],
+            cardItemId: request.ids.cardItemId,
+            sortOrder: index,
+            isCover: index == 0,
+            createdAt: now,
+          ),
       ],
+    );
+  }
+
+  CardImagesCompanion _imageCompanion({
+    required PendingCardImage input,
+    required ManagedImage image,
+    required String cardItemId,
+    required int sortOrder,
+    required bool isCover,
+    required DateTime createdAt,
+  }) {
+    return CardImagesCompanion.insert(
+      id: input.id,
+      cardItemId: cardItemId,
+      kind: input.kind,
+      relativePath: image.relativePath,
+      sortOrder: Value(sortOrder),
+      isCover: Value(isCover),
+      checksum: image.checksum,
+      createdAt: createdAt,
     );
   }
 }

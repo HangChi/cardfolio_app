@@ -52,7 +52,7 @@
 | 验收 | Feature | 证据 |
 |---|---:|---|
 | AC-P0-001..003 | 001 | [Feature 001 测试矩阵](../features/001-local-card-creation/test-matrix.md) |
-| AC-P0-004 | 002 | 多图、顺序和封面自动化/设备测试 |
+| AC-P0-004 | 002 | [Feature 002 测试矩阵](../features/002-multi-image-management/test-matrix.md)；设备验收待执行 |
 | AC-P0-005 | 003 | 套卡 3/4 固定夹具 |
 | AC-P0-006 | 005 | 总价 500 与分摊不重复夹具 |
 | AC-P0-007 | 007 | 删除/恢复前后数量与进度 |

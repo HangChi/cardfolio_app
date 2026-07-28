@@ -24,6 +24,7 @@ CreateCardRequest request({
   String? notes,
   String? issuedAt,
   int quantity = 1,
+  List<PendingCardImage> additionalImages = const <PendingCardImage>[],
 }) {
   return CreateCardRequest(
     ids: const CardDraftIds(
@@ -32,6 +33,7 @@ CreateCardRequest request({
       imageId: 'image-1',
     ),
     sourceImagePath: '/tmp/source.jpg',
+    additionalImages: additionalImages,
     name: name,
     city: city,
     issuer: issuer,
@@ -98,6 +100,88 @@ void main() {
   });
 
   group('CreateCardRequest.normalized', () {
+    test('keeps an ordered multi-image request with all supported kinds', () {
+      final normalized = request(
+        name: '樱花纪念卡',
+        additionalImages: const <PendingCardImage>[
+          PendingCardImage(
+            id: 'image-2',
+            sourcePath: '/tmp/back.jpg',
+            kind: CardImageKind.back,
+          ),
+          PendingCardImage(
+            id: 'image-3',
+            sourcePath: '/tmp/package.jpg',
+            kind: CardImageKind.packaging,
+          ),
+          PendingCardImage(
+            id: 'image-4',
+            sourcePath: '/tmp/number.jpg',
+            kind: CardImageKind.number,
+          ),
+          PendingCardImage(
+            id: 'image-5',
+            sourcePath: '/tmp/detail.jpg',
+            kind: CardImageKind.detail,
+          ),
+          PendingCardImage(
+            id: 'image-6',
+            sourcePath: '/tmp/other.jpg',
+            kind: CardImageKind.other,
+          ),
+        ],
+      ).normalized();
+
+      expect(
+        normalized.images.map((image) => image.kind),
+        CardImageKind.values,
+      );
+      expect(normalized.images.map((image) => image.id), <String>[
+        'image-1',
+        'image-2',
+        'image-3',
+        'image-4',
+        'image-5',
+        'image-6',
+      ]);
+    });
+
+    test('rejects more than twenty images', () {
+      final additional = List<PendingCardImage>.generate(
+        CreateCardRequest.maxImages,
+        (index) => PendingCardImage(
+          id: 'image-${index + 2}',
+          sourcePath: '/tmp/${index + 2}.jpg',
+        ),
+      );
+
+      expect(
+        () => request(name: '樱花纪念卡', additionalImages: additional).normalized(),
+        throwsA(isA<ValidationFailure>()),
+      );
+    });
+
+    test('rejects blank paths and duplicate image ids', () {
+      expect(
+        () => request(
+          name: '樱花纪念卡',
+          additionalImages: const <PendingCardImage>[
+            PendingCardImage(id: 'image-2', sourcePath: '  '),
+          ],
+        ).normalized(),
+        throwsA(isA<ValidationFailure>()),
+      );
+      expect(
+        () => request(
+          name: '樱花纪念卡',
+          additionalImages: const <PendingCardImage>[
+            PendingCardImage(id: 'image-1', sourcePath: '/tmp/back.jpg'),
+          ],
+        ).normalized(),
+        throwsA(isA<ValidationFailure>()),
+      );
+    });
+
     test('trims the required name and optional text fields', () {
       final normalized = request(
         name: '  樱花纪念卡  ',
@@ -182,6 +266,33 @@ void main() {
       final once = request(name: ' 樱花纪念卡 ', city: ' 东京 ').normalized();
 
       expect(once.normalized(), once);
+    });
+  });
+
+  group('AddCardImagesRequest.normalized', () {
+    test('requires one to twenty unique images', () {
+      expect(
+        () => const AddCardImagesRequest(
+          cardItemId: 'item-1',
+          images: <PendingCardImage>[],
+        ).normalized(),
+        throwsA(isA<ValidationFailure>()),
+      );
+
+      final request = const AddCardImagesRequest(
+        cardItemId: ' item-1 ',
+        images: <PendingCardImage>[
+          PendingCardImage(
+            id: 'image-2',
+            sourcePath: ' /tmp/back.jpg ',
+            kind: CardImageKind.back,
+          ),
+        ],
+      ).normalized();
+
+      expect(request.cardItemId, 'item-1');
+      expect(request.images.single.sourcePath, '/tmp/back.jpg');
+      expect(request.images.single.kind, CardImageKind.back);
     });
   });
 }

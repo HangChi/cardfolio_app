@@ -49,6 +49,7 @@ void main() {
           kind: CardImageKind.front,
           relativePath: relativePath,
           checksum: 'sha256-abc',
+          isCover: const Value(true),
           createdAt: createdAt,
         ),
       ],
@@ -209,6 +210,207 @@ void main() {
         expect(emissions, <int>[0, 1]);
       },
     );
+  });
+
+  group('multi-image mutations', () {
+    CardImagesCompanion image({
+      required String id,
+      required int sortOrder,
+      CardImageKind kind = CardImageKind.other,
+      bool isCover = false,
+    }) {
+      return CardImagesCompanion.insert(
+        id: id,
+        cardItemId: 'item-1',
+        kind: kind,
+        relativePath: 'cards/$id.jpg',
+        sortOrder: Value(sortOrder),
+        isCover: Value(isCover),
+        checksum: 'sha256-$id',
+        createdAt: createdAt,
+      );
+    }
+
+    test('adds ordered images without changing the existing cover', () async {
+      await db.insertCardGraph(exampleGraph());
+
+      await db.addImages(
+        cardItemId: 'item-1',
+        images: <CardImagesCompanion>[
+          image(id: 'image-2', sortOrder: 1, kind: CardImageKind.back),
+          image(id: 'image-3', sortOrder: 2, kind: CardImageKind.packaging),
+        ],
+        updatedAt: createdAt.add(const Duration(minutes: 1)),
+      );
+
+      final detail = (await db.watchCardDetail('item-1').first)!;
+      expect(detail.images.map((entry) => entry.id), <String>[
+        'image-1',
+        'image-2',
+        'image-3',
+      ]);
+      expect(detail.cover?.id, 'image-1');
+      expect(detail.images[1].kind, CardImageKind.back);
+      expect(detail.images[2].kind, CardImageKind.packaging);
+    });
+
+    test('sets exactly one cover without changing image order', () async {
+      await db.insertCardGraph(exampleGraph());
+      await db.addImages(
+        cardItemId: 'item-1',
+        images: <CardImagesCompanion>[image(id: 'image-2', sortOrder: 1)],
+        updatedAt: createdAt,
+      );
+
+      await db.setCover(
+        cardItemId: 'item-1',
+        imageId: 'image-2',
+        updatedAt: createdAt.add(const Duration(minutes: 1)),
+      );
+
+      final detail = (await db.watchCardDetail('item-1').first)!;
+      expect(detail.cover?.id, 'image-2');
+      expect(detail.images.map((entry) => entry.id), <String>[
+        'image-1',
+        'image-2',
+      ]);
+      expect(detail.images.where((entry) => entry.isCover), hasLength(1));
+    });
+
+    test('the partial index rejects a second active cover', () async {
+      await db.insertCardGraph(exampleGraph());
+
+      await expectLater(
+        db
+            .into(db.cardImages)
+            .insert(image(id: 'image-2', sortOrder: 1, isCover: true)),
+        throwsA(anything),
+      );
+    });
+
+    test('reorders only when every active image id appears once', () async {
+      await db.insertCardGraph(exampleGraph());
+      await db.addImages(
+        cardItemId: 'item-1',
+        images: <CardImagesCompanion>[
+          image(id: 'image-2', sortOrder: 1),
+          image(id: 'image-3', sortOrder: 2),
+        ],
+        updatedAt: createdAt,
+      );
+
+      await db.reorderImages(
+        cardItemId: 'item-1',
+        orderedImageIds: const <String>['image-3', 'image-1', 'image-2'],
+        updatedAt: createdAt.add(const Duration(minutes: 1)),
+      );
+      expect(
+        (await db.watchCardDetail('item-1').first)!.images.map(
+          (entry) => entry.id,
+        ),
+        <String>['image-3', 'image-1', 'image-2'],
+      );
+
+      await expectLater(
+        db.reorderImages(
+          cardItemId: 'item-1',
+          orderedImageIds: const <String>['image-1', 'image-1', 'image-2'],
+          updatedAt: createdAt,
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        (await db.watchCardDetail('item-1').first)!.images.map(
+          (entry) => entry.id,
+        ),
+        <String>['image-3', 'image-1', 'image-2'],
+      );
+    });
+
+    test('updates all six image kinds', () async {
+      await db.insertCardGraph(exampleGraph());
+
+      for (final kind in CardImageKind.values) {
+        await db.updateImageKind(
+          cardItemId: 'item-1',
+          imageId: 'image-1',
+          kind: kind,
+          updatedAt: createdAt,
+        );
+        expect(
+          (await db.watchCardDetail('item-1').first)!.images.single.kind,
+          kind,
+        );
+      }
+    });
+
+    test('soft removal keeps the path referenced', () async {
+      await db.insertCardGraph(exampleGraph());
+      await db.addImages(
+        cardItemId: 'item-1',
+        images: <CardImagesCompanion>[image(id: 'image-2', sortOrder: 1)],
+        updatedAt: createdAt,
+      );
+
+      final removed = await db.removeImage(
+        cardItemId: 'item-1',
+        imageId: 'image-2',
+        keepOriginal: true,
+        deletedAt: createdAt.add(const Duration(minutes: 1)),
+      );
+
+      expect(removed.relativePath, 'cards/image-2.jpg');
+      expect((await db.watchCardDetail('item-1').first)!.images, hasLength(1));
+      expect(await db.referencedImagePaths(), <String>{
+        'cards/image-1.jpg',
+        'cards/image-2.jpg',
+      });
+    });
+
+    test('hard removal drops the path and promotes a new cover', () async {
+      await db.insertCardGraph(exampleGraph());
+      await db.addImages(
+        cardItemId: 'item-1',
+        images: <CardImagesCompanion>[
+          image(id: 'image-2', sortOrder: 1),
+          image(id: 'image-3', sortOrder: 2),
+        ],
+        updatedAt: createdAt,
+      );
+
+      await db.removeImage(
+        cardItemId: 'item-1',
+        imageId: 'image-1',
+        keepOriginal: false,
+        deletedAt: createdAt.add(const Duration(minutes: 1)),
+      );
+
+      final detail = (await db.watchCardDetail('item-1').first)!;
+      expect(detail.images.map((entry) => entry.id), <String>[
+        'image-2',
+        'image-3',
+      ]);
+      expect(detail.images.map((entry) => entry.sortOrder), <int>[0, 1]);
+      expect(detail.cover?.id, 'image-2');
+      expect(
+        await db.referencedImagePaths(),
+        isNot(contains('cards/image-1.jpg')),
+      );
+    });
+
+    test('refuses to remove the last active image', () async {
+      await db.insertCardGraph(exampleGraph());
+
+      await expectLater(
+        db.removeImage(
+          cardItemId: 'item-1',
+          imageId: 'image-1',
+          keepOriginal: true,
+          deletedAt: createdAt,
+        ),
+        throwsA(isA<StateError>()),
+      );
+    });
   });
 
   test('foreign keys are enforced', () async {

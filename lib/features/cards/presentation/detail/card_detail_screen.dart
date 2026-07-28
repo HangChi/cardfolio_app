@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
+import '../../../../core/errors/app_failure.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
 import '../widgets/card_image.dart';
+import '../widgets/card_image_kind_label.dart';
 
 /// 单卡详情，只展示 Feature 001 已持久化的字段。
 class CardDetailScreen extends ConsumerWidget {
@@ -34,10 +36,234 @@ class CardDetailScreen extends ConsumerWidget {
   }
 }
 
-class _DetailContent extends StatelessWidget {
+class _DetailContent extends ConsumerStatefulWidget {
   const _DetailContent({required this.card});
 
   final CardDetail card;
+
+  @override
+  ConsumerState<_DetailContent> createState() => _DetailContentState();
+}
+
+class _DetailContentState extends ConsumerState<_DetailContent> {
+  bool _busy = false;
+
+  CardDetail get card => widget.card;
+
+  Future<void> _run(Future<void> Function() operation) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await operation();
+    } on AppFailure catch (failure) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _addImages() async {
+    final remaining = CreateCardRequest.maxImages - card.images.length;
+    if (remaining <= 0) return;
+    late final List<SelectedGalleryImage> selections;
+    try {
+      selections = await ref
+          .read(galleryPickerProvider)
+          .pickMany(limit: remaining);
+    } on AppFailure catch (failure) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
+      }
+      return;
+    }
+    if (selections.isEmpty || !mounted) return;
+    final generator = ref.read(idGeneratorProvider);
+    await _run(
+      () => ref
+          .read(cardRepositoryProvider)
+          .addImages(
+            AddCardImagesRequest(
+              cardItemId: card.cardItemId,
+              images: <PendingCardImage>[
+                for (final selection in selections)
+                  PendingCardImage(
+                    id: generator.newId(),
+                    sourcePath: selection.path,
+                  ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Future<void> _moveImage(int index, int delta) async {
+    final target = index + delta;
+    if (target < 0 || target >= card.images.length) return;
+    final ids = card.images.map((image) => image.id).toList(growable: true);
+    final id = ids.removeAt(index);
+    ids.insert(target, id);
+    await _run(
+      () => ref
+          .read(cardRepositoryProvider)
+          .reorderImages(cardItemId: card.cardItemId, orderedImageIds: ids),
+    );
+  }
+
+  Future<void> _confirmDelete(CardImageRef image) async {
+    final ImageDeletionImpact impact;
+    try {
+      setState(() => _busy = true);
+      impact = await ref
+          .read(cardRepositoryProvider)
+          .getImageDeletionImpact(
+            cardItemId: card.cardItemId,
+            imageId: image.id,
+          );
+    } on AppFailure catch (failure) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+
+    final keepOriginal = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('移除图片？'),
+        content: Text(
+          '文件大小：${_formatBytes(impact.byteSize)}。'
+          '${impact.isCover ? '这是当前封面，移除后将自动选择新封面。' : ''}',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('移除并保留原图'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('同时删除原图'),
+          ),
+        ],
+      ),
+    );
+    if (keepOriginal == null || !mounted) return;
+    await _run(
+      () => ref
+          .read(cardRepositoryProvider)
+          .deleteImage(
+            cardItemId: card.cardItemId,
+            imageId: image.id,
+            keepOriginal: keepOriginal,
+          ),
+    );
+  }
+
+  Future<void> _openImageManager(CardImageRef image, int index) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: <Widget>[
+            ListTile(
+              title: Text('第 ${index + 1} 张 · ${image.kind.label}'),
+              subtitle: image.isCover ? const Text('当前封面') : null,
+            ),
+            if (!image.isCover)
+              ListTile(
+                leading: const Icon(Icons.star_outline),
+                title: const Text('设为封面'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _run(
+                    () => ref
+                        .read(cardRepositoryProvider)
+                        .setCover(
+                          cardItemId: card.cardItemId,
+                          imageId: image.id,
+                        ),
+                  );
+                },
+              ),
+            ExpansionTile(
+              leading: const Icon(Icons.label_outline),
+              title: const Text('图片用途'),
+              children: <Widget>[
+                for (final kind in CardImageKind.values)
+                  ListTile(
+                    title: Text(kind.label),
+                    trailing: kind == image.kind
+                        ? const Icon(Icons.check)
+                        : null,
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _run(
+                        () => ref
+                            .read(cardRepositoryProvider)
+                            .updateImageKind(
+                              cardItemId: card.cardItemId,
+                              imageId: image.id,
+                              kind: kind,
+                            ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+            ListTile(
+              leading: const Icon(Icons.arrow_back),
+              title: const Text('前移'),
+              enabled: index > 0,
+              onTap: index == 0
+                  ? null
+                  : () {
+                      Navigator.pop(sheetContext);
+                      _moveImage(index, -1);
+                    },
+            ),
+            ListTile(
+              leading: const Icon(Icons.arrow_forward),
+              title: const Text('后移'),
+              enabled: index < card.images.length - 1,
+              onTap: index >= card.images.length - 1
+                  ? null
+                  : () {
+                      Navigator.pop(sheetContext);
+                      _moveImage(index, 1);
+                    },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('移除图片'),
+              enabled: card.images.length > 1,
+              onTap: card.images.length <= 1
+                  ? null
+                  : () {
+                      Navigator.pop(sheetContext);
+                      _confirmDelete(image);
+                    },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +307,91 @@ class _DetailContent extends StatelessWidget {
             ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
         ],
+        SizedBox(height: tokens.spaceMd),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                '${card.images.length} 张图片',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            TextButton.icon(
+              onPressed:
+                  _busy || card.images.length >= CreateCardRequest.maxImages
+                  ? null
+                  : _addImages,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: const Text('添加图片'),
+            ),
+          ],
+        ),
+        SizedBox(
+          height: 144,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: card.images.length,
+            separatorBuilder: (context, index) =>
+                SizedBox(width: tokens.spaceMd),
+            itemBuilder: (context, index) {
+              final image = card.images[index];
+              return SizedBox(
+                width: 148,
+                child: Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      CardImage.managed(
+                        relativePath: image.displayRelativePath,
+                        semanticLabel:
+                            '第 ${index + 1} 张，${image.kind.label}'
+                            '${image.isCover ? '，封面' : ''}',
+                      ),
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Container(
+                          width: double.infinity,
+                          color: Colors.black.withValues(alpha: 0.64),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: tokens.spaceSm,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: Text(
+                                  image.kind.label,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                              if (image.isCover)
+                                const Text(
+                                  '封面',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: IconButton.filledTonal(
+                          key: Key('manage-image-${image.id}'),
+                          onPressed: _busy
+                              ? null
+                              : () => _openImageManager(image, index),
+                          tooltip: '管理第 ${index + 1} 张图片',
+                          icon: const Icon(Icons.more_horiz),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
         SizedBox(height: tokens.spaceLg),
         Container(
           padding: EdgeInsets.all(tokens.spaceMd),
@@ -123,6 +434,16 @@ class _DetailContent extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final kilobytes = bytes / 1024;
+  if (kilobytes < 1024) {
+    return '${kilobytes.toStringAsFixed(kilobytes % 1 == 0 ? 0 : 1)} KB';
+  }
+  final megabytes = kilobytes / 1024;
+  return '${megabytes.toStringAsFixed(megabytes % 1 == 0 ? 0 : 1)} MB';
 }
 
 class _Stat extends StatelessWidget {

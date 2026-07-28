@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../domain/card_models.dart';
 import 'create_card_controller.dart';
 import 'create_card_state.dart';
 import '../widgets/card_image.dart';
+import '../widgets/card_image_kind_label.dart';
 
 /// 单图建卡表单。
 class CreateCardScreen extends ConsumerStatefulWidget {
@@ -105,14 +107,7 @@ class _CreateCardForm extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          AspectRatio(
-            aspectRatio: 1.58,
-            child: CardImage.local(
-              path: state.image!.path,
-              semanticLabel: '待保存卡片正面',
-              borderRadius: BorderRadius.circular(tokens.radiusLg),
-            ),
-          ),
+          _DraftImagesEditor(state: state),
           SizedBox(height: tokens.spaceLg),
           Text('基本信息', style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: tokens.spaceMd),
@@ -186,6 +181,143 @@ class _CreateCardForm extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DraftImagesEditor extends ConsumerWidget {
+  const _DraftImagesEditor({required this.state});
+
+  final CreateCardState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final controller = ref.read(createCardControllerProvider.notifier);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                '${state.images.length} 张图片',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            TextButton.icon(
+              onPressed:
+                  state.isSaving ||
+                      state.images.length >= CreateCardRequest.maxImages
+                  ? null
+                  : controller.addImages,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: const Text('添加图片'),
+            ),
+          ],
+        ),
+        SizedBox(height: tokens.spaceSm),
+        SizedBox(
+          height: 246,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: state.images.length,
+            separatorBuilder: (context, index) =>
+                SizedBox(width: tokens.spaceMd),
+            itemBuilder: (context, index) {
+              final image = state.images[index];
+              return Semantics(
+                label:
+                    '第 ${index + 1} 张，${image.kind.label}'
+                    '${index == 0 ? '，封面' : ''}',
+                child: SizedBox(
+                  width: 184,
+                  child: Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
+                      padding: EdgeInsets.all(tokens.spaceSm),
+                      child: Column(
+                        children: <Widget>[
+                          Expanded(
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: <Widget>[
+                                CardImage.local(
+                                  path: image.selection.path,
+                                  semanticLabel: '待保存卡片第 ${index + 1} 张',
+                                  borderRadius: BorderRadius.circular(
+                                    tokens.radiusMd,
+                                  ),
+                                ),
+                                if (index == 0)
+                                  Positioned(
+                                    top: tokens.spaceSm,
+                                    left: tokens.spaceSm,
+                                    child: const Chip(
+                                      avatar: Icon(Icons.star, size: 16),
+                                      label: Text('封面'),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: tokens.spaceSm),
+                          Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<CardImageKind>(
+                                    value: image.kind,
+                                    isExpanded: true,
+                                    onChanged: state.isSaving
+                                        ? null
+                                        : (kind) {
+                                            if (kind != null) {
+                                              controller.updateImageKind(
+                                                image.id,
+                                                kind,
+                                              );
+                                            }
+                                          },
+                                    items: <DropdownMenuItem<CardImageKind>>[
+                                      for (final kind in CardImageKind.values)
+                                        DropdownMenuItem<CardImageKind>(
+                                          value: kind,
+                                          child: Text(kind.label),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: state.isSaving || index == 0
+                                    ? null
+                                    : () => controller.moveImage(image.id, -1),
+                                tooltip: '前移',
+                                icon: const Icon(Icons.arrow_back),
+                              ),
+                              IconButton(
+                                onPressed:
+                                    state.isSaving ||
+                                        index == state.images.length - 1
+                                    ? null
+                                    : () => controller.moveImage(image.id, 1),
+                                tooltip: '后移',
+                                icon: const Icon(Icons.arrow_forward),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

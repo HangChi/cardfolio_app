@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:cardfolio_app/core/errors/app_failure.dart';
 import 'package:cardfolio_app/core/time/clock.dart';
@@ -19,6 +18,8 @@ final Uint8List jpegBytes = Uint8List.fromList(<int>[
 ]);
 
 void main() {
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
   late AppDatabase db;
   late Directory root;
   late Directory sourceDir;
@@ -26,6 +27,8 @@ void main() {
   late FixedClock clock;
   late CardRepositoryImpl repository;
   late String sourcePath;
+  late String backSourcePath;
+  late String packageSourcePath;
 
   final now = DateTime.utc(2026, 7, 26, 9, 30);
 
@@ -41,9 +44,20 @@ void main() {
       clock: clock,
     );
 
-    final source = File(p.join(sourceDir.path, 'IMG_0001.jpg'));
-    await source.writeAsBytes(jpegBytes, flush: true);
-    sourcePath = source.path;
+    Future<String> writeSource(String name, int marker) async {
+      final source = File(p.join(sourceDir.path, name));
+      final bytes = Uint8List.fromList(<int>[
+        ...jpegBytes.take(4),
+        ...List<int>.filled(64, marker),
+        ...jpegBytes.skip(jpegBytes.length - 2),
+      ]);
+      await source.writeAsBytes(bytes, flush: true);
+      return source.path;
+    }
+
+    sourcePath = await writeSource('IMG_0001.jpg', 0x11);
+    backSourcePath = await writeSource('IMG_0002.jpg', 0x22);
+    packageSourcePath = await writeSource('IMG_0003.jpg', 0x33);
   });
 
   tearDown(() async {
@@ -58,6 +72,7 @@ void main() {
     String itemId = 'item-1',
     String imageId = 'image-1',
     String name = '樱花纪念卡',
+    List<PendingCardImage> additionalImages = const <PendingCardImage>[],
   }) {
     return CreateCardRequest(
       ids: CardDraftIds(
@@ -66,6 +81,7 @@ void main() {
         imageId: imageId,
       ),
       sourceImagePath: sourcePath,
+      additionalImages: additionalImages,
       name: name,
       city: '东京',
       issuer: 'Tokyo Metro',
@@ -75,6 +91,65 @@ void main() {
   }
 
   group('createCard', () {
+    test('persists multiple ordered images with the first as cover', () async {
+      await repository.createCard(
+        validRequest(
+          additionalImages: <PendingCardImage>[
+            PendingCardImage(
+              id: 'image-2',
+              sourcePath: backSourcePath,
+              kind: CardImageKind.back,
+            ),
+            PendingCardImage(
+              id: 'image-3',
+              sourcePath: packageSourcePath,
+              kind: CardImageKind.packaging,
+            ),
+          ],
+        ),
+      );
+
+      final detail = (await repository.watchCard('item-1').first)!;
+      expect(detail.images.map((image) => image.id), <String>[
+        'image-1',
+        'image-2',
+        'image-3',
+      ]);
+      expect(detail.images.map((image) => image.sortOrder), <int>[0, 1, 2]);
+      expect(detail.images.map((image) => image.kind), <CardImageKind>[
+        CardImageKind.front,
+        CardImageKind.back,
+        CardImageKind.packaging,
+      ]);
+      expect(detail.cover?.id, 'image-1');
+    });
+
+    test('compensates every copied file when a later image fails', () async {
+      final broken = File(p.join(sourceDir.path, 'broken.jpg'));
+      await broken.writeAsString('not an image', flush: true);
+
+      await expectLater(
+        repository.createCard(
+          validRequest(
+            additionalImages: <PendingCardImage>[
+              PendingCardImage(id: 'image-2', sourcePath: backSourcePath),
+              PendingCardImage(id: 'image-3', sourcePath: broken.path),
+            ],
+          ),
+        ),
+        throwsA(isA<ImageImportFailure>()),
+      );
+
+      expect(await db.countItems(), 0);
+      final originals = Directory(p.join(root.path, 'originals'));
+      expect(
+        originals.existsSync()
+            ? originals.listSync(recursive: true).whereType<File>()
+            : const <File>[],
+        isEmpty,
+      );
+    });
+
     test('persists the card graph and the managed image', () async {
       final id = await repository.createCard(validRequest());
 
@@ -190,6 +265,168 @@ void main() {
       await File(sourcePath).delete();
 
       expect(await repository.createCard(validRequest()), 'item-1');
+    });
+  });
+
+  group('image management', () {
+    setUp(() async {
+      await repository.createCard(validRequest());
+    });
+
+    test('adds images and preserves the current cover', () async {
+      await repository.addImages(
+        AddCardImagesRequest(
+          cardItemId: 'item-1',
+          images: <PendingCardImage>[
+            PendingCardImage(
+              id: 'image-2',
+              sourcePath: backSourcePath,
+              kind: CardImageKind.back,
+            ),
+          ],
+        ),
+      );
+
+      final detail = (await repository.watchCard('item-1').first)!;
+      expect(detail.images, hasLength(2));
+      expect(detail.images.last.kind, CardImageKind.back);
+      expect(detail.cover?.id, 'image-1');
+    });
+
+    test(
+      'rejects additions beyond the twenty-image limit before import',
+      () async {
+        final images = List<PendingCardImage>.generate(
+          CreateCardRequest.maxImages,
+          (index) =>
+              PendingCardImage(id: 'extra-$index', sourcePath: backSourcePath),
+        );
+
+        await expectLater(
+          repository.addImages(
+            AddCardImagesRequest(cardItemId: 'item-1', images: images),
+          ),
+          throwsA(isA<ValidationFailure>()),
+        );
+
+        expect(
+          Directory(
+            p.join(root.path, 'originals', 'item-1'),
+          ).listSync().whereType<File>(),
+          hasLength(1),
+        );
+      },
+    );
+
+    test('updates kind, order and cover independently', () async {
+      await repository.addImages(
+        AddCardImagesRequest(
+          cardItemId: 'item-1',
+          images: <PendingCardImage>[
+            PendingCardImage(id: 'image-2', sourcePath: backSourcePath),
+            PendingCardImage(id: 'image-3', sourcePath: packageSourcePath),
+          ],
+        ),
+      );
+
+      await repository.updateImageKind(
+        cardItemId: 'item-1',
+        imageId: 'image-2',
+        kind: CardImageKind.number,
+      );
+      await repository.reorderImages(
+        cardItemId: 'item-1',
+        orderedImageIds: const <String>['image-3', 'image-1', 'image-2'],
+      );
+      await repository.setCover(cardItemId: 'item-1', imageId: 'image-2');
+
+      final detail = (await repository.watchCard('item-1').first)!;
+      expect(detail.images.map((image) => image.id), <String>[
+        'image-3',
+        'image-1',
+        'image-2',
+      ]);
+      expect(detail.images.last.kind, CardImageKind.number);
+      expect(detail.cover?.id, 'image-2');
+    });
+
+    test('reports deletion impact from the real managed file', () async {
+      await repository.addImages(
+        AddCardImagesRequest(
+          cardItemId: 'item-1',
+          images: <PendingCardImage>[
+            PendingCardImage(id: 'image-2', sourcePath: backSourcePath),
+          ],
+        ),
+      );
+
+      final impact = await repository.getImageDeletionImpact(
+        cardItemId: 'item-1',
+        imageId: 'image-1',
+      );
+
+      expect(impact.imageId, 'image-1');
+      expect(impact.byteSize, jpegBytes.length);
+      expect(impact.isCover, isTrue);
+      expect(impact.remainingImageCount, 1);
+    });
+
+    test('maps a missing managed file to a stable image failure', () async {
+      await File(store.resolve('originals/item-1/image-1.jpg').path).delete();
+
+      await expectLater(
+        repository.getImageDeletionImpact(
+          cardItemId: 'item-1',
+          imageId: 'image-1',
+        ),
+        throwsA(isA<ImageImportFailure>()),
+      );
+    });
+
+    test(
+      'keeps or deletes the original according to the selected policy',
+      () async {
+        await repository.addImages(
+          AddCardImagesRequest(
+            cardItemId: 'item-1',
+            images: <PendingCardImage>[
+              PendingCardImage(id: 'image-2', sourcePath: backSourcePath),
+              PendingCardImage(id: 'image-3', sourcePath: packageSourcePath),
+            ],
+          ),
+        );
+        final image2 = store.resolve('originals/item-1/image-2.jpg');
+        final image3 = store.resolve('originals/item-1/image-3.jpg');
+
+        await repository.deleteImage(
+          cardItemId: 'item-1',
+          imageId: 'image-2',
+          keepOriginal: true,
+        );
+        await repository.deleteImage(
+          cardItemId: 'item-1',
+          imageId: 'image-3',
+          keepOriginal: false,
+        );
+
+        expect(image2.existsSync(), isTrue);
+        expect(image3.existsSync(), isFalse);
+        expect(
+          await repository.referencedImagePaths(),
+          contains('originals/item-1/image-2.jpg'),
+        );
+      },
+    );
+
+    test('refuses to delete the last image', () async {
+      await expectLater(
+        repository.deleteImage(
+          cardItemId: 'item-1',
+          imageId: 'image-1',
+          keepOriginal: true,
+        ),
+        throwsA(isA<ValidationFailure>()),
+      );
     });
   });
 

@@ -26,7 +26,7 @@
 |---|---|---|
 | card_definitions | name, type, city, issuer, issued_at, issue_quantity, issue_price_minor, issue_currency, code, notes, needs_completion | name 非空；issue_quantity > 0；索引 name/city/issuer/issued_at/deleted_at |
 | card_items | definition_id, quantity, condition, acquired_at, notes | FK definition；quantity >= 1；索引 definition_id/deleted_at |
-| card_images | card_item_id, kind, original_path, derived_path, checksum, sort_order, is_cover | FK item；路径唯一；每个 item 最多一个活跃封面；索引 item/sort/deleted |
+| card_images | card_item_id, kind, relative_path, derived_relative_path, checksum, sort_order, is_cover, deleted_at | FK item；原图/派生图路径唯一；每个 item 最多一个活跃封面；索引 item/sort/deleted |
 
 ### organization
 

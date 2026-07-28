@@ -20,19 +20,36 @@ class CreateCardController extends Notifier<CreateCardState> {
 
   /// 打开相册选择一张图片。返回是否得到了图片。
   Future<bool> pickImage() {
-    return _consumeSelection(() => ref.read(galleryPickerProvider).pickOne());
+    return _consumeSelection(
+      () => ref
+          .read(galleryPickerProvider)
+          .pickMany(limit: CreateCardRequest.maxImages),
+      append: false,
+    );
+  }
+
+  /// 向当前草稿追加图片。
+  Future<bool> addImages() {
+    final remaining = CreateCardRequest.maxImages - state.images.length;
+    if (remaining <= 0 || state.isSaving) return Future<bool>.value(false);
+    return _consumeSelection(
+      () => ref.read(galleryPickerProvider).pickMany(limit: remaining),
+      append: true,
+    );
   }
 
   /// 尝试恢复 Android 丢失的选择结果。返回是否恢复到图片。
   Future<bool> recoverLostImage() {
     return _consumeSelection(
       () => ref.read(galleryPickerProvider).recoverLost(),
+      append: state.hasImage,
     );
   }
 
   Future<bool> _consumeSelection(
-    Future<SelectedGalleryImage?> Function() select,
-  ) async {
+    Future<List<SelectedGalleryImage>> Function() select, {
+    required bool append,
+  }) async {
     if (state.isSaving) return false;
 
     state = state.copyWith(
@@ -40,7 +57,7 @@ class CreateCardController extends Notifier<CreateCardState> {
       clearFailure: true,
     );
 
-    final SelectedGalleryImage? selected;
+    final List<SelectedGalleryImage> selected;
     try {
       selected = await select();
     } on AppFailure catch (failure) {
@@ -53,7 +70,7 @@ class CreateCardController extends Notifier<CreateCardState> {
       return false;
     }
 
-    if (selected == null) {
+    if (selected.isEmpty) {
       // 取消是正常路径：安静回到原阶段，不产生草稿。
       state = state.copyWith(
         phase: state.hasImage ? CreateCardPhase.editing : CreateCardPhase.idle,
@@ -61,11 +78,42 @@ class CreateCardController extends Notifier<CreateCardState> {
       return false;
     }
 
+    final ids = state.ids ?? CardDraftIds.create(ref.read(idGeneratorProvider));
+    final existing = append ? state.images : const <DraftCardImage>[];
+    final accepted = selected
+        .take(CreateCardRequest.maxImages - existing.length)
+        .toList(growable: false);
+    final selectedDrafts = <DraftCardImage>[];
+    for (var index = 0; index < accepted.length; index++) {
+      final existingAtIndex = !append && index < state.images.length
+          ? state.images[index]
+          : null;
+      final id =
+          existingAtIndex?.id ??
+          (index == 0 && !append
+              ? ids.imageId
+              : ref.read(idGeneratorProvider).newId());
+      selectedDrafts.add(
+        DraftCardImage(
+          id: id,
+          selection: accepted[index],
+          kind:
+              existingAtIndex?.kind ??
+              (existing.isEmpty && index == 0
+                  ? CardImageKind.front
+                  : CardImageKind.other),
+        ),
+      );
+    }
+
     state = state.copyWith(
       phase: CreateCardPhase.editing,
-      image: selected,
+      images: List<DraftCardImage>.unmodifiable(<DraftCardImage>[
+        ...existing,
+        ...selectedDrafts,
+      ]),
       // 草稿 ID 只在第一次选图时生成，之后重选图片不改变幂等键。
-      ids: state.ids ?? CardDraftIds.create(ref.read(idGeneratorProvider)),
+      ids: ids,
       clearFailure: true,
     );
     return true;
@@ -84,6 +132,27 @@ class CreateCardController extends Notifier<CreateCardState> {
   void updateCode(String value) => _updateField(CardField.code, code: value);
 
   void updateNotes(String value) => _updateField(CardField.notes, notes: value);
+
+  void updateImageKind(String imageId, CardImageKind kind) {
+    if (state.isSaving) return;
+    state = state.copyWith(
+      images: <DraftCardImage>[
+        for (final image in state.images)
+          image.id == imageId ? image.copyWith(kind: kind) : image,
+      ],
+    );
+  }
+
+  void moveImage(String imageId, int delta) {
+    if (state.isSaving || delta == 0) return;
+    final from = state.images.indexWhere((image) => image.id == imageId);
+    final to = from + delta;
+    if (from < 0 || to < 0 || to >= state.images.length) return;
+    final images = List<DraftCardImage>.of(state.images);
+    final image = images.removeAt(from);
+    images.insert(to, image);
+    state = state.copyWith(images: List<DraftCardImage>.unmodifiable(images));
+  }
 
   void _updateField(
     CardField field, {
@@ -112,9 +181,9 @@ class CreateCardController extends Notifier<CreateCardState> {
     // 保存期间的第二次点击直接丢弃，保持“保存中”状态。
     if (state.isSaving) return null;
 
-    final image = state.image;
+    final images = state.images;
     final ids = state.ids;
-    if (image == null || ids == null) {
+    if (images.isEmpty || ids == null) {
       state = state.copyWith(
         fieldErrors: <CardField, String>{
           ...state.fieldErrors,
@@ -143,7 +212,16 @@ class CreateCardController extends Notifier<CreateCardState> {
     try {
       request = CreateCardRequest(
         ids: ids,
-        sourceImagePath: image.path,
+        sourceImagePath: images.first.selection.path,
+        primaryImageKind: images.first.kind,
+        additionalImages: <PendingCardImage>[
+          for (final image in images.skip(1))
+            PendingCardImage(
+              id: image.id,
+              sourcePath: image.selection.path,
+              kind: image.kind,
+            ),
+        ],
         name: state.name,
         city: state.city,
         issuer: state.issuer,

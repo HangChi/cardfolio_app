@@ -113,8 +113,45 @@ final class CardDraftIds {
   int get hashCode => Object.hash(definitionId, cardItemId, imageId);
 }
 
-/// 图片用途。Feature 001 只产生正面图。
-enum CardImageKind { front, back }
+/// 图片用途。
+enum CardImageKind { front, back, packaging, number, detail, other }
+
+/// 等待导入受管目录的一张图片。
+@immutable
+final class PendingCardImage {
+  const PendingCardImage({
+    required this.id,
+    required this.sourcePath,
+    this.kind = CardImageKind.other,
+  });
+
+  final String id;
+  final String sourcePath;
+  final CardImageKind kind;
+
+  PendingCardImage normalized() {
+    final normalizedId = id.trim();
+    final normalizedPath = sourcePath.trim();
+    if (normalizedId.isEmpty || normalizedPath.isEmpty) {
+      throw const ValidationFailure(CardField.image, '所选图片无效，请重新选择。');
+    }
+    return PendingCardImage(
+      id: normalizedId,
+      sourcePath: normalizedPath,
+      kind: kind,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is PendingCardImage &&
+      other.id == id &&
+      other.sourcePath == sourcePath &&
+      other.kind == kind;
+
+  @override
+  int get hashCode => Object.hash(id, sourcePath, kind);
+}
 
 /// 相册中被选中的一张图片。领域层只持有路径，不暴露 `XFile`。
 @immutable
@@ -141,6 +178,8 @@ final class CreateCardRequest {
     required this.ids,
     required this.sourceImagePath,
     required this.name,
+    this.primaryImageKind = CardImageKind.front,
+    this.additionalImages = const <PendingCardImage>[],
     this.city,
     this.issuer,
     this.issuedAt,
@@ -153,9 +192,12 @@ final class CreateCardRequest {
   static const int maxNameLength = 100;
   static const int maxShortTextLength = 100;
   static const int maxNotesLength = 1000;
+  static const int maxImages = 20;
 
   final CardDraftIds ids;
   final String sourceImagePath;
+  final CardImageKind primaryImageKind;
+  final List<PendingCardImage> additionalImages;
   final String name;
   final String? city;
   final String? issuer;
@@ -167,14 +209,30 @@ final class CreateCardRequest {
   /// 标记该实例是否已通过 [normalized]，使规范化幂等。
   final bool isNormalized;
 
+  List<PendingCardImage> get images => <PendingCardImage>[
+    PendingCardImage(
+      id: ids.imageId,
+      sourcePath: sourceImagePath,
+      kind: primaryImageKind,
+    ),
+    ...additionalImages,
+  ];
+
   /// 去空白、空串转 null 并校验业务约束。
   ///
   /// 违反约束时抛出 [ValidationFailure]，携带出错字段供页面聚焦。
   CreateCardRequest normalized() {
     if (isNormalized) return this;
 
-    if (sourceImagePath.trim().isEmpty) {
-      throw const ValidationFailure(CardField.image, '请先选择一张卡片图片。');
+    final normalizedImages = images
+        .map((image) => image.normalized())
+        .toList(growable: false);
+    if (normalizedImages.length > maxImages) {
+      throw const ValidationFailure(CardField.image, '每张卡片最多保存 20 张图片。');
+    }
+    final imageIds = normalizedImages.map((image) => image.id).toSet();
+    if (imageIds.length != normalizedImages.length) {
+      throw const ValidationFailure(CardField.image, '图片标识重复，请重新选择。');
     }
 
     final trimmedName = name.trim();
@@ -191,7 +249,11 @@ final class CreateCardRequest {
 
     return CreateCardRequest(
       ids: ids,
-      sourceImagePath: sourceImagePath.trim(),
+      sourceImagePath: normalizedImages.first.sourcePath,
+      primaryImageKind: normalizedImages.first.kind,
+      additionalImages: List<PendingCardImage>.unmodifiable(
+        normalizedImages.skip(1),
+      ),
       name: trimmedName,
       city: _optional(city, CardField.city, maxShortTextLength),
       issuer: _optional(issuer, CardField.issuer, maxShortTextLength),
@@ -217,6 +279,8 @@ final class CreateCardRequest {
       other is CreateCardRequest &&
       other.ids == ids &&
       other.sourceImagePath == sourceImagePath &&
+      other.primaryImageKind == primaryImageKind &&
+      _listEquals(other.additionalImages, additionalImages) &&
       other.name == name &&
       other.city == city &&
       other.issuer == issuer &&
@@ -230,6 +294,8 @@ final class CreateCardRequest {
   int get hashCode => Object.hash(
     ids,
     sourceImagePath,
+    primaryImageKind,
+    Object.hashAll(additionalImages),
     name,
     city,
     issuer,
@@ -239,6 +305,70 @@ final class CreateCardRequest {
     quantity,
     isNormalized,
   );
+
+  static bool _listEquals(
+    List<PendingCardImage> left,
+    List<PendingCardImage> right,
+  ) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) return false;
+    }
+    return true;
+  }
+}
+
+/// 向既有藏品追加图片的请求。
+@immutable
+final class AddCardImagesRequest {
+  const AddCardImagesRequest({
+    required this.cardItemId,
+    required this.images,
+    this.isNormalized = false,
+  });
+
+  final String cardItemId;
+  final List<PendingCardImage> images;
+  final bool isNormalized;
+
+  AddCardImagesRequest normalized() {
+    if (isNormalized) return this;
+    final normalizedCardItemId = cardItemId.trim();
+    if (normalizedCardItemId.isEmpty) {
+      throw const ValidationFailure(CardField.image, '卡片不存在，请返回收藏后重试。');
+    }
+    if (images.isEmpty || images.length > CreateCardRequest.maxImages) {
+      throw const ValidationFailure(CardField.image, '请选择 1 到 20 张图片。');
+    }
+    final normalizedImages = images
+        .map((image) => image.normalized())
+        .toList(growable: false);
+    if (normalizedImages.map((image) => image.id).toSet().length !=
+        normalizedImages.length) {
+      throw const ValidationFailure(CardField.image, '图片标识重复，请重新选择。');
+    }
+    return AddCardImagesRequest(
+      cardItemId: normalizedCardItemId,
+      images: List<PendingCardImage>.unmodifiable(normalizedImages),
+      isNormalized: true,
+    );
+  }
+}
+
+/// 删除一张图片前展示给用户的影响。
+@immutable
+final class ImageDeletionImpact {
+  const ImageDeletionImpact({
+    required this.imageId,
+    required this.byteSize,
+    required this.isCover,
+    required this.remainingImageCount,
+  });
+
+  final String imageId;
+  final int byteSize;
+  final bool isCover;
+  final int remainingImageCount;
 }
 
 /// 收藏列表用只读摘要。
@@ -288,7 +418,7 @@ final class CardDetail {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  /// 按 `sortOrder` 升序，首项为封面。
+  /// 按 `sortOrder` 升序。
   final List<CardImageRef> images;
 
   final String? city;
@@ -297,7 +427,13 @@ final class CardDetail {
   final String? code;
   final String? notes;
 
-  CardImageRef? get cover => images.isEmpty ? null : images.first;
+  CardImageRef? get cover {
+    if (images.isEmpty) return null;
+    return images.cast<CardImageRef?>().firstWhere(
+      (image) => image!.isCover,
+      orElse: () => images.first,
+    );
+  }
 }
 
 /// 详情中的一张受管图片引用。只暴露相对路径，绝不暴露绝对路径。
@@ -308,10 +444,16 @@ final class CardImageRef {
     required this.relativePath,
     required this.kind,
     required this.sortOrder,
+    this.derivedRelativePath,
+    this.isCover = false,
   });
 
   final String id;
   final String relativePath;
+  final String? derivedRelativePath;
   final CardImageKind kind;
   final int sortOrder;
+  final bool isCover;
+
+  String get displayRelativePath => derivedRelativePath ?? relativePath;
 }

@@ -1179,6 +1179,17 @@ class $CardImagesTable extends CardImages
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
+  static const VerificationMeta _derivedRelativePathMeta =
+      const VerificationMeta('derivedRelativePath');
+  @override
+  late final GeneratedColumn<String> derivedRelativePath =
+      GeneratedColumn<String>(
+        'derived_relative_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
   );
@@ -1190,6 +1201,21 @@ class $CardImagesTable extends CardImages
     type: DriftSqlType.int,
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isCoverMeta = const VerificationMeta(
+    'isCover',
+  );
+  @override
+  late final GeneratedColumn<bool> isCover = GeneratedColumn<bool>(
+    'is_cover',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_cover" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
   );
   static const VerificationMeta _checksumMeta = const VerificationMeta(
     'checksum',
@@ -1213,15 +1239,29 @@ class $CardImagesTable extends CardImages
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     cardItemId,
     kind,
     relativePath,
+    derivedRelativePath,
     sortOrder,
+    isCover,
     checksum,
     createdAt,
+    deletedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1262,10 +1302,25 @@ class $CardImagesTable extends CardImages
     } else if (isInserting) {
       context.missing(_relativePathMeta);
     }
+    if (data.containsKey('derived_relative_path')) {
+      context.handle(
+        _derivedRelativePathMeta,
+        derivedRelativePath.isAcceptableOrUnknown(
+          data['derived_relative_path']!,
+          _derivedRelativePathMeta,
+        ),
+      );
+    }
     if (data.containsKey('sort_order')) {
       context.handle(
         _sortOrderMeta,
         sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('is_cover')) {
+      context.handle(
+        _isCoverMeta,
+        isCover.isAcceptableOrUnknown(data['is_cover']!, _isCoverMeta),
       );
     }
     if (data.containsKey('checksum')) {
@@ -1283,6 +1338,12 @@ class $CardImagesTable extends CardImages
       );
     } else if (isInserting) {
       context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
     }
     return context;
   }
@@ -1311,9 +1372,17 @@ class $CardImagesTable extends CardImages
         DriftSqlType.string,
         data['${effectivePrefix}relative_path'],
       )!,
+      derivedRelativePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}derived_relative_path'],
+      ),
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
+      )!,
+      isCover: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_cover'],
       )!,
       checksum: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -1323,6 +1392,10 @@ class $CardImagesTable extends CardImages
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
     );
   }
 
@@ -1342,19 +1415,29 @@ class CardImage extends DataClass implements Insertable<CardImage> {
 
   /// 相对于受管图片根目录的路径，全库唯一。
   final String relativePath;
+
+  /// 可选派生图。原图不可被裁切或增强结果覆盖。
+  final String? derivedRelativePath;
   final int sortOrder;
+  final bool isCover;
 
   /// 源文件 SHA-256，用于完整性校验与去重判断。
   final String checksum;
   final DateTime createdAt;
+
+  /// 保留原图地从图集移除时写入；默认查询排除。
+  final DateTime? deletedAt;
   const CardImage({
     required this.id,
     required this.cardItemId,
     required this.kind,
     required this.relativePath,
+    this.derivedRelativePath,
     required this.sortOrder,
+    required this.isCover,
     required this.checksum,
     required this.createdAt,
+    this.deletedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1367,9 +1450,16 @@ class CardImage extends DataClass implements Insertable<CardImage> {
       );
     }
     map['relative_path'] = Variable<String>(relativePath);
+    if (!nullToAbsent || derivedRelativePath != null) {
+      map['derived_relative_path'] = Variable<String>(derivedRelativePath);
+    }
     map['sort_order'] = Variable<int>(sortOrder);
+    map['is_cover'] = Variable<bool>(isCover);
     map['checksum'] = Variable<String>(checksum);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
     return map;
   }
 
@@ -1379,9 +1469,16 @@ class CardImage extends DataClass implements Insertable<CardImage> {
       cardItemId: Value(cardItemId),
       kind: Value(kind),
       relativePath: Value(relativePath),
+      derivedRelativePath: derivedRelativePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(derivedRelativePath),
       sortOrder: Value(sortOrder),
+      isCover: Value(isCover),
       checksum: Value(checksum),
       createdAt: Value(createdAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
     );
   }
 
@@ -1397,9 +1494,14 @@ class CardImage extends DataClass implements Insertable<CardImage> {
         serializer.fromJson<String>(json['kind']),
       ),
       relativePath: serializer.fromJson<String>(json['relativePath']),
+      derivedRelativePath: serializer.fromJson<String?>(
+        json['derivedRelativePath'],
+      ),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isCover: serializer.fromJson<bool>(json['isCover']),
       checksum: serializer.fromJson<String>(json['checksum']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
     );
   }
   @override
@@ -1412,9 +1514,12 @@ class CardImage extends DataClass implements Insertable<CardImage> {
         $CardImagesTable.$converterkind.toJson(kind),
       ),
       'relativePath': serializer.toJson<String>(relativePath),
+      'derivedRelativePath': serializer.toJson<String?>(derivedRelativePath),
       'sortOrder': serializer.toJson<int>(sortOrder),
+      'isCover': serializer.toJson<bool>(isCover),
       'checksum': serializer.toJson<String>(checksum),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
     };
   }
 
@@ -1423,17 +1528,25 @@ class CardImage extends DataClass implements Insertable<CardImage> {
     String? cardItemId,
     CardImageKind? kind,
     String? relativePath,
+    Value<String?> derivedRelativePath = const Value.absent(),
     int? sortOrder,
+    bool? isCover,
     String? checksum,
     DateTime? createdAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
   }) => CardImage(
     id: id ?? this.id,
     cardItemId: cardItemId ?? this.cardItemId,
     kind: kind ?? this.kind,
     relativePath: relativePath ?? this.relativePath,
+    derivedRelativePath: derivedRelativePath.present
+        ? derivedRelativePath.value
+        : this.derivedRelativePath,
     sortOrder: sortOrder ?? this.sortOrder,
+    isCover: isCover ?? this.isCover,
     checksum: checksum ?? this.checksum,
     createdAt: createdAt ?? this.createdAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
   );
   CardImage copyWithCompanion(CardImagesCompanion data) {
     return CardImage(
@@ -1445,9 +1558,14 @@ class CardImage extends DataClass implements Insertable<CardImage> {
       relativePath: data.relativePath.present
           ? data.relativePath.value
           : this.relativePath,
+      derivedRelativePath: data.derivedRelativePath.present
+          ? data.derivedRelativePath.value
+          : this.derivedRelativePath,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isCover: data.isCover.present ? data.isCover.value : this.isCover,
       checksum: data.checksum.present ? data.checksum.value : this.checksum,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
   }
 
@@ -1458,9 +1576,12 @@ class CardImage extends DataClass implements Insertable<CardImage> {
           ..write('cardItemId: $cardItemId, ')
           ..write('kind: $kind, ')
           ..write('relativePath: $relativePath, ')
+          ..write('derivedRelativePath: $derivedRelativePath, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('isCover: $isCover, ')
           ..write('checksum: $checksum, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt')
           ..write(')'))
         .toString();
   }
@@ -1471,9 +1592,12 @@ class CardImage extends DataClass implements Insertable<CardImage> {
     cardItemId,
     kind,
     relativePath,
+    derivedRelativePath,
     sortOrder,
+    isCover,
     checksum,
     createdAt,
+    deletedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1483,9 +1607,12 @@ class CardImage extends DataClass implements Insertable<CardImage> {
           other.cardItemId == this.cardItemId &&
           other.kind == this.kind &&
           other.relativePath == this.relativePath &&
+          other.derivedRelativePath == this.derivedRelativePath &&
           other.sortOrder == this.sortOrder &&
+          other.isCover == this.isCover &&
           other.checksum == this.checksum &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.deletedAt == this.deletedAt);
 }
 
 class CardImagesCompanion extends UpdateCompanion<CardImage> {
@@ -1493,18 +1620,24 @@ class CardImagesCompanion extends UpdateCompanion<CardImage> {
   final Value<String> cardItemId;
   final Value<CardImageKind> kind;
   final Value<String> relativePath;
+  final Value<String?> derivedRelativePath;
   final Value<int> sortOrder;
+  final Value<bool> isCover;
   final Value<String> checksum;
   final Value<DateTime> createdAt;
+  final Value<DateTime?> deletedAt;
   final Value<int> rowid;
   const CardImagesCompanion({
     this.id = const Value.absent(),
     this.cardItemId = const Value.absent(),
     this.kind = const Value.absent(),
     this.relativePath = const Value.absent(),
+    this.derivedRelativePath = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.isCover = const Value.absent(),
     this.checksum = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CardImagesCompanion.insert({
@@ -1512,9 +1645,12 @@ class CardImagesCompanion extends UpdateCompanion<CardImage> {
     required String cardItemId,
     required CardImageKind kind,
     required String relativePath,
+    this.derivedRelativePath = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.isCover = const Value.absent(),
     required String checksum,
     required DateTime createdAt,
+    this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        cardItemId = Value(cardItemId),
@@ -1527,9 +1663,12 @@ class CardImagesCompanion extends UpdateCompanion<CardImage> {
     Expression<String>? cardItemId,
     Expression<String>? kind,
     Expression<String>? relativePath,
+    Expression<String>? derivedRelativePath,
     Expression<int>? sortOrder,
+    Expression<bool>? isCover,
     Expression<String>? checksum,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? deletedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1537,9 +1676,13 @@ class CardImagesCompanion extends UpdateCompanion<CardImage> {
       if (cardItemId != null) 'card_item_id': cardItemId,
       if (kind != null) 'kind': kind,
       if (relativePath != null) 'relative_path': relativePath,
+      if (derivedRelativePath != null)
+        'derived_relative_path': derivedRelativePath,
       if (sortOrder != null) 'sort_order': sortOrder,
+      if (isCover != null) 'is_cover': isCover,
       if (checksum != null) 'checksum': checksum,
       if (createdAt != null) 'created_at': createdAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1549,9 +1692,12 @@ class CardImagesCompanion extends UpdateCompanion<CardImage> {
     Value<String>? cardItemId,
     Value<CardImageKind>? kind,
     Value<String>? relativePath,
+    Value<String?>? derivedRelativePath,
     Value<int>? sortOrder,
+    Value<bool>? isCover,
     Value<String>? checksum,
     Value<DateTime>? createdAt,
+    Value<DateTime?>? deletedAt,
     Value<int>? rowid,
   }) {
     return CardImagesCompanion(
@@ -1559,9 +1705,12 @@ class CardImagesCompanion extends UpdateCompanion<CardImage> {
       cardItemId: cardItemId ?? this.cardItemId,
       kind: kind ?? this.kind,
       relativePath: relativePath ?? this.relativePath,
+      derivedRelativePath: derivedRelativePath ?? this.derivedRelativePath,
       sortOrder: sortOrder ?? this.sortOrder,
+      isCover: isCover ?? this.isCover,
       checksum: checksum ?? this.checksum,
       createdAt: createdAt ?? this.createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1583,14 +1732,25 @@ class CardImagesCompanion extends UpdateCompanion<CardImage> {
     if (relativePath.present) {
       map['relative_path'] = Variable<String>(relativePath.value);
     }
+    if (derivedRelativePath.present) {
+      map['derived_relative_path'] = Variable<String>(
+        derivedRelativePath.value,
+      );
+    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (isCover.present) {
+      map['is_cover'] = Variable<bool>(isCover.value);
     }
     if (checksum.present) {
       map['checksum'] = Variable<String>(checksum.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1605,9 +1765,12 @@ class CardImagesCompanion extends UpdateCompanion<CardImage> {
           ..write('cardItemId: $cardItemId, ')
           ..write('kind: $kind, ')
           ..write('relativePath: $relativePath, ')
+          ..write('derivedRelativePath: $derivedRelativePath, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('isCover: $isCover, ')
           ..write('checksum: $checksum, ')
           ..write('createdAt: $createdAt, ')
+          ..write('deletedAt: $deletedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2540,9 +2703,12 @@ typedef $$CardImagesTableCreateCompanionBuilder =
       required String cardItemId,
       required CardImageKind kind,
       required String relativePath,
+      Value<String?> derivedRelativePath,
       Value<int> sortOrder,
+      Value<bool> isCover,
       required String checksum,
       required DateTime createdAt,
+      Value<DateTime?> deletedAt,
       Value<int> rowid,
     });
 typedef $$CardImagesTableUpdateCompanionBuilder =
@@ -2551,9 +2717,12 @@ typedef $$CardImagesTableUpdateCompanionBuilder =
       Value<String> cardItemId,
       Value<CardImageKind> kind,
       Value<String> relativePath,
+      Value<String?> derivedRelativePath,
       Value<int> sortOrder,
+      Value<bool> isCover,
       Value<String> checksum,
       Value<DateTime> createdAt,
+      Value<DateTime?> deletedAt,
       Value<int> rowid,
     });
 
@@ -2604,8 +2773,18 @@ class $$CardImagesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get derivedRelativePath => $composableBuilder(
+    column: $table.derivedRelativePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCover => $composableBuilder(
+    column: $table.isCover,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2616,6 +2795,11 @@ class $$CardImagesTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2667,8 +2851,18 @@ class $$CardImagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get derivedRelativePath => $composableBuilder(
+    column: $table.derivedRelativePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCover => $composableBuilder(
+    column: $table.isCover,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2679,6 +2873,11 @@ class $$CardImagesTableOrderingComposer
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2726,14 +2925,25 @@ class $$CardImagesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get derivedRelativePath => $composableBuilder(
+    column: $table.derivedRelativePath,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCover =>
+      $composableBuilder(column: $table.isCover, builder: (column) => column);
 
   GeneratedColumn<String> get checksum =>
       $composableBuilder(column: $table.checksum, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   $$CardItemsTableAnnotationComposer get cardItemId {
     final $$CardItemsTableAnnotationComposer composer = $composerBuilder(
@@ -2791,18 +3001,24 @@ class $$CardImagesTableTableManager
                 Value<String> cardItemId = const Value.absent(),
                 Value<CardImageKind> kind = const Value.absent(),
                 Value<String> relativePath = const Value.absent(),
+                Value<String?> derivedRelativePath = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<bool> isCover = const Value.absent(),
                 Value<String> checksum = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CardImagesCompanion(
                 id: id,
                 cardItemId: cardItemId,
                 kind: kind,
                 relativePath: relativePath,
+                derivedRelativePath: derivedRelativePath,
                 sortOrder: sortOrder,
+                isCover: isCover,
                 checksum: checksum,
                 createdAt: createdAt,
+                deletedAt: deletedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2811,18 +3027,24 @@ class $$CardImagesTableTableManager
                 required String cardItemId,
                 required CardImageKind kind,
                 required String relativePath,
+                Value<String?> derivedRelativePath = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<bool> isCover = const Value.absent(),
                 required String checksum,
                 required DateTime createdAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CardImagesCompanion.insert(
                 id: id,
                 cardItemId: cardItemId,
                 kind: kind,
                 relativePath: relativePath,
+                derivedRelativePath: derivedRelativePath,
                 sortOrder: sortOrder,
+                isCover: isCover,
                 checksum: checksum,
                 createdAt: createdAt,
+                deletedAt: deletedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
