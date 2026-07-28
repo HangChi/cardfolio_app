@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../organization/data/organization_providers.dart';
+import '../../../organization/domain/organization_models.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
 import '../widgets/card_image.dart';
@@ -413,6 +415,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         SizedBox(height: tokens.spaceMd),
         if (card.code case final code?) _DetailRow(label: '编号', value: code),
         if (card.notes case final notes?) _DetailRow(label: '备注', value: notes),
+        _OrganizationSummary(cardItemId: card.cardItemId),
         SizedBox(height: tokens.spaceLg),
         Row(
           children: <Widget>[
@@ -435,6 +438,100 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     );
   }
 }
+
+class _OrganizationSummary extends ConsumerWidget {
+  const _OrganizationSummary({required this.cardItemId});
+
+  final String cardItemId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final organization = ref.watch(cardOrganizationProvider(cardItemId));
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(context.tokens.spaceMd),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    '整理信息',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                TextButton.icon(
+                  key: const Key('edit-card-organization'),
+                  onPressed: () =>
+                      context.push(cardOrganizationPath(cardItemId)),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('编辑'),
+                ),
+              ],
+            ),
+            organization.when(
+              loading: () =>
+                  const LinearProgressIndicator(semanticsLabel: '加载整理信息'),
+              error: (error, stackTrace) => const Text('整理信息暂时无法加载'),
+              data: (detail) {
+                if (detail == null) return const Text('卡片资料不存在');
+                final labels = <String>[
+                  ?detail.cardType,
+                  if (detail.needsCompletion) '待完善',
+                  if (detail.acquiredAt != null)
+                    '入手 ${_dateLabel(detail.acquiredAt!)}',
+                ];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    if (labels.isNotEmpty) Text(labels.join(' · ')),
+                    if (detail.tags.isNotEmpty) ...<Widget>[
+                      SizedBox(height: context.tokens.spaceSm),
+                      Wrap(
+                        spacing: context.tokens.spaceXs,
+                        runSpacing: context.tokens.spaceXs,
+                        children: <Widget>[
+                          for (final tag in detail.tags)
+                            Chip(label: Text(tag.name)),
+                        ],
+                      ),
+                    ],
+                    if (detail.series.isNotEmpty)
+                      Text(
+                        '系列：${detail.series.map((item) => item.name).join('、')}',
+                      ),
+                    for (final field in detail.fieldValues)
+                      Text(
+                        '${field.fieldName}：${_fieldValueLabel(field.value)}',
+                      ),
+                    if (labels.isEmpty &&
+                        detail.tags.isEmpty &&
+                        detail.series.isEmpty &&
+                        detail.fieldValues.isEmpty)
+                      const Text('尚未添加标签、系列或自定义资料'),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _fieldValueLabel(CustomFieldValueInput input) =>
+    switch (input.fieldType) {
+      CustomFieldType.text => input.textValue!,
+      CustomFieldType.number => input.numberValue!.toString(),
+      CustomFieldType.date => _dateLabel(input.dateValue!),
+    };
+
+String _dateLabel(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-'
+    '${value.month.toString().padLeft(2, '0')}-'
+    '${value.day.toString().padLeft(2, '0')}';
 
 String _formatBytes(int bytes) {
   if (bytes < 1024) return '$bytes B';

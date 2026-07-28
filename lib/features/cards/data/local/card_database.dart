@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:meta/meta.dart';
 
 import '../../domain/card_models.dart';
+import '../../../organization/domain/organization_models.dart';
 import 'card_database.steps.dart';
 
 part 'card_database.g.dart';
@@ -27,6 +28,11 @@ class CardDefinitions extends Table {
   TextColumn get code => text().nullable()();
 
   TextColumn get notes => text().nullable()();
+
+  TextColumn get cardType => text().nullable()();
+
+  BoolColumn get needsCompletion =>
+      boolean().withDefault(const Constant(false))();
 
   IntColumn get version => integer()
       .withDefault(const Constant(1))
@@ -56,6 +62,8 @@ class CardItems extends Table {
       .withDefault(const Constant(1))
       // ignore: recursive_getters, Drift 的 check() 按设计引用列自身。
       .check(quantity.isBiggerThanValue(0))();
+
+  DateTimeColumn get acquiredAt => dateTime().nullable()();
 
   IntColumn get version => integer()
       .withDefault(const Constant(1))
@@ -181,6 +189,156 @@ class CardSetMembers extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 }
 
+@TableIndex(name: 'idx_tags_deleted_at', columns: {#deletedAt})
+@TableIndex(name: 'idx_tags_updated_at', columns: {#updatedAt})
+class Tags extends Table {
+  TextColumn get id => text()();
+
+  TextColumn get name => text().withLength(min: 1, max: 100)();
+
+  TextColumn get normalizedName => text().withLength(min: 1, max: 100)();
+
+  IntColumn get version => integer()
+      .withDefault(const Constant(1))
+      // ignore: recursive_getters, Drift 的 check() 按设计引用列自身。
+      .check(version.isBiggerThanValue(0))();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+@TableIndex(name: 'idx_card_tags_tag_id', columns: {#tagId})
+@TableIndex(name: 'idx_card_tags_definition_id', columns: {#definitionId})
+class CardTags extends Table {
+  TextColumn get tagId => text().references(Tags, #id)();
+
+  TextColumn get definitionId => text().references(CardDefinitions, #id)();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{tagId, definitionId};
+}
+
+@TableIndex(name: 'idx_series_deleted_at', columns: {#deletedAt})
+@TableIndex(name: 'idx_series_updated_at', columns: {#updatedAt})
+class SeriesRecords extends Table {
+  @override
+  String get tableName => 'series_records';
+
+  TextColumn get id => text()();
+
+  TextColumn get name => text().withLength(min: 1, max: 100)();
+
+  TextColumn get description => text().nullable()();
+
+  IntColumn get version => integer()
+      .withDefault(const Constant(1))
+      // ignore: recursive_getters, Drift 的 check() 按设计引用列自身。
+      .check(version.isBiggerThanValue(0))();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+@TableIndex(name: 'idx_series_cards_definition_id', columns: {#definitionId})
+class SeriesCards extends Table {
+  TextColumn get seriesId => text().references(SeriesRecords, #id)();
+
+  TextColumn get definitionId => text().references(CardDefinitions, #id)();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{
+    seriesId,
+    definitionId,
+  };
+}
+
+@TableIndex(name: 'idx_series_sets_set_id', columns: {#setId})
+class SeriesSets extends Table {
+  TextColumn get seriesId => text().references(SeriesRecords, #id)();
+
+  TextColumn get setId => text().references(CardSets, #id)();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{seriesId, setId};
+}
+
+@TableIndex(name: 'idx_custom_fields_deleted_at', columns: {#deletedAt})
+class OrganizationFieldDefinitions extends Table {
+  @override
+  String get tableName => 'custom_field_definitions';
+
+  TextColumn get id => text()();
+
+  TextColumn get name => text().withLength(min: 1, max: 100)();
+
+  TextColumn get normalizedName => text().withLength(min: 1, max: 100)();
+
+  TextColumn get fieldType => textEnum<CustomFieldType>()();
+
+  IntColumn get version => integer()
+      .withDefault(const Constant(1))
+      // ignore: recursive_getters, Drift 的 check() 按设计引用列自身。
+      .check(version.isBiggerThanValue(0))();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+@TableIndex(
+  name: 'idx_custom_field_values_definition_id',
+  columns: {#definitionId},
+)
+class OrganizationFieldValues extends Table {
+  @override
+  String get tableName => 'custom_field_values';
+
+  TextColumn get fieldId =>
+      text().references(OrganizationFieldDefinitions, #id)();
+
+  TextColumn get definitionId => text().references(CardDefinitions, #id)();
+
+  TextColumn get textValue => text().nullable()();
+
+  RealColumn get numberValue => real().nullable()();
+
+  DateTimeColumn get dateValue => dateTime().nullable()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK ((text_value IS NOT NULL) + (number_value IS NOT NULL) + '
+        '(date_value IS NOT NULL) = 1)',
+  ];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{fieldId, definitionId};
+}
+
 /// 一次建卡写入涉及的全部行。三张表在同一事务内插入。
 class CardRowGraph {
   const CardRowGraph({
@@ -214,13 +372,20 @@ class RemovedImageRecord {
     CardImages,
     CardSets,
     CardSetMembers,
+    Tags,
+    CardTags,
+    SeriesRecords,
+    SeriesCards,
+    SeriesSets,
+    OrganizationFieldDefinitions,
+    OrganizationFieldValues,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -228,6 +393,7 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
       await _createImageIndexes();
       await _createCardSetIndexes();
+      await _createOrganizationIndexes();
     },
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
@@ -244,6 +410,25 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.cardSets);
         await m.createTable(schema.cardSetMembers);
         await _createCardSetIndexes();
+      },
+      from3To4: (m, schema) async {
+        await m.addColumn(
+          schema.cardDefinitions,
+          schema.cardDefinitions.cardType,
+        );
+        await m.addColumn(
+          schema.cardDefinitions,
+          schema.cardDefinitions.needsCompletion,
+        );
+        await m.addColumn(schema.cardItems, schema.cardItems.acquiredAt);
+        await m.createTable(schema.tags);
+        await m.createTable(schema.cardTags);
+        await m.createTable(schema.seriesRecords);
+        await m.createTable(schema.seriesCards);
+        await m.createTable(schema.seriesSets);
+        await m.createTable(schema.customFieldDefinitions);
+        await m.createTable(schema.customFieldValues);
+        await _createOrganizationIndexes();
       },
     ),
     beforeOpen: (details) async {
@@ -291,6 +476,79 @@ class AppDatabase extends _$AppDatabase {
       'idx_card_set_members_active_definition '
       'ON card_set_members(set_id, definition_id) '
       'WHERE deleted_at IS NULL;',
+    );
+  }
+
+  Future<void> _createOrganizationIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_tags_deleted_at '
+      'ON tags(deleted_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_tags_updated_at '
+      'ON tags(updated_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_tags_tag_id '
+      'ON card_tags(tag_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_tags_definition_id '
+      'ON card_tags(definition_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_series_deleted_at '
+      'ON series_records(deleted_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_series_updated_at '
+      'ON series_records(updated_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_series_cards_definition_id '
+      'ON series_cards(definition_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_series_sets_set_id '
+      'ON series_sets(set_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_custom_fields_deleted_at '
+      'ON custom_field_definitions(deleted_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_custom_field_values_definition_id '
+      'ON custom_field_values(definition_id);',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_active_normalized_name '
+      'ON tags(normalized_name) WHERE deleted_at IS NULL;',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS '
+      'idx_custom_fields_active_normalized_name '
+      'ON custom_field_definitions(normalized_name) '
+      'WHERE deleted_at IS NULL;',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_definitions_card_type '
+      'ON card_definitions(card_type);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_definitions_needs_completion '
+      'ON card_definitions(needs_completion);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_definitions_issued_at '
+      'ON card_definitions(issued_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_card_items_acquired_at '
+      'ON card_items(acquired_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_series_name '
+      'ON series_records(name);',
     );
   }
 

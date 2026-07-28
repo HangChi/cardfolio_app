@@ -1,6 +1,6 @@
 # 数据库模型与迁移规范
 
-状态：schema v3 已实现
+状态：schema v4 已实现
 日期：2026-07-28
 存储实现：Drift + SQLite
 
@@ -34,12 +34,13 @@
 |---|---|---|
 | card_sets | name, expected_count, count_known, issue_info, notes, cover_image_id, version, deleted_at | count_known=false 时 expected_count 为空；已知时 expected_count > 0；索引 created_at/deleted_at |
 | card_set_members | set_id, definition_id, member_no, required, sort_order, version, deleted_at | FK set/definition；活跃 set+definition 部分唯一；索引 set、set+sort、deleted_at |
-| series | name, description, cover_image_id | 规范化名称索引 |
-| series_memberships | series_id, target_type, target_id | 组合唯一 |
-| tags | name, normalized_name | normalized_name 唯一 |
-| card_tags | tag_id, target_type, target_id | 组合唯一 |
-| custom_field_definitions | name, type, scope, sort_order | type 限 text/number/date |
-| custom_field_values | definition_id, target_type, target_id, text_value, number_value, date_value | 仅允许一种值列非空 |
+| series_records | name, description, version, deleted_at | 活跃系列按更新时间与 ID 稳定排序 |
+| series_cards | series_id, definition_id, created_at | FK series/definition；组合主键 |
+| series_sets | series_id, set_id, created_at | FK series/set；组合主键 |
+| tags | name, normalized_name, version, deleted_at | 活跃 normalized_name 部分唯一 |
+| card_tags | tag_id, definition_id, created_at | FK tag/definition；组合主键 |
+| custom_field_definitions | name, normalized_name, field_type, version, deleted_at | 活跃名称部分唯一；field_type 限 text/number/date |
+| custom_field_values | field_id, definition_id, text_value, number_value, date_value, updated_at | field+definition 组合主键；由仓储保证值类型匹配 |
 
 ### purchases
 
@@ -74,6 +75,9 @@ MVP 必须覆盖：
 - 名称、编号、城市、机构和备注搜索；
 - 标签、类型、年份、套卡状态、重复和待补全筛选；
 - 套卡完成度聚合；
+- 标签、系列和自定义字段关系写入：同一事务；
+- 标签合并：迁移全部关联并软删除源标签，同一事务；
+- 卡片整理信息（类型、入手日期、待完善、标签、系列、字段值）：同一事务；
 - 购买按时间、币种和目标查询；
 - 默认查询的 `deleted_at IS NULL`；
 - 同步状态与重试时间。

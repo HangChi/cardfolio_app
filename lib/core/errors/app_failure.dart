@@ -33,6 +33,20 @@ final class CardSetValidationFailure extends AppFailure {
   final CardSetField field;
 }
 
+/// 标签、系列、自定义字段与收藏筛选可定位的输入范围。
+enum OrganizationField { name, tag, series, customField, value, filter, target }
+
+/// 整理输入、关系或查询条件不满足业务约束。
+final class OrganizationValidationFailure extends AppFailure {
+  const OrganizationValidationFailure(
+    this.field,
+    super.userMessage, [
+    super.cause,
+  ]);
+
+  final OrganizationField field;
+}
+
 /// 相册选择器不可用、权限被拒绝或返回了无法使用的结果。
 final class GalleryAccessFailure extends AppFailure {
   const GalleryAccessFailure([

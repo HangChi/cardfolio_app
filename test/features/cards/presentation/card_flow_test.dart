@@ -10,6 +10,8 @@ import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
 import 'package:cardfolio_app/features/cards/domain/gallery_picker.dart';
 import 'package:cardfolio_app/features/cards/presentation/create/create_card_controller.dart';
+import 'package:cardfolio_app/features/organization/data/organization_providers.dart';
+import 'package:cardfolio_app/features/organization/domain/organization_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -223,6 +225,36 @@ class CardFlowHarness {
           ManagedImageStore(imageRoot),
         ),
         idGeneratorProvider.overrideWithValue(_SequenceIdGenerator()),
+        organizedCardListProvider.overrideWith(
+          (ref) =>
+              Stream<List<OrganizedCardSummary>>.value(<OrganizedCardSummary>[
+                for (final card in _repository.cards)
+                  OrganizedCardSummary(
+                    cardItemId: card.cardItemId,
+                    definitionId:
+                        _repository.details[card.cardItemId]?.definitionId ??
+                        'definition-${card.cardItemId}',
+                    name: card.name,
+                    quantity: card.quantity,
+                    createdAt: card.createdAt,
+                    needsCompletion: false,
+                    tags: const <OrganizationLabel>[],
+                    coverRelativePath: card.coverRelativePath,
+                    city: card.city,
+                    issuedAt: card.issuedAt,
+                  ),
+              ]),
+        ),
+        cardFilterFacetsProvider.overrideWith(
+          (ref) => Stream<CardFilterFacets>.value(
+            const CardFilterFacets(
+              cardTypes: <String>[],
+              cities: <String>[],
+              years: <int>[],
+              tags: <TagSummary>[],
+            ),
+          ),
+        ),
       ],
     );
 

@@ -8,6 +8,10 @@ import '../features/cards/presentation/create/create_card_screen.dart';
 import '../features/cards/presentation/detail/card_detail_screen.dart';
 import '../features/cards/presentation/library/card_library_screen.dart';
 import '../features/cards/presentation/widgets/phase_placeholder_screen.dart';
+import '../features/organization/presentation/card/card_organization_screen.dart';
+import '../features/organization/presentation/management/organization_settings_screen.dart';
+import '../features/organization/presentation/series/series_detail_screen.dart';
+import '../features/organization/presentation/series/series_form_screen.dart';
 import 'navigation/app_shell.dart';
 
 const String homePath = '/home';
@@ -17,10 +21,14 @@ const String statsPath = '/stats';
 const String profilePath = '/profile';
 const String createCardPath = '/cards/new';
 const String createCardSetPath = '/sets/new';
+const String createSeriesPath = '/series/new';
 
 String cardDetailPath(String id) => '/cards/$id';
+String cardOrganizationPath(String id) => '/cards/$id/organization';
 String cardSetDetailPath(String id) => '/sets/$id';
 String editCardSetPath(String id) => '/sets/$id/edit';
+String seriesDetailPath(String id) => '/series/$id';
+String editSeriesPath(String id) => '/series/$id/edit';
 
 /// Feature 001 的路由骨架。
 ///
@@ -53,18 +61,17 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
               description: '数量、花费与套卡统计将在购买与统计能力开放后可用。',
             ),
           ),
-          _branch(
-            profilePath,
-            const PhasePlaceholderScreen(
-              title: '我的',
-              description: '导入导出、回收站与账号同步将在后续迭代开放。',
-            ),
-          ),
+          _branch(profilePath, const OrganizationSettingsScreen()),
         ],
       ),
       GoRoute(
         path: createCardPath,
         builder: (context, state) => const CreateCardScreen(),
+      ),
+      GoRoute(
+        path: '/cards/:id/organization',
+        builder: (context, state) =>
+            CardOrganizationScreen(cardItemId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/cards/:id',
@@ -84,6 +91,20 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
         path: '/sets/:id',
         builder: (context, state) =>
             CardSetDetailScreen(setId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: createSeriesPath,
+        builder: (context, state) => const SeriesFormScreen(),
+      ),
+      GoRoute(
+        path: '/series/:id/edit',
+        builder: (context, state) =>
+            SeriesFormScreen(seriesId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/series/:id',
+        builder: (context, state) =>
+            SeriesDetailScreen(seriesId: state.pathParameters['id']!),
       ),
     ],
   );

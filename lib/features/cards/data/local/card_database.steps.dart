@@ -631,9 +631,619 @@ i1.GeneratedColumn<int> _column_26(String aliasedName) =>
       $customConstraints: 'NOT NULL DEFAULT 1 CHECK (required IN (0, 1))',
       defaultValue: const i1.CustomExpression('1'),
     );
+
+final class Schema4 extends i0.VersionedSchema {
+  Schema4({required super.database}) : super(version: 4);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    cardDefinitions,
+    cardItems,
+    cardImages,
+    cardSets,
+    cardSetMembers,
+    tags,
+    cardTags,
+    seriesRecords,
+    seriesCards,
+    seriesSets,
+    customFieldDefinitions,
+    customFieldValues,
+    idxCardDefinitionsDeletedAt,
+    idxCardItemsDefinitionId,
+    idxCardItemsDeletedAt,
+    idxCardItemsCreatedAt,
+    idxCardImagesCardItemId,
+    idxCardImagesSortOrder,
+    idxCardSetsCreatedAt,
+    idxCardSetsDeletedAt,
+    idxCardSetMembersSetId,
+    idxCardSetMembersSetSort,
+    idxCardSetMembersDefinitionId,
+    idxTagsDeletedAt,
+    idxTagsUpdatedAt,
+    idxCardTagsTagId,
+    idxCardTagsDefinitionId,
+    idxSeriesDeletedAt,
+    idxSeriesUpdatedAt,
+    idxSeriesCardsDefinitionId,
+    idxSeriesSetsSetId,
+    idxCustomFieldsDeletedAt,
+    idxCustomFieldValuesDefinitionId,
+  ];
+  late final Shape5 cardDefinitions = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'card_definitions',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_27,
+        _column_28,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 cardItems = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'card_items',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_11,
+        _column_12,
+        _column_29,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 cardImages = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'card_images',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_16,
+        _column_17,
+        _column_18,
+        _column_19,
+        _column_8,
+        _column_10,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape3 cardSets = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'card_sets',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK((count_known = 0 AND expected_count IS NULL)OR(count_known = 1 AND expected_count > 0))',
+      ],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_20,
+        _column_21,
+        _column_22,
+        _column_6,
+        _column_23,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 cardSetMembers = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'card_set_members',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_24,
+        _column_11,
+        _column_25,
+        _column_26,
+        _column_17,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 tags = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'tags',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_30,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape8 cardTags = Shape8(
+    source: i0.VersionedTable(
+      entityName: 'card_tags',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(tag_id, definition_id)'],
+      columns: [_column_31, _column_11, _column_8],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape9 seriesRecords = Shape9(
+    source: i0.VersionedTable(
+      entityName: 'series_records',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_32,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape10 seriesCards = Shape10(
+    source: i0.VersionedTable(
+      entityName: 'series_cards',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(series_id, definition_id)'],
+      columns: [_column_33, _column_11, _column_8],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape11 seriesSets = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'series_sets',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(series_id, set_id)'],
+      columns: [_column_33, _column_24, _column_8],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape12 customFieldDefinitions = Shape12(
+    source: i0.VersionedTable(
+      entityName: 'custom_field_definitions',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_30,
+        _column_34,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape13 customFieldValues = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'custom_field_values',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(field_id, definition_id)',
+        'CHECK((text_value IS NOT NULL)+(number_value IS NOT NULL)+(date_value IS NOT NULL)= 1)',
+      ],
+      columns: [
+        _column_35,
+        _column_11,
+        _column_36,
+        _column_37,
+        _column_38,
+        _column_9,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index idxCardDefinitionsDeletedAt = i1.Index(
+    'idx_card_definitions_deleted_at',
+    'CREATE INDEX idx_card_definitions_deleted_at ON card_definitions (deleted_at)',
+  );
+  final i1.Index idxCardItemsDefinitionId = i1.Index(
+    'idx_card_items_definition_id',
+    'CREATE INDEX idx_card_items_definition_id ON card_items (definition_id)',
+  );
+  final i1.Index idxCardItemsDeletedAt = i1.Index(
+    'idx_card_items_deleted_at',
+    'CREATE INDEX idx_card_items_deleted_at ON card_items (deleted_at)',
+  );
+  final i1.Index idxCardItemsCreatedAt = i1.Index(
+    'idx_card_items_created_at',
+    'CREATE INDEX idx_card_items_created_at ON card_items (created_at)',
+  );
+  final i1.Index idxCardImagesCardItemId = i1.Index(
+    'idx_card_images_card_item_id',
+    'CREATE INDEX idx_card_images_card_item_id ON card_images (card_item_id)',
+  );
+  final i1.Index idxCardImagesSortOrder = i1.Index(
+    'idx_card_images_sort_order',
+    'CREATE INDEX idx_card_images_sort_order ON card_images (sort_order)',
+  );
+  final i1.Index idxCardSetsCreatedAt = i1.Index(
+    'idx_card_sets_created_at',
+    'CREATE INDEX idx_card_sets_created_at ON card_sets (created_at)',
+  );
+  final i1.Index idxCardSetsDeletedAt = i1.Index(
+    'idx_card_sets_deleted_at',
+    'CREATE INDEX idx_card_sets_deleted_at ON card_sets (deleted_at)',
+  );
+  final i1.Index idxCardSetMembersSetId = i1.Index(
+    'idx_card_set_members_set_id',
+    'CREATE INDEX idx_card_set_members_set_id ON card_set_members (set_id)',
+  );
+  final i1.Index idxCardSetMembersSetSort = i1.Index(
+    'idx_card_set_members_set_sort',
+    'CREATE INDEX idx_card_set_members_set_sort ON card_set_members (set_id, sort_order)',
+  );
+  final i1.Index idxCardSetMembersDefinitionId = i1.Index(
+    'idx_card_set_members_definition_id',
+    'CREATE INDEX idx_card_set_members_definition_id ON card_set_members (definition_id)',
+  );
+  final i1.Index idxTagsDeletedAt = i1.Index(
+    'idx_tags_deleted_at',
+    'CREATE INDEX idx_tags_deleted_at ON tags (deleted_at)',
+  );
+  final i1.Index idxTagsUpdatedAt = i1.Index(
+    'idx_tags_updated_at',
+    'CREATE INDEX idx_tags_updated_at ON tags (updated_at)',
+  );
+  final i1.Index idxCardTagsTagId = i1.Index(
+    'idx_card_tags_tag_id',
+    'CREATE INDEX idx_card_tags_tag_id ON card_tags (tag_id)',
+  );
+  final i1.Index idxCardTagsDefinitionId = i1.Index(
+    'idx_card_tags_definition_id',
+    'CREATE INDEX idx_card_tags_definition_id ON card_tags (definition_id)',
+  );
+  final i1.Index idxSeriesDeletedAt = i1.Index(
+    'idx_series_deleted_at',
+    'CREATE INDEX idx_series_deleted_at ON series_records (deleted_at)',
+  );
+  final i1.Index idxSeriesUpdatedAt = i1.Index(
+    'idx_series_updated_at',
+    'CREATE INDEX idx_series_updated_at ON series_records (updated_at)',
+  );
+  final i1.Index idxSeriesCardsDefinitionId = i1.Index(
+    'idx_series_cards_definition_id',
+    'CREATE INDEX idx_series_cards_definition_id ON series_cards (definition_id)',
+  );
+  final i1.Index idxSeriesSetsSetId = i1.Index(
+    'idx_series_sets_set_id',
+    'CREATE INDEX idx_series_sets_set_id ON series_sets (set_id)',
+  );
+  final i1.Index idxCustomFieldsDeletedAt = i1.Index(
+    'idx_custom_fields_deleted_at',
+    'CREATE INDEX idx_custom_fields_deleted_at ON custom_field_definitions (deleted_at)',
+  );
+  final i1.Index idxCustomFieldValuesDefinitionId = i1.Index(
+    'idx_custom_field_values_definition_id',
+    'CREATE INDEX idx_custom_field_values_definition_id ON custom_field_values (definition_id)',
+  );
+}
+
+class Shape5 extends i0.VersionedTable {
+  Shape5({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get city =>
+      columnsByName['city']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get issuer =>
+      columnsByName['issuer']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get issuedAt =>
+      columnsByName['issued_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get code =>
+      columnsByName['code']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get notes =>
+      columnsByName['notes']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get cardType =>
+      columnsByName['card_type']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get needsCompletion =>
+      columnsByName['needs_completion']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get version =>
+      columnsByName['version']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get deletedAt =>
+      columnsByName['deleted_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_27(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'card_type',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<int> _column_28(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'needs_completion',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints:
+          'NOT NULL DEFAULT 0 CHECK (needs_completion IN (0, 1))',
+      defaultValue: const i1.CustomExpression('0'),
+    );
+
+class Shape6 extends i0.VersionedTable {
+  Shape6({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get definitionId =>
+      columnsByName['definition_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get quantity =>
+      columnsByName['quantity']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get acquiredAt =>
+      columnsByName['acquired_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get version =>
+      columnsByName['version']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get deletedAt =>
+      columnsByName['deleted_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<int> _column_29(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'acquired_at',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NULL',
+    );
+
+class Shape7 extends i0.VersionedTable {
+  Shape7({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get normalizedName =>
+      columnsByName['normalized_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get version =>
+      columnsByName['version']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get deletedAt =>
+      columnsByName['deleted_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_30(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'normalized_name',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+
+class Shape8 extends i0.VersionedTable {
+  Shape8({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get tagId =>
+      columnsByName['tag_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get definitionId =>
+      columnsByName['definition_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_31(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'tag_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL REFERENCES tags(id)',
+    );
+
+class Shape9 extends i0.VersionedTable {
+  Shape9({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get description =>
+      columnsByName['description']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get version =>
+      columnsByName['version']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get deletedAt =>
+      columnsByName['deleted_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_32(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'description',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+
+class Shape10 extends i0.VersionedTable {
+  Shape10({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get seriesId =>
+      columnsByName['series_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get definitionId =>
+      columnsByName['definition_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_33(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'series_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL REFERENCES series_records(id)',
+    );
+
+class Shape11 extends i0.VersionedTable {
+  Shape11({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get seriesId =>
+      columnsByName['series_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get setId =>
+      columnsByName['set_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+}
+
+class Shape12 extends i0.VersionedTable {
+  Shape12({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get normalizedName =>
+      columnsByName['normalized_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get fieldType =>
+      columnsByName['field_type']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get version =>
+      columnsByName['version']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get deletedAt =>
+      columnsByName['deleted_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_34(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'field_type',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+
+class Shape13 extends i0.VersionedTable {
+  Shape13({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get fieldId =>
+      columnsByName['field_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get definitionId =>
+      columnsByName['definition_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get textValue =>
+      columnsByName['text_value']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<double> get numberValue =>
+      columnsByName['number_value']! as i1.GeneratedColumn<double>;
+  i1.GeneratedColumn<int> get dateValue =>
+      columnsByName['date_value']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_35(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'field_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL REFERENCES custom_field_definitions(id)',
+    );
+i1.GeneratedColumn<String> _column_36(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'text_value',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<double> _column_37(String aliasedName) =>
+    i1.GeneratedColumn<double>(
+      'number_value',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.double,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<int> _column_38(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'date_value',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NULL',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
+  required Future<void> Function(i1.Migrator m, Schema4 schema) from3To4,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -647,6 +1257,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from2To3(migrator, schema);
         return 3;
+      case 3:
+        final schema = Schema4(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from3To4(migrator, schema);
+        return 4;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -656,6 +1271,11 @@ i0.MigrationStepWithVersion migrationSteps({
 i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
+  required Future<void> Function(i1.Migrator m, Schema4 schema) from3To4,
 }) => i0.VersionedSchema.stepByStepHelper(
-  step: migrationSteps(from1To2: from1To2, from2To3: from2To3),
+  step: migrationSteps(
+    from1To2: from1To2,
+    from2To3: from2To3,
+    from3To4: from3To4,
+  ),
 );

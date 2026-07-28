@@ -11,11 +11,11 @@
 | FR-IMG-006..007 | 002、009 | 多图顺序、封面、原图/派生图 |
 | FR-CARD-001..005 | 001、004、007 | 创建、编辑模型、查询、删除 |
 | FR-SET-001..003 | 003 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md)：关系、完成度与 Widget 自动化通过；设备验收待执行 |
-| FR-SER-001 | 004 | 多对多关联 |
-| FR-TAG-001..002 | 004 | 标签合并、删除、筛选 |
-| FR-CF-001 | 004 | 类型、值与删除影响 |
+| FR-SER-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T06：卡片/套卡多对多关联与系列页面自动化通过；设备验收待执行 |
+| FR-TAG-001..002 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T03..T05、T10：标签管理、合并、影响预览与组合筛选自动化通过 |
+| FR-CF-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T07..T08：三类字段、原子保存、删除影响和值保留自动化通过 |
 | FR-PUR-001..004 | 005 | 金额、分摊、退款、多币种 |
-| FR-SCH-001..004 | 004、006 | 搜索正确性与 10,000 条性能 |
+| FR-SCH-001..004 | 004、006 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T09..T14：搜索、组合筛选、稳定排序与 10,000 款式性能通过 |
 | FR-HOME-001..002 | 006 | 首页口径、空状态 |
 | FR-STAT-001..002 | 006 | 聚合与下钻一致 |
 | FR-DATA-001..002 | 008 | 导出/导入完整性与安全 |

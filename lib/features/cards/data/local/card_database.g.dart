@@ -78,6 +78,32 @@ class $CardDefinitionsTable extends CardDefinitions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _cardTypeMeta = const VerificationMeta(
+    'cardType',
+  );
+  @override
+  late final GeneratedColumn<String> cardType = GeneratedColumn<String>(
+    'card_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _needsCompletionMeta = const VerificationMeta(
+    'needsCompletion',
+  );
+  @override
+  late final GeneratedColumn<bool> needsCompletion = GeneratedColumn<bool>(
+    'needs_completion',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("needs_completion" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _versionMeta = const VerificationMeta(
     'version',
   );
@@ -133,6 +159,8 @@ class $CardDefinitionsTable extends CardDefinitions
     issuedAt,
     code,
     notes,
+    cardType,
+    needsCompletion,
     version,
     createdAt,
     updatedAt,
@@ -191,6 +219,21 @@ class $CardDefinitionsTable extends CardDefinitions
       context.handle(
         _notesMeta,
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('card_type')) {
+      context.handle(
+        _cardTypeMeta,
+        cardType.isAcceptableOrUnknown(data['card_type']!, _cardTypeMeta),
+      );
+    }
+    if (data.containsKey('needs_completion')) {
+      context.handle(
+        _needsCompletionMeta,
+        needsCompletion.isAcceptableOrUnknown(
+          data['needs_completion']!,
+          _needsCompletionMeta,
+        ),
       );
     }
     if (data.containsKey('version')) {
@@ -258,6 +301,14 @@ class $CardDefinitionsTable extends CardDefinitions
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      cardType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}card_type'],
+      ),
+      needsCompletion: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}needs_completion'],
+      )!,
       version: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}version'],
@@ -293,6 +344,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
   final String? issuedAt;
   final String? code;
   final String? notes;
+  final String? cardType;
+  final bool needsCompletion;
   final int version;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -305,6 +358,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
     this.issuedAt,
     this.code,
     this.notes,
+    this.cardType,
+    required this.needsCompletion,
     required this.version,
     required this.createdAt,
     required this.updatedAt,
@@ -330,6 +385,10 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || cardType != null) {
+      map['card_type'] = Variable<String>(cardType);
+    }
+    map['needs_completion'] = Variable<bool>(needsCompletion);
     map['version'] = Variable<int>(version);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -354,6 +413,10 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      cardType: cardType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cardType),
+      needsCompletion: Value(needsCompletion),
       version: Value(version),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -376,6 +439,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
       issuedAt: serializer.fromJson<String?>(json['issuedAt']),
       code: serializer.fromJson<String?>(json['code']),
       notes: serializer.fromJson<String?>(json['notes']),
+      cardType: serializer.fromJson<String?>(json['cardType']),
+      needsCompletion: serializer.fromJson<bool>(json['needsCompletion']),
       version: serializer.fromJson<int>(json['version']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -393,6 +458,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
       'issuedAt': serializer.toJson<String?>(issuedAt),
       'code': serializer.toJson<String?>(code),
       'notes': serializer.toJson<String?>(notes),
+      'cardType': serializer.toJson<String?>(cardType),
+      'needsCompletion': serializer.toJson<bool>(needsCompletion),
       'version': serializer.toJson<int>(version),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -408,6 +475,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
     Value<String?> issuedAt = const Value.absent(),
     Value<String?> code = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    Value<String?> cardType = const Value.absent(),
+    bool? needsCompletion,
     int? version,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -420,6 +489,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
     issuedAt: issuedAt.present ? issuedAt.value : this.issuedAt,
     code: code.present ? code.value : this.code,
     notes: notes.present ? notes.value : this.notes,
+    cardType: cardType.present ? cardType.value : this.cardType,
+    needsCompletion: needsCompletion ?? this.needsCompletion,
     version: version ?? this.version,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -434,6 +505,10 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
       issuedAt: data.issuedAt.present ? data.issuedAt.value : this.issuedAt,
       code: data.code.present ? data.code.value : this.code,
       notes: data.notes.present ? data.notes.value : this.notes,
+      cardType: data.cardType.present ? data.cardType.value : this.cardType,
+      needsCompletion: data.needsCompletion.present
+          ? data.needsCompletion.value
+          : this.needsCompletion,
       version: data.version.present ? data.version.value : this.version,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -451,6 +526,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
           ..write('issuedAt: $issuedAt, ')
           ..write('code: $code, ')
           ..write('notes: $notes, ')
+          ..write('cardType: $cardType, ')
+          ..write('needsCompletion: $needsCompletion, ')
           ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -468,6 +545,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
     issuedAt,
     code,
     notes,
+    cardType,
+    needsCompletion,
     version,
     createdAt,
     updatedAt,
@@ -484,6 +563,8 @@ class CardDefinition extends DataClass implements Insertable<CardDefinition> {
           other.issuedAt == this.issuedAt &&
           other.code == this.code &&
           other.notes == this.notes &&
+          other.cardType == this.cardType &&
+          other.needsCompletion == this.needsCompletion &&
           other.version == this.version &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -498,6 +579,8 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
   final Value<String?> issuedAt;
   final Value<String?> code;
   final Value<String?> notes;
+  final Value<String?> cardType;
+  final Value<bool> needsCompletion;
   final Value<int> version;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -511,6 +594,8 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
     this.issuedAt = const Value.absent(),
     this.code = const Value.absent(),
     this.notes = const Value.absent(),
+    this.cardType = const Value.absent(),
+    this.needsCompletion = const Value.absent(),
     this.version = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -525,6 +610,8 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
     this.issuedAt = const Value.absent(),
     this.code = const Value.absent(),
     this.notes = const Value.absent(),
+    this.cardType = const Value.absent(),
+    this.needsCompletion = const Value.absent(),
     this.version = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -542,6 +629,8 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
     Expression<String>? issuedAt,
     Expression<String>? code,
     Expression<String>? notes,
+    Expression<String>? cardType,
+    Expression<bool>? needsCompletion,
     Expression<int>? version,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -556,6 +645,8 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
       if (issuedAt != null) 'issued_at': issuedAt,
       if (code != null) 'code': code,
       if (notes != null) 'notes': notes,
+      if (cardType != null) 'card_type': cardType,
+      if (needsCompletion != null) 'needs_completion': needsCompletion,
       if (version != null) 'version': version,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -572,6 +663,8 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
     Value<String?>? issuedAt,
     Value<String?>? code,
     Value<String?>? notes,
+    Value<String?>? cardType,
+    Value<bool>? needsCompletion,
     Value<int>? version,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -586,6 +679,8 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
       issuedAt: issuedAt ?? this.issuedAt,
       code: code ?? this.code,
       notes: notes ?? this.notes,
+      cardType: cardType ?? this.cardType,
+      needsCompletion: needsCompletion ?? this.needsCompletion,
       version: version ?? this.version,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -618,6 +713,12 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (cardType.present) {
+      map['card_type'] = Variable<String>(cardType.value);
+    }
+    if (needsCompletion.present) {
+      map['needs_completion'] = Variable<bool>(needsCompletion.value);
+    }
     if (version.present) {
       map['version'] = Variable<int>(version.value);
     }
@@ -646,6 +747,8 @@ class CardDefinitionsCompanion extends UpdateCompanion<CardDefinition> {
           ..write('issuedAt: $issuedAt, ')
           ..write('code: $code, ')
           ..write('notes: $notes, ')
+          ..write('cardType: $cardType, ')
+          ..write('needsCompletion: $needsCompletion, ')
           ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -698,6 +801,17 @@ class $CardItemsTable extends CardItems
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _acquiredAtMeta = const VerificationMeta(
+    'acquiredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> acquiredAt = GeneratedColumn<DateTime>(
+    'acquired_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _versionMeta = const VerificationMeta(
     'version',
   );
@@ -749,6 +863,7 @@ class $CardItemsTable extends CardItems
     id,
     definitionId,
     quantity,
+    acquiredAt,
     version,
     createdAt,
     updatedAt,
@@ -786,6 +901,12 @@ class $CardItemsTable extends CardItems
       context.handle(
         _quantityMeta,
         quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    }
+    if (data.containsKey('acquired_at')) {
+      context.handle(
+        _acquiredAtMeta,
+        acquiredAt.isAcceptableOrUnknown(data['acquired_at']!, _acquiredAtMeta),
       );
     }
     if (data.containsKey('version')) {
@@ -837,6 +958,10 @@ class $CardItemsTable extends CardItems
         DriftSqlType.int,
         data['${effectivePrefix}quantity'],
       )!,
+      acquiredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}acquired_at'],
+      ),
       version: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}version'],
@@ -866,6 +991,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
   final String id;
   final String definitionId;
   final int quantity;
+  final DateTime? acquiredAt;
   final int version;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -876,6 +1002,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
     required this.id,
     required this.definitionId,
     required this.quantity,
+    this.acquiredAt,
     required this.version,
     required this.createdAt,
     required this.updatedAt,
@@ -887,6 +1014,9 @@ class CardItem extends DataClass implements Insertable<CardItem> {
     map['id'] = Variable<String>(id);
     map['definition_id'] = Variable<String>(definitionId);
     map['quantity'] = Variable<int>(quantity);
+    if (!nullToAbsent || acquiredAt != null) {
+      map['acquired_at'] = Variable<DateTime>(acquiredAt);
+    }
     map['version'] = Variable<int>(version);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -901,6 +1031,9 @@ class CardItem extends DataClass implements Insertable<CardItem> {
       id: Value(id),
       definitionId: Value(definitionId),
       quantity: Value(quantity),
+      acquiredAt: acquiredAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(acquiredAt),
       version: Value(version),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -919,6 +1052,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
       id: serializer.fromJson<String>(json['id']),
       definitionId: serializer.fromJson<String>(json['definitionId']),
       quantity: serializer.fromJson<int>(json['quantity']),
+      acquiredAt: serializer.fromJson<DateTime?>(json['acquiredAt']),
       version: serializer.fromJson<int>(json['version']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -932,6 +1066,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
       'id': serializer.toJson<String>(id),
       'definitionId': serializer.toJson<String>(definitionId),
       'quantity': serializer.toJson<int>(quantity),
+      'acquiredAt': serializer.toJson<DateTime?>(acquiredAt),
       'version': serializer.toJson<int>(version),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -943,6 +1078,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
     String? id,
     String? definitionId,
     int? quantity,
+    Value<DateTime?> acquiredAt = const Value.absent(),
     int? version,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -951,6 +1087,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
     id: id ?? this.id,
     definitionId: definitionId ?? this.definitionId,
     quantity: quantity ?? this.quantity,
+    acquiredAt: acquiredAt.present ? acquiredAt.value : this.acquiredAt,
     version: version ?? this.version,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -963,6 +1100,9 @@ class CardItem extends DataClass implements Insertable<CardItem> {
           ? data.definitionId.value
           : this.definitionId,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      acquiredAt: data.acquiredAt.present
+          ? data.acquiredAt.value
+          : this.acquiredAt,
       version: data.version.present ? data.version.value : this.version,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -976,6 +1116,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
           ..write('id: $id, ')
           ..write('definitionId: $definitionId, ')
           ..write('quantity: $quantity, ')
+          ..write('acquiredAt: $acquiredAt, ')
           ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -989,6 +1130,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
     id,
     definitionId,
     quantity,
+    acquiredAt,
     version,
     createdAt,
     updatedAt,
@@ -1001,6 +1143,7 @@ class CardItem extends DataClass implements Insertable<CardItem> {
           other.id == this.id &&
           other.definitionId == this.definitionId &&
           other.quantity == this.quantity &&
+          other.acquiredAt == this.acquiredAt &&
           other.version == this.version &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -1011,6 +1154,7 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
   final Value<String> id;
   final Value<String> definitionId;
   final Value<int> quantity;
+  final Value<DateTime?> acquiredAt;
   final Value<int> version;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1020,6 +1164,7 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
     this.id = const Value.absent(),
     this.definitionId = const Value.absent(),
     this.quantity = const Value.absent(),
+    this.acquiredAt = const Value.absent(),
     this.version = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1030,6 +1175,7 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
     required String id,
     required String definitionId,
     this.quantity = const Value.absent(),
+    this.acquiredAt = const Value.absent(),
     this.version = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -1043,6 +1189,7 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
     Expression<String>? id,
     Expression<String>? definitionId,
     Expression<int>? quantity,
+    Expression<DateTime>? acquiredAt,
     Expression<int>? version,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1053,6 +1200,7 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
       if (id != null) 'id': id,
       if (definitionId != null) 'definition_id': definitionId,
       if (quantity != null) 'quantity': quantity,
+      if (acquiredAt != null) 'acquired_at': acquiredAt,
       if (version != null) 'version': version,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1065,6 +1213,7 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
     Value<String>? id,
     Value<String>? definitionId,
     Value<int>? quantity,
+    Value<DateTime?>? acquiredAt,
     Value<int>? version,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1075,6 +1224,7 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
       id: id ?? this.id,
       definitionId: definitionId ?? this.definitionId,
       quantity: quantity ?? this.quantity,
+      acquiredAt: acquiredAt ?? this.acquiredAt,
       version: version ?? this.version,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1094,6 +1244,9 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
     }
     if (quantity.present) {
       map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (acquiredAt.present) {
+      map['acquired_at'] = Variable<DateTime>(acquiredAt.value);
     }
     if (version.present) {
       map['version'] = Variable<int>(version.value);
@@ -1119,6 +1272,7 @@ class CardItemsCompanion extends UpdateCompanion<CardItem> {
           ..write('id: $id, ')
           ..write('definitionId: $definitionId, ')
           ..write('quantity: $quantity, ')
+          ..write('acquiredAt: $acquiredAt, ')
           ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -3073,6 +3227,2770 @@ class CardSetMembersCompanion extends UpdateCompanion<CardSetMember> {
   }
 }
 
+class $TagsTable extends Tags with TableInfo<$TagsTable, Tag> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TagsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _normalizedNameMeta = const VerificationMeta(
+    'normalizedName',
+  );
+  @override
+  late final GeneratedColumn<String> normalizedName = GeneratedColumn<String>(
+    'normalized_name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(version).isBiggerThanValue(0),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    normalizedName,
+    version,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Tag> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('normalized_name')) {
+      context.handle(
+        _normalizedNameMeta,
+        normalizedName.isAcceptableOrUnknown(
+          data['normalized_name']!,
+          _normalizedNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_normalizedNameMeta);
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Tag map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Tag(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      normalizedName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}normalized_name'],
+      )!,
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $TagsTable createAlias(String alias) {
+    return $TagsTable(attachedDatabase, alias);
+  }
+}
+
+class Tag extends DataClass implements Insertable<Tag> {
+  final String id;
+  final String name;
+  final String normalizedName;
+  final int version;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const Tag({
+    required this.id,
+    required this.name,
+    required this.normalizedName,
+    required this.version,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['normalized_name'] = Variable<String>(normalizedName);
+    map['version'] = Variable<int>(version);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  TagsCompanion toCompanion(bool nullToAbsent) {
+    return TagsCompanion(
+      id: Value(id),
+      name: Value(name),
+      normalizedName: Value(normalizedName),
+      version: Value(version),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory Tag.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Tag(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      normalizedName: serializer.fromJson<String>(json['normalizedName']),
+      version: serializer.fromJson<int>(json['version']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'normalizedName': serializer.toJson<String>(normalizedName),
+      'version': serializer.toJson<int>(version),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  Tag copyWith({
+    String? id,
+    String? name,
+    String? normalizedName,
+    int? version,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => Tag(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    normalizedName: normalizedName ?? this.normalizedName,
+    version: version ?? this.version,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  Tag copyWithCompanion(TagsCompanion data) {
+    return Tag(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      normalizedName: data.normalizedName.present
+          ? data.normalizedName.value
+          : this.normalizedName,
+      version: data.version.present ? data.version.value : this.version,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Tag(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('normalizedName: $normalizedName, ')
+          ..write('version: $version, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    normalizedName,
+    version,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Tag &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.normalizedName == this.normalizedName &&
+          other.version == this.version &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class TagsCompanion extends UpdateCompanion<Tag> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> normalizedName;
+  final Value<int> version;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const TagsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.normalizedName = const Value.absent(),
+    this.version = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TagsCompanion.insert({
+    required String id,
+    required String name,
+    required String normalizedName,
+    this.version = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       normalizedName = Value(normalizedName),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<Tag> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? normalizedName,
+    Expression<int>? version,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (normalizedName != null) 'normalized_name': normalizedName,
+      if (version != null) 'version': version,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TagsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? normalizedName,
+    Value<int>? version,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return TagsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      normalizedName: normalizedName ?? this.normalizedName,
+      version: version ?? this.version,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (normalizedName.present) {
+      map['normalized_name'] = Variable<String>(normalizedName.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TagsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('normalizedName: $normalizedName, ')
+          ..write('version: $version, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CardTagsTable extends CardTags with TableInfo<$CardTagsTable, CardTag> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CardTagsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _tagIdMeta = const VerificationMeta('tagId');
+  @override
+  late final GeneratedColumn<String> tagId = GeneratedColumn<String>(
+    'tag_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tags (id)',
+    ),
+  );
+  static const VerificationMeta _definitionIdMeta = const VerificationMeta(
+    'definitionId',
+  );
+  @override
+  late final GeneratedColumn<String> definitionId = GeneratedColumn<String>(
+    'definition_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES card_definitions (id)',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [tagId, definitionId, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'card_tags';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CardTag> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('tag_id')) {
+      context.handle(
+        _tagIdMeta,
+        tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagIdMeta);
+    }
+    if (data.containsKey('definition_id')) {
+      context.handle(
+        _definitionIdMeta,
+        definitionId.isAcceptableOrUnknown(
+          data['definition_id']!,
+          _definitionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_definitionIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {tagId, definitionId};
+  @override
+  CardTag map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CardTag(
+      tagId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_id'],
+      )!,
+      definitionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}definition_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CardTagsTable createAlias(String alias) {
+    return $CardTagsTable(attachedDatabase, alias);
+  }
+}
+
+class CardTag extends DataClass implements Insertable<CardTag> {
+  final String tagId;
+  final String definitionId;
+  final DateTime createdAt;
+  const CardTag({
+    required this.tagId,
+    required this.definitionId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['tag_id'] = Variable<String>(tagId);
+    map['definition_id'] = Variable<String>(definitionId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CardTagsCompanion toCompanion(bool nullToAbsent) {
+    return CardTagsCompanion(
+      tagId: Value(tagId),
+      definitionId: Value(definitionId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CardTag.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CardTag(
+      tagId: serializer.fromJson<String>(json['tagId']),
+      definitionId: serializer.fromJson<String>(json['definitionId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'tagId': serializer.toJson<String>(tagId),
+      'definitionId': serializer.toJson<String>(definitionId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CardTag copyWith({
+    String? tagId,
+    String? definitionId,
+    DateTime? createdAt,
+  }) => CardTag(
+    tagId: tagId ?? this.tagId,
+    definitionId: definitionId ?? this.definitionId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CardTag copyWithCompanion(CardTagsCompanion data) {
+    return CardTag(
+      tagId: data.tagId.present ? data.tagId.value : this.tagId,
+      definitionId: data.definitionId.present
+          ? data.definitionId.value
+          : this.definitionId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CardTag(')
+          ..write('tagId: $tagId, ')
+          ..write('definitionId: $definitionId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(tagId, definitionId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CardTag &&
+          other.tagId == this.tagId &&
+          other.definitionId == this.definitionId &&
+          other.createdAt == this.createdAt);
+}
+
+class CardTagsCompanion extends UpdateCompanion<CardTag> {
+  final Value<String> tagId;
+  final Value<String> definitionId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const CardTagsCompanion({
+    this.tagId = const Value.absent(),
+    this.definitionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CardTagsCompanion.insert({
+    required String tagId,
+    required String definitionId,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : tagId = Value(tagId),
+       definitionId = Value(definitionId),
+       createdAt = Value(createdAt);
+  static Insertable<CardTag> custom({
+    Expression<String>? tagId,
+    Expression<String>? definitionId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (tagId != null) 'tag_id': tagId,
+      if (definitionId != null) 'definition_id': definitionId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CardTagsCompanion copyWith({
+    Value<String>? tagId,
+    Value<String>? definitionId,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return CardTagsCompanion(
+      tagId: tagId ?? this.tagId,
+      definitionId: definitionId ?? this.definitionId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (tagId.present) {
+      map['tag_id'] = Variable<String>(tagId.value);
+    }
+    if (definitionId.present) {
+      map['definition_id'] = Variable<String>(definitionId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CardTagsCompanion(')
+          ..write('tagId: $tagId, ')
+          ..write('definitionId: $definitionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SeriesRecordsTable extends SeriesRecords
+    with TableInfo<$SeriesRecordsTable, SeriesRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SeriesRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(version).isBiggerThanValue(0),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    description,
+    version,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'series_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SeriesRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SeriesRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SeriesRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $SeriesRecordsTable createAlias(String alias) {
+    return $SeriesRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
+  final String id;
+  final String name;
+  final String? description;
+  final int version;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const SeriesRecord({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.version,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['version'] = Variable<int>(version);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  SeriesRecordsCompanion toCompanion(bool nullToAbsent) {
+    return SeriesRecordsCompanion(
+      id: Value(id),
+      name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      version: Value(version),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory SeriesRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SeriesRecord(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
+      version: serializer.fromJson<int>(json['version']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
+      'version': serializer.toJson<int>(version),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  SeriesRecord copyWith({
+    String? id,
+    String? name,
+    Value<String?> description = const Value.absent(),
+    int? version,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => SeriesRecord(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description.present ? description.value : this.description,
+    version: version ?? this.version,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  SeriesRecord copyWithCompanion(SeriesRecordsCompanion data) {
+    return SeriesRecord(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      version: data.version.present ? data.version.value : this.version,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeriesRecord(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('version: $version, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    description,
+    version,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SeriesRecord &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.version == this.version &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> description;
+  final Value<int> version;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const SeriesRecordsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.version = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SeriesRecordsCompanion.insert({
+    required String id,
+    required String name,
+    this.description = const Value.absent(),
+    this.version = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<SeriesRecord> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<int>? version,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (version != null) 'version': version,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SeriesRecordsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? description,
+    Value<int>? version,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return SeriesRecordsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      version: version ?? this.version,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeriesRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('version: $version, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SeriesCardsTable extends SeriesCards
+    with TableInfo<$SeriesCardsTable, SeriesCard> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SeriesCardsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _seriesIdMeta = const VerificationMeta(
+    'seriesId',
+  );
+  @override
+  late final GeneratedColumn<String> seriesId = GeneratedColumn<String>(
+    'series_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES series_records (id)',
+    ),
+  );
+  static const VerificationMeta _definitionIdMeta = const VerificationMeta(
+    'definitionId',
+  );
+  @override
+  late final GeneratedColumn<String> definitionId = GeneratedColumn<String>(
+    'definition_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES card_definitions (id)',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [seriesId, definitionId, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'series_cards';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SeriesCard> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('series_id')) {
+      context.handle(
+        _seriesIdMeta,
+        seriesId.isAcceptableOrUnknown(data['series_id']!, _seriesIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seriesIdMeta);
+    }
+    if (data.containsKey('definition_id')) {
+      context.handle(
+        _definitionIdMeta,
+        definitionId.isAcceptableOrUnknown(
+          data['definition_id']!,
+          _definitionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_definitionIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {seriesId, definitionId};
+  @override
+  SeriesCard map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SeriesCard(
+      seriesId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}series_id'],
+      )!,
+      definitionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}definition_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SeriesCardsTable createAlias(String alias) {
+    return $SeriesCardsTable(attachedDatabase, alias);
+  }
+}
+
+class SeriesCard extends DataClass implements Insertable<SeriesCard> {
+  final String seriesId;
+  final String definitionId;
+  final DateTime createdAt;
+  const SeriesCard({
+    required this.seriesId,
+    required this.definitionId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['series_id'] = Variable<String>(seriesId);
+    map['definition_id'] = Variable<String>(definitionId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SeriesCardsCompanion toCompanion(bool nullToAbsent) {
+    return SeriesCardsCompanion(
+      seriesId: Value(seriesId),
+      definitionId: Value(definitionId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SeriesCard.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SeriesCard(
+      seriesId: serializer.fromJson<String>(json['seriesId']),
+      definitionId: serializer.fromJson<String>(json['definitionId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'seriesId': serializer.toJson<String>(seriesId),
+      'definitionId': serializer.toJson<String>(definitionId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  SeriesCard copyWith({
+    String? seriesId,
+    String? definitionId,
+    DateTime? createdAt,
+  }) => SeriesCard(
+    seriesId: seriesId ?? this.seriesId,
+    definitionId: definitionId ?? this.definitionId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  SeriesCard copyWithCompanion(SeriesCardsCompanion data) {
+    return SeriesCard(
+      seriesId: data.seriesId.present ? data.seriesId.value : this.seriesId,
+      definitionId: data.definitionId.present
+          ? data.definitionId.value
+          : this.definitionId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeriesCard(')
+          ..write('seriesId: $seriesId, ')
+          ..write('definitionId: $definitionId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(seriesId, definitionId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SeriesCard &&
+          other.seriesId == this.seriesId &&
+          other.definitionId == this.definitionId &&
+          other.createdAt == this.createdAt);
+}
+
+class SeriesCardsCompanion extends UpdateCompanion<SeriesCard> {
+  final Value<String> seriesId;
+  final Value<String> definitionId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const SeriesCardsCompanion({
+    this.seriesId = const Value.absent(),
+    this.definitionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SeriesCardsCompanion.insert({
+    required String seriesId,
+    required String definitionId,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : seriesId = Value(seriesId),
+       definitionId = Value(definitionId),
+       createdAt = Value(createdAt);
+  static Insertable<SeriesCard> custom({
+    Expression<String>? seriesId,
+    Expression<String>? definitionId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (seriesId != null) 'series_id': seriesId,
+      if (definitionId != null) 'definition_id': definitionId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SeriesCardsCompanion copyWith({
+    Value<String>? seriesId,
+    Value<String>? definitionId,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return SeriesCardsCompanion(
+      seriesId: seriesId ?? this.seriesId,
+      definitionId: definitionId ?? this.definitionId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (seriesId.present) {
+      map['series_id'] = Variable<String>(seriesId.value);
+    }
+    if (definitionId.present) {
+      map['definition_id'] = Variable<String>(definitionId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeriesCardsCompanion(')
+          ..write('seriesId: $seriesId, ')
+          ..write('definitionId: $definitionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SeriesSetsTable extends SeriesSets
+    with TableInfo<$SeriesSetsTable, SeriesSet> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SeriesSetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _seriesIdMeta = const VerificationMeta(
+    'seriesId',
+  );
+  @override
+  late final GeneratedColumn<String> seriesId = GeneratedColumn<String>(
+    'series_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES series_records (id)',
+    ),
+  );
+  static const VerificationMeta _setIdMeta = const VerificationMeta('setId');
+  @override
+  late final GeneratedColumn<String> setId = GeneratedColumn<String>(
+    'set_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES card_sets (id)',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [seriesId, setId, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'series_sets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SeriesSet> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('series_id')) {
+      context.handle(
+        _seriesIdMeta,
+        seriesId.isAcceptableOrUnknown(data['series_id']!, _seriesIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seriesIdMeta);
+    }
+    if (data.containsKey('set_id')) {
+      context.handle(
+        _setIdMeta,
+        setId.isAcceptableOrUnknown(data['set_id']!, _setIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_setIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {seriesId, setId};
+  @override
+  SeriesSet map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SeriesSet(
+      seriesId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}series_id'],
+      )!,
+      setId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}set_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SeriesSetsTable createAlias(String alias) {
+    return $SeriesSetsTable(attachedDatabase, alias);
+  }
+}
+
+class SeriesSet extends DataClass implements Insertable<SeriesSet> {
+  final String seriesId;
+  final String setId;
+  final DateTime createdAt;
+  const SeriesSet({
+    required this.seriesId,
+    required this.setId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['series_id'] = Variable<String>(seriesId);
+    map['set_id'] = Variable<String>(setId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SeriesSetsCompanion toCompanion(bool nullToAbsent) {
+    return SeriesSetsCompanion(
+      seriesId: Value(seriesId),
+      setId: Value(setId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SeriesSet.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SeriesSet(
+      seriesId: serializer.fromJson<String>(json['seriesId']),
+      setId: serializer.fromJson<String>(json['setId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'seriesId': serializer.toJson<String>(seriesId),
+      'setId': serializer.toJson<String>(setId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  SeriesSet copyWith({String? seriesId, String? setId, DateTime? createdAt}) =>
+      SeriesSet(
+        seriesId: seriesId ?? this.seriesId,
+        setId: setId ?? this.setId,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  SeriesSet copyWithCompanion(SeriesSetsCompanion data) {
+    return SeriesSet(
+      seriesId: data.seriesId.present ? data.seriesId.value : this.seriesId,
+      setId: data.setId.present ? data.setId.value : this.setId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeriesSet(')
+          ..write('seriesId: $seriesId, ')
+          ..write('setId: $setId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(seriesId, setId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SeriesSet &&
+          other.seriesId == this.seriesId &&
+          other.setId == this.setId &&
+          other.createdAt == this.createdAt);
+}
+
+class SeriesSetsCompanion extends UpdateCompanion<SeriesSet> {
+  final Value<String> seriesId;
+  final Value<String> setId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const SeriesSetsCompanion({
+    this.seriesId = const Value.absent(),
+    this.setId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SeriesSetsCompanion.insert({
+    required String seriesId,
+    required String setId,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : seriesId = Value(seriesId),
+       setId = Value(setId),
+       createdAt = Value(createdAt);
+  static Insertable<SeriesSet> custom({
+    Expression<String>? seriesId,
+    Expression<String>? setId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (seriesId != null) 'series_id': seriesId,
+      if (setId != null) 'set_id': setId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SeriesSetsCompanion copyWith({
+    Value<String>? seriesId,
+    Value<String>? setId,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return SeriesSetsCompanion(
+      seriesId: seriesId ?? this.seriesId,
+      setId: setId ?? this.setId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (seriesId.present) {
+      map['series_id'] = Variable<String>(seriesId.value);
+    }
+    if (setId.present) {
+      map['set_id'] = Variable<String>(setId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SeriesSetsCompanion(')
+          ..write('seriesId: $seriesId, ')
+          ..write('setId: $setId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $OrganizationFieldDefinitionsTable extends OrganizationFieldDefinitions
+    with
+        TableInfo<
+          $OrganizationFieldDefinitionsTable,
+          OrganizationFieldDefinition
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OrganizationFieldDefinitionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _normalizedNameMeta = const VerificationMeta(
+    'normalizedName',
+  );
+  @override
+  late final GeneratedColumn<String> normalizedName = GeneratedColumn<String>(
+    'normalized_name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<CustomFieldType, String>
+  fieldType =
+      GeneratedColumn<String>(
+        'field_type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<CustomFieldType>(
+        $OrganizationFieldDefinitionsTable.$converterfieldType,
+      );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(version).isBiggerThanValue(0),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    normalizedName,
+    fieldType,
+    version,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'custom_field_definitions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OrganizationFieldDefinition> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('normalized_name')) {
+      context.handle(
+        _normalizedNameMeta,
+        normalizedName.isAcceptableOrUnknown(
+          data['normalized_name']!,
+          _normalizedNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_normalizedNameMeta);
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OrganizationFieldDefinition map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OrganizationFieldDefinition(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      normalizedName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}normalized_name'],
+      )!,
+      fieldType: $OrganizationFieldDefinitionsTable.$converterfieldType.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}field_type'],
+        )!,
+      ),
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+    );
+  }
+
+  @override
+  $OrganizationFieldDefinitionsTable createAlias(String alias) {
+    return $OrganizationFieldDefinitionsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<CustomFieldType, String, String>
+  $converterfieldType = const EnumNameConverter<CustomFieldType>(
+    CustomFieldType.values,
+  );
+}
+
+class OrganizationFieldDefinition extends DataClass
+    implements Insertable<OrganizationFieldDefinition> {
+  final String id;
+  final String name;
+  final String normalizedName;
+  final CustomFieldType fieldType;
+  final int version;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  const OrganizationFieldDefinition({
+    required this.id,
+    required this.name,
+    required this.normalizedName,
+    required this.fieldType,
+    required this.version,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['normalized_name'] = Variable<String>(normalizedName);
+    {
+      map['field_type'] = Variable<String>(
+        $OrganizationFieldDefinitionsTable.$converterfieldType.toSql(fieldType),
+      );
+    }
+    map['version'] = Variable<int>(version);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    return map;
+  }
+
+  OrganizationFieldDefinitionsCompanion toCompanion(bool nullToAbsent) {
+    return OrganizationFieldDefinitionsCompanion(
+      id: Value(id),
+      name: Value(name),
+      normalizedName: Value(normalizedName),
+      fieldType: Value(fieldType),
+      version: Value(version),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory OrganizationFieldDefinition.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OrganizationFieldDefinition(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      normalizedName: serializer.fromJson<String>(json['normalizedName']),
+      fieldType: $OrganizationFieldDefinitionsTable.$converterfieldType
+          .fromJson(serializer.fromJson<String>(json['fieldType'])),
+      version: serializer.fromJson<int>(json['version']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'normalizedName': serializer.toJson<String>(normalizedName),
+      'fieldType': serializer.toJson<String>(
+        $OrganizationFieldDefinitionsTable.$converterfieldType.toJson(
+          fieldType,
+        ),
+      ),
+      'version': serializer.toJson<int>(version),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+    };
+  }
+
+  OrganizationFieldDefinition copyWith({
+    String? id,
+    String? name,
+    String? normalizedName,
+    CustomFieldType? fieldType,
+    int? version,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+  }) => OrganizationFieldDefinition(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    normalizedName: normalizedName ?? this.normalizedName,
+    fieldType: fieldType ?? this.fieldType,
+    version: version ?? this.version,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+  );
+  OrganizationFieldDefinition copyWithCompanion(
+    OrganizationFieldDefinitionsCompanion data,
+  ) {
+    return OrganizationFieldDefinition(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      normalizedName: data.normalizedName.present
+          ? data.normalizedName.value
+          : this.normalizedName,
+      fieldType: data.fieldType.present ? data.fieldType.value : this.fieldType,
+      version: data.version.present ? data.version.value : this.version,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OrganizationFieldDefinition(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('normalizedName: $normalizedName, ')
+          ..write('fieldType: $fieldType, ')
+          ..write('version: $version, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    normalizedName,
+    fieldType,
+    version,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OrganizationFieldDefinition &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.normalizedName == this.normalizedName &&
+          other.fieldType == this.fieldType &&
+          other.version == this.version &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt);
+}
+
+class OrganizationFieldDefinitionsCompanion
+    extends UpdateCompanion<OrganizationFieldDefinition> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> normalizedName;
+  final Value<CustomFieldType> fieldType;
+  final Value<int> version;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<int> rowid;
+  const OrganizationFieldDefinitionsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.normalizedName = const Value.absent(),
+    this.fieldType = const Value.absent(),
+    this.version = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OrganizationFieldDefinitionsCompanion.insert({
+    required String id,
+    required String name,
+    required String normalizedName,
+    required CustomFieldType fieldType,
+    this.version = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       normalizedName = Value(normalizedName),
+       fieldType = Value(fieldType),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<OrganizationFieldDefinition> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? normalizedName,
+    Expression<String>? fieldType,
+    Expression<int>? version,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (normalizedName != null) 'normalized_name': normalizedName,
+      if (fieldType != null) 'field_type': fieldType,
+      if (version != null) 'version': version,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OrganizationFieldDefinitionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? normalizedName,
+    Value<CustomFieldType>? fieldType,
+    Value<int>? version,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return OrganizationFieldDefinitionsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      normalizedName: normalizedName ?? this.normalizedName,
+      fieldType: fieldType ?? this.fieldType,
+      version: version ?? this.version,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (normalizedName.present) {
+      map['normalized_name'] = Variable<String>(normalizedName.value);
+    }
+    if (fieldType.present) {
+      map['field_type'] = Variable<String>(
+        $OrganizationFieldDefinitionsTable.$converterfieldType.toSql(
+          fieldType.value,
+        ),
+      );
+    }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OrganizationFieldDefinitionsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('normalizedName: $normalizedName, ')
+          ..write('fieldType: $fieldType, ')
+          ..write('version: $version, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $OrganizationFieldValuesTable extends OrganizationFieldValues
+    with TableInfo<$OrganizationFieldValuesTable, OrganizationFieldValue> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OrganizationFieldValuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _fieldIdMeta = const VerificationMeta(
+    'fieldId',
+  );
+  @override
+  late final GeneratedColumn<String> fieldId = GeneratedColumn<String>(
+    'field_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES custom_field_definitions (id)',
+    ),
+  );
+  static const VerificationMeta _definitionIdMeta = const VerificationMeta(
+    'definitionId',
+  );
+  @override
+  late final GeneratedColumn<String> definitionId = GeneratedColumn<String>(
+    'definition_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES card_definitions (id)',
+    ),
+  );
+  static const VerificationMeta _textValueMeta = const VerificationMeta(
+    'textValue',
+  );
+  @override
+  late final GeneratedColumn<String> textValue = GeneratedColumn<String>(
+    'text_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _numberValueMeta = const VerificationMeta(
+    'numberValue',
+  );
+  @override
+  late final GeneratedColumn<double> numberValue = GeneratedColumn<double>(
+    'number_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dateValueMeta = const VerificationMeta(
+    'dateValue',
+  );
+  @override
+  late final GeneratedColumn<DateTime> dateValue = GeneratedColumn<DateTime>(
+    'date_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    fieldId,
+    definitionId,
+    textValue,
+    numberValue,
+    dateValue,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'custom_field_values';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OrganizationFieldValue> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('field_id')) {
+      context.handle(
+        _fieldIdMeta,
+        fieldId.isAcceptableOrUnknown(data['field_id']!, _fieldIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fieldIdMeta);
+    }
+    if (data.containsKey('definition_id')) {
+      context.handle(
+        _definitionIdMeta,
+        definitionId.isAcceptableOrUnknown(
+          data['definition_id']!,
+          _definitionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_definitionIdMeta);
+    }
+    if (data.containsKey('text_value')) {
+      context.handle(
+        _textValueMeta,
+        textValue.isAcceptableOrUnknown(data['text_value']!, _textValueMeta),
+      );
+    }
+    if (data.containsKey('number_value')) {
+      context.handle(
+        _numberValueMeta,
+        numberValue.isAcceptableOrUnknown(
+          data['number_value']!,
+          _numberValueMeta,
+        ),
+      );
+    }
+    if (data.containsKey('date_value')) {
+      context.handle(
+        _dateValueMeta,
+        dateValue.isAcceptableOrUnknown(data['date_value']!, _dateValueMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {fieldId, definitionId};
+  @override
+  OrganizationFieldValue map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OrganizationFieldValue(
+      fieldId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field_id'],
+      )!,
+      definitionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}definition_id'],
+      )!,
+      textValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}text_value'],
+      ),
+      numberValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}number_value'],
+      ),
+      dateValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date_value'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $OrganizationFieldValuesTable createAlias(String alias) {
+    return $OrganizationFieldValuesTable(attachedDatabase, alias);
+  }
+}
+
+class OrganizationFieldValue extends DataClass
+    implements Insertable<OrganizationFieldValue> {
+  final String fieldId;
+  final String definitionId;
+  final String? textValue;
+  final double? numberValue;
+  final DateTime? dateValue;
+  final DateTime updatedAt;
+  const OrganizationFieldValue({
+    required this.fieldId,
+    required this.definitionId,
+    this.textValue,
+    this.numberValue,
+    this.dateValue,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['field_id'] = Variable<String>(fieldId);
+    map['definition_id'] = Variable<String>(definitionId);
+    if (!nullToAbsent || textValue != null) {
+      map['text_value'] = Variable<String>(textValue);
+    }
+    if (!nullToAbsent || numberValue != null) {
+      map['number_value'] = Variable<double>(numberValue);
+    }
+    if (!nullToAbsent || dateValue != null) {
+      map['date_value'] = Variable<DateTime>(dateValue);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  OrganizationFieldValuesCompanion toCompanion(bool nullToAbsent) {
+    return OrganizationFieldValuesCompanion(
+      fieldId: Value(fieldId),
+      definitionId: Value(definitionId),
+      textValue: textValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(textValue),
+      numberValue: numberValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(numberValue),
+      dateValue: dateValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dateValue),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory OrganizationFieldValue.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OrganizationFieldValue(
+      fieldId: serializer.fromJson<String>(json['fieldId']),
+      definitionId: serializer.fromJson<String>(json['definitionId']),
+      textValue: serializer.fromJson<String?>(json['textValue']),
+      numberValue: serializer.fromJson<double?>(json['numberValue']),
+      dateValue: serializer.fromJson<DateTime?>(json['dateValue']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'fieldId': serializer.toJson<String>(fieldId),
+      'definitionId': serializer.toJson<String>(definitionId),
+      'textValue': serializer.toJson<String?>(textValue),
+      'numberValue': serializer.toJson<double?>(numberValue),
+      'dateValue': serializer.toJson<DateTime?>(dateValue),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  OrganizationFieldValue copyWith({
+    String? fieldId,
+    String? definitionId,
+    Value<String?> textValue = const Value.absent(),
+    Value<double?> numberValue = const Value.absent(),
+    Value<DateTime?> dateValue = const Value.absent(),
+    DateTime? updatedAt,
+  }) => OrganizationFieldValue(
+    fieldId: fieldId ?? this.fieldId,
+    definitionId: definitionId ?? this.definitionId,
+    textValue: textValue.present ? textValue.value : this.textValue,
+    numberValue: numberValue.present ? numberValue.value : this.numberValue,
+    dateValue: dateValue.present ? dateValue.value : this.dateValue,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  OrganizationFieldValue copyWithCompanion(
+    OrganizationFieldValuesCompanion data,
+  ) {
+    return OrganizationFieldValue(
+      fieldId: data.fieldId.present ? data.fieldId.value : this.fieldId,
+      definitionId: data.definitionId.present
+          ? data.definitionId.value
+          : this.definitionId,
+      textValue: data.textValue.present ? data.textValue.value : this.textValue,
+      numberValue: data.numberValue.present
+          ? data.numberValue.value
+          : this.numberValue,
+      dateValue: data.dateValue.present ? data.dateValue.value : this.dateValue,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OrganizationFieldValue(')
+          ..write('fieldId: $fieldId, ')
+          ..write('definitionId: $definitionId, ')
+          ..write('textValue: $textValue, ')
+          ..write('numberValue: $numberValue, ')
+          ..write('dateValue: $dateValue, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    fieldId,
+    definitionId,
+    textValue,
+    numberValue,
+    dateValue,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OrganizationFieldValue &&
+          other.fieldId == this.fieldId &&
+          other.definitionId == this.definitionId &&
+          other.textValue == this.textValue &&
+          other.numberValue == this.numberValue &&
+          other.dateValue == this.dateValue &&
+          other.updatedAt == this.updatedAt);
+}
+
+class OrganizationFieldValuesCompanion
+    extends UpdateCompanion<OrganizationFieldValue> {
+  final Value<String> fieldId;
+  final Value<String> definitionId;
+  final Value<String?> textValue;
+  final Value<double?> numberValue;
+  final Value<DateTime?> dateValue;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const OrganizationFieldValuesCompanion({
+    this.fieldId = const Value.absent(),
+    this.definitionId = const Value.absent(),
+    this.textValue = const Value.absent(),
+    this.numberValue = const Value.absent(),
+    this.dateValue = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OrganizationFieldValuesCompanion.insert({
+    required String fieldId,
+    required String definitionId,
+    this.textValue = const Value.absent(),
+    this.numberValue = const Value.absent(),
+    this.dateValue = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : fieldId = Value(fieldId),
+       definitionId = Value(definitionId),
+       updatedAt = Value(updatedAt);
+  static Insertable<OrganizationFieldValue> custom({
+    Expression<String>? fieldId,
+    Expression<String>? definitionId,
+    Expression<String>? textValue,
+    Expression<double>? numberValue,
+    Expression<DateTime>? dateValue,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (fieldId != null) 'field_id': fieldId,
+      if (definitionId != null) 'definition_id': definitionId,
+      if (textValue != null) 'text_value': textValue,
+      if (numberValue != null) 'number_value': numberValue,
+      if (dateValue != null) 'date_value': dateValue,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OrganizationFieldValuesCompanion copyWith({
+    Value<String>? fieldId,
+    Value<String>? definitionId,
+    Value<String?>? textValue,
+    Value<double?>? numberValue,
+    Value<DateTime?>? dateValue,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return OrganizationFieldValuesCompanion(
+      fieldId: fieldId ?? this.fieldId,
+      definitionId: definitionId ?? this.definitionId,
+      textValue: textValue ?? this.textValue,
+      numberValue: numberValue ?? this.numberValue,
+      dateValue: dateValue ?? this.dateValue,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (fieldId.present) {
+      map['field_id'] = Variable<String>(fieldId.value);
+    }
+    if (definitionId.present) {
+      map['definition_id'] = Variable<String>(definitionId.value);
+    }
+    if (textValue.present) {
+      map['text_value'] = Variable<String>(textValue.value);
+    }
+    if (numberValue.present) {
+      map['number_value'] = Variable<double>(numberValue.value);
+    }
+    if (dateValue.present) {
+      map['date_value'] = Variable<DateTime>(dateValue.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OrganizationFieldValuesCompanion(')
+          ..write('fieldId: $fieldId, ')
+          ..write('definitionId: $definitionId, ')
+          ..write('textValue: $textValue, ')
+          ..write('numberValue: $numberValue, ')
+          ..write('dateValue: $dateValue, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3083,6 +6001,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CardImagesTable cardImages = $CardImagesTable(this);
   late final $CardSetsTable cardSets = $CardSetsTable(this);
   late final $CardSetMembersTable cardSetMembers = $CardSetMembersTable(this);
+  late final $TagsTable tags = $TagsTable(this);
+  late final $CardTagsTable cardTags = $CardTagsTable(this);
+  late final $SeriesRecordsTable seriesRecords = $SeriesRecordsTable(this);
+  late final $SeriesCardsTable seriesCards = $SeriesCardsTable(this);
+  late final $SeriesSetsTable seriesSets = $SeriesSetsTable(this);
+  late final $OrganizationFieldDefinitionsTable organizationFieldDefinitions =
+      $OrganizationFieldDefinitionsTable(this);
+  late final $OrganizationFieldValuesTable organizationFieldValues =
+      $OrganizationFieldValuesTable(this);
   late final Index idxCardDefinitionsDeletedAt = Index(
     'idx_card_definitions_deleted_at',
     'CREATE INDEX idx_card_definitions_deleted_at ON card_definitions (deleted_at)',
@@ -3127,6 +6054,46 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_card_set_members_definition_id',
     'CREATE INDEX idx_card_set_members_definition_id ON card_set_members (definition_id)',
   );
+  late final Index idxTagsDeletedAt = Index(
+    'idx_tags_deleted_at',
+    'CREATE INDEX idx_tags_deleted_at ON tags (deleted_at)',
+  );
+  late final Index idxTagsUpdatedAt = Index(
+    'idx_tags_updated_at',
+    'CREATE INDEX idx_tags_updated_at ON tags (updated_at)',
+  );
+  late final Index idxCardTagsTagId = Index(
+    'idx_card_tags_tag_id',
+    'CREATE INDEX idx_card_tags_tag_id ON card_tags (tag_id)',
+  );
+  late final Index idxCardTagsDefinitionId = Index(
+    'idx_card_tags_definition_id',
+    'CREATE INDEX idx_card_tags_definition_id ON card_tags (definition_id)',
+  );
+  late final Index idxSeriesDeletedAt = Index(
+    'idx_series_deleted_at',
+    'CREATE INDEX idx_series_deleted_at ON series_records (deleted_at)',
+  );
+  late final Index idxSeriesUpdatedAt = Index(
+    'idx_series_updated_at',
+    'CREATE INDEX idx_series_updated_at ON series_records (updated_at)',
+  );
+  late final Index idxSeriesCardsDefinitionId = Index(
+    'idx_series_cards_definition_id',
+    'CREATE INDEX idx_series_cards_definition_id ON series_cards (definition_id)',
+  );
+  late final Index idxSeriesSetsSetId = Index(
+    'idx_series_sets_set_id',
+    'CREATE INDEX idx_series_sets_set_id ON series_sets (set_id)',
+  );
+  late final Index idxCustomFieldsDeletedAt = Index(
+    'idx_custom_fields_deleted_at',
+    'CREATE INDEX idx_custom_fields_deleted_at ON custom_field_definitions (deleted_at)',
+  );
+  late final Index idxCustomFieldValuesDefinitionId = Index(
+    'idx_custom_field_values_definition_id',
+    'CREATE INDEX idx_custom_field_values_definition_id ON custom_field_values (definition_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3137,6 +6104,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cardImages,
     cardSets,
     cardSetMembers,
+    tags,
+    cardTags,
+    seriesRecords,
+    seriesCards,
+    seriesSets,
+    organizationFieldDefinitions,
+    organizationFieldValues,
     idxCardDefinitionsDeletedAt,
     idxCardItemsDefinitionId,
     idxCardItemsDeletedAt,
@@ -3148,6 +6122,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxCardSetMembersSetId,
     idxCardSetMembersSetSort,
     idxCardSetMembersDefinitionId,
+    idxTagsDeletedAt,
+    idxTagsUpdatedAt,
+    idxCardTagsTagId,
+    idxCardTagsDefinitionId,
+    idxSeriesDeletedAt,
+    idxSeriesUpdatedAt,
+    idxSeriesCardsDefinitionId,
+    idxSeriesSetsSetId,
+    idxCustomFieldsDeletedAt,
+    idxCustomFieldValuesDefinitionId,
   ];
 }
 
@@ -3160,6 +6144,8 @@ typedef $$CardDefinitionsTableCreateCompanionBuilder =
       Value<String?> issuedAt,
       Value<String?> code,
       Value<String?> notes,
+      Value<String?> cardType,
+      Value<bool> needsCompletion,
       Value<int> version,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -3175,6 +6161,8 @@ typedef $$CardDefinitionsTableUpdateCompanionBuilder =
       Value<String?> issuedAt,
       Value<String?> code,
       Value<String?> notes,
+      Value<String?> cardType,
+      Value<bool> needsCompletion,
       Value<int> version,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -3226,6 +6214,68 @@ final class $$CardDefinitionsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$CardTagsTable, List<CardTag>> _cardTagsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.cardTags,
+    aliasName: 'card_definitions__id__card_tags__definition_id',
+  );
+
+  $$CardTagsTableProcessedTableManager get cardTagsRefs {
+    final manager = $$CardTagsTableTableManager(
+      $_db,
+      $_db.cardTags,
+    ).filter((f) => f.definitionId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_cardTagsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$SeriesCardsTable, List<SeriesCard>>
+  _seriesCardsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.seriesCards,
+    aliasName: 'card_definitions__id__series_cards__definition_id',
+  );
+
+  $$SeriesCardsTableProcessedTableManager get seriesCardsRefs {
+    final manager = $$SeriesCardsTableTableManager(
+      $_db,
+      $_db.seriesCards,
+    ).filter((f) => f.definitionId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_seriesCardsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $OrganizationFieldValuesTable,
+    List<OrganizationFieldValue>
+  >
+  _organizationFieldValuesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.organizationFieldValues,
+        aliasName: 'card_definitions__id__custom_field_values__definition_id',
+      );
+
+  $$OrganizationFieldValuesTableProcessedTableManager
+  get organizationFieldValuesRefs {
+    final manager = $$OrganizationFieldValuesTableTableManager(
+      $_db,
+      $_db.organizationFieldValues,
+    ).filter((f) => f.definitionId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _organizationFieldValuesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$CardDefinitionsTableFilterComposer
@@ -3269,6 +6319,16 @@ class $$CardDefinitionsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cardType => $composableBuilder(
+    column: $table.cardType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsCompletion => $composableBuilder(
+    column: $table.needsCompletion,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3341,6 +6401,82 @@ class $$CardDefinitionsTableFilterComposer
     );
     return f(composer);
   }
+
+  Expression<bool> cardTagsRefs(
+    Expression<bool> Function($$CardTagsTableFilterComposer f) f,
+  ) {
+    final $$CardTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.cardTags,
+      getReferencedColumn: (t) => t.definitionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.cardTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> seriesCardsRefs(
+    Expression<bool> Function($$SeriesCardsTableFilterComposer f) f,
+  ) {
+    final $$SeriesCardsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seriesCards,
+      getReferencedColumn: (t) => t.definitionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesCardsTableFilterComposer(
+            $db: $db,
+            $table: $db.seriesCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> organizationFieldValuesRefs(
+    Expression<bool> Function($$OrganizationFieldValuesTableFilterComposer f) f,
+  ) {
+    final $$OrganizationFieldValuesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.organizationFieldValues,
+          getReferencedColumn: (t) => t.definitionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$OrganizationFieldValuesTableFilterComposer(
+                $db: $db,
+                $table: $db.organizationFieldValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$CardDefinitionsTableOrderingComposer
@@ -3384,6 +6520,16 @@ class $$CardDefinitionsTableOrderingComposer
 
   ColumnOrderings<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cardType => $composableBuilder(
+    column: $table.cardType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get needsCompletion => $composableBuilder(
+    column: $table.needsCompletion,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3437,6 +6583,14 @@ class $$CardDefinitionsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get cardType =>
+      $composableBuilder(column: $table.cardType, builder: (column) => column);
+
+  GeneratedColumn<bool> get needsCompletion => $composableBuilder(
+    column: $table.needsCompletion,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get version =>
       $composableBuilder(column: $table.version, builder: (column) => column);
@@ -3499,6 +6653,83 @@ class $$CardDefinitionsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> cardTagsRefs<T extends Object>(
+    Expression<T> Function($$CardTagsTableAnnotationComposer a) f,
+  ) {
+    final $$CardTagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.cardTags,
+      getReferencedColumn: (t) => t.definitionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardTagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cardTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> seriesCardsRefs<T extends Object>(
+    Expression<T> Function($$SeriesCardsTableAnnotationComposer a) f,
+  ) {
+    final $$SeriesCardsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seriesCards,
+      getReferencedColumn: (t) => t.definitionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesCardsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.seriesCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> organizationFieldValuesRefs<T extends Object>(
+    Expression<T> Function($$OrganizationFieldValuesTableAnnotationComposer a)
+    f,
+  ) {
+    final $$OrganizationFieldValuesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.organizationFieldValues,
+          getReferencedColumn: (t) => t.definitionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$OrganizationFieldValuesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.organizationFieldValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$CardDefinitionsTableTableManager
@@ -3514,7 +6745,13 @@ class $$CardDefinitionsTableTableManager
           $$CardDefinitionsTableUpdateCompanionBuilder,
           (CardDefinition, $$CardDefinitionsTableReferences),
           CardDefinition,
-          PrefetchHooks Function({bool cardItemsRefs, bool cardSetMembersRefs})
+          PrefetchHooks Function({
+            bool cardItemsRefs,
+            bool cardSetMembersRefs,
+            bool cardTagsRefs,
+            bool seriesCardsRefs,
+            bool organizationFieldValuesRefs,
+          })
         > {
   $$CardDefinitionsTableTableManager(
     _$AppDatabase db,
@@ -3538,6 +6775,8 @@ class $$CardDefinitionsTableTableManager
                 Value<String?> issuedAt = const Value.absent(),
                 Value<String?> code = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> cardType = const Value.absent(),
+                Value<bool> needsCompletion = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -3551,6 +6790,8 @@ class $$CardDefinitionsTableTableManager
                 issuedAt: issuedAt,
                 code: code,
                 notes: notes,
+                cardType: cardType,
+                needsCompletion: needsCompletion,
                 version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -3566,6 +6807,8 @@ class $$CardDefinitionsTableTableManager
                 Value<String?> issuedAt = const Value.absent(),
                 Value<String?> code = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> cardType = const Value.absent(),
+                Value<bool> needsCompletion = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -3579,6 +6822,8 @@ class $$CardDefinitionsTableTableManager
                 issuedAt: issuedAt,
                 code: code,
                 notes: notes,
+                cardType: cardType,
+                needsCompletion: needsCompletion,
                 version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -3594,12 +6839,21 @@ class $$CardDefinitionsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({cardItemsRefs = false, cardSetMembersRefs = false}) {
+              ({
+                cardItemsRefs = false,
+                cardSetMembersRefs = false,
+                cardTagsRefs = false,
+                seriesCardsRefs = false,
+                organizationFieldValuesRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (cardItemsRefs) db.cardItems,
                     if (cardSetMembersRefs) db.cardSetMembers,
+                    if (cardTagsRefs) db.cardTags,
+                    if (seriesCardsRefs) db.seriesCards,
+                    if (organizationFieldValuesRefs) db.organizationFieldValues,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -3646,6 +6900,69 @@ class $$CardDefinitionsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (cardTagsRefs)
+                        await $_getPrefetchedData<
+                          CardDefinition,
+                          $CardDefinitionsTable,
+                          CardTag
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CardDefinitionsTableReferences
+                              ._cardTagsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CardDefinitionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).cardTagsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.definitionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (seriesCardsRefs)
+                        await $_getPrefetchedData<
+                          CardDefinition,
+                          $CardDefinitionsTable,
+                          SeriesCard
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CardDefinitionsTableReferences
+                              ._seriesCardsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CardDefinitionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).seriesCardsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.definitionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (organizationFieldValuesRefs)
+                        await $_getPrefetchedData<
+                          CardDefinition,
+                          $CardDefinitionsTable,
+                          OrganizationFieldValue
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CardDefinitionsTableReferences
+                              ._organizationFieldValuesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CardDefinitionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).organizationFieldValuesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.definitionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -3666,13 +6983,20 @@ typedef $$CardDefinitionsTableProcessedTableManager =
       $$CardDefinitionsTableUpdateCompanionBuilder,
       (CardDefinition, $$CardDefinitionsTableReferences),
       CardDefinition,
-      PrefetchHooks Function({bool cardItemsRefs, bool cardSetMembersRefs})
+      PrefetchHooks Function({
+        bool cardItemsRefs,
+        bool cardSetMembersRefs,
+        bool cardTagsRefs,
+        bool seriesCardsRefs,
+        bool organizationFieldValuesRefs,
+      })
     >;
 typedef $$CardItemsTableCreateCompanionBuilder =
     CardItemsCompanion Function({
       required String id,
       required String definitionId,
       Value<int> quantity,
+      Value<DateTime?> acquiredAt,
       Value<int> version,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -3684,6 +7008,7 @@ typedef $$CardItemsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> definitionId,
       Value<int> quantity,
+      Value<DateTime?> acquiredAt,
       Value<int> version,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -3748,6 +7073,11 @@ class $$CardItemsTableFilterComposer
 
   ColumnFilters<int> get quantity => $composableBuilder(
     column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get acquiredAt => $composableBuilder(
+    column: $table.acquiredAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3839,6 +7169,11 @@ class $$CardItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get acquiredAt => $composableBuilder(
+    column: $table.acquiredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get version => $composableBuilder(
     column: $table.version,
     builder: (column) => ColumnOrderings(column),
@@ -3897,6 +7232,11 @@ class $$CardItemsTableAnnotationComposer
 
   GeneratedColumn<int> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get acquiredAt => $composableBuilder(
+    column: $table.acquiredAt,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get version =>
       $composableBuilder(column: $table.version, builder: (column) => column);
@@ -3990,6 +7330,7 @@ class $$CardItemsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> definitionId = const Value.absent(),
                 Value<int> quantity = const Value.absent(),
+                Value<DateTime?> acquiredAt = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -3999,6 +7340,7 @@ class $$CardItemsTableTableManager
                 id: id,
                 definitionId: definitionId,
                 quantity: quantity,
+                acquiredAt: acquiredAt,
                 version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4010,6 +7352,7 @@ class $$CardItemsTableTableManager
                 required String id,
                 required String definitionId,
                 Value<int> quantity = const Value.absent(),
+                Value<DateTime?> acquiredAt = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -4019,6 +7362,7 @@ class $$CardItemsTableTableManager
                 id: id,
                 definitionId: definitionId,
                 quantity: quantity,
+                acquiredAt: acquiredAt,
                 version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4692,6 +8036,24 @@ final class $$CardSetsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$SeriesSetsTable, List<SeriesSet>>
+  _seriesSetsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.seriesSets,
+    aliasName: 'card_sets__id__series_sets__set_id',
+  );
+
+  $$SeriesSetsTableProcessedTableManager get seriesSetsRefs {
+    final manager = $$SeriesSetsTableTableManager(
+      $_db,
+      $_db.seriesSets,
+    ).filter((f) => f.setId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_seriesSetsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$CardSetsTableFilterComposer
@@ -4792,6 +8154,31 @@ class $$CardSetsTableFilterComposer
           }) => $$CardSetMembersTableFilterComposer(
             $db: $db,
             $table: $db.cardSetMembers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> seriesSetsRefs(
+    Expression<bool> Function($$SeriesSetsTableFilterComposer f) f,
+  ) {
+    final $$SeriesSetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seriesSets,
+      getReferencedColumn: (t) => t.setId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesSetsTableFilterComposer(
+            $db: $db,
+            $table: $db.seriesSets,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4975,6 +8362,31 @@ class $$CardSetsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> seriesSetsRefs<T extends Object>(
+    Expression<T> Function($$SeriesSetsTableAnnotationComposer a) f,
+  ) {
+    final $$SeriesSetsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seriesSets,
+      getReferencedColumn: (t) => t.setId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesSetsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.seriesSets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$CardSetsTableTableManager
@@ -4990,7 +8402,11 @@ class $$CardSetsTableTableManager
           $$CardSetsTableUpdateCompanionBuilder,
           (CardSet, $$CardSetsTableReferences),
           CardSet,
-          PrefetchHooks Function({bool coverImageId, bool cardSetMembersRefs})
+          PrefetchHooks Function({
+            bool coverImageId,
+            bool cardSetMembersRefs,
+            bool seriesSetsRefs,
+          })
         > {
   $$CardSetsTableTableManager(_$AppDatabase db, $CardSetsTable table)
     : super(
@@ -5068,11 +8484,16 @@ class $$CardSetsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({coverImageId = false, cardSetMembersRefs = false}) {
+              ({
+                coverImageId = false,
+                cardSetMembersRefs = false,
+                seriesSetsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (cardSetMembersRefs) db.cardSetMembers,
+                    if (seriesSetsRefs) db.seriesSets,
                   ],
                   addJoins:
                       <
@@ -5129,6 +8550,27 @@ class $$CardSetsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (seriesSetsRefs)
+                        await $_getPrefetchedData<
+                          CardSet,
+                          $CardSetsTable,
+                          SeriesSet
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CardSetsTableReferences
+                              ._seriesSetsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CardSetsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).seriesSetsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.setId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -5149,7 +8591,11 @@ typedef $$CardSetsTableProcessedTableManager =
       $$CardSetsTableUpdateCompanionBuilder,
       (CardSet, $$CardSetsTableReferences),
       CardSet,
-      PrefetchHooks Function({bool coverImageId, bool cardSetMembersRefs})
+      PrefetchHooks Function({
+        bool coverImageId,
+        bool cardSetMembersRefs,
+        bool seriesSetsRefs,
+      })
     >;
 typedef $$CardSetMembersTableCreateCompanionBuilder =
     CardSetMembersCompanion Function({
@@ -5658,6 +9104,2731 @@ typedef $$CardSetMembersTableProcessedTableManager =
       CardSetMember,
       PrefetchHooks Function({bool setId, bool definitionId})
     >;
+typedef $$TagsTableCreateCompanionBuilder =
+    TagsCompanion Function({
+      required String id,
+      required String name,
+      required String normalizedName,
+      Value<int> version,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$TagsTableUpdateCompanionBuilder =
+    TagsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> normalizedName,
+      Value<int> version,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+final class $$TagsTableReferences
+    extends BaseReferences<_$AppDatabase, $TagsTable, Tag> {
+  $$TagsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$CardTagsTable, List<CardTag>> _cardTagsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.cardTags,
+    aliasName: 'tags__id__card_tags__tag_id',
+  );
+
+  $$CardTagsTableProcessedTableManager get cardTagsRefs {
+    final manager = $$CardTagsTableTableManager(
+      $_db,
+      $_db.cardTags,
+    ).filter((f) => f.tagId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_cardTagsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TagsTableFilterComposer extends Composer<_$AppDatabase, $TagsTable> {
+  $$TagsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> cardTagsRefs(
+    Expression<bool> Function($$CardTagsTableFilterComposer f) f,
+  ) {
+    final $$CardTagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.cardTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardTagsTableFilterComposer(
+            $db: $db,
+            $table: $db.cardTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TagsTableOrderingComposer extends Composer<_$AppDatabase, $TagsTable> {
+  $$TagsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TagsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TagsTable> {
+  $$TagsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  Expression<T> cardTagsRefs<T extends Object>(
+    Expression<T> Function($$CardTagsTableAnnotationComposer a) f,
+  ) {
+    final $$CardTagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.cardTags,
+      getReferencedColumn: (t) => t.tagId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardTagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cardTags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TagsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TagsTable,
+          Tag,
+          $$TagsTableFilterComposer,
+          $$TagsTableOrderingComposer,
+          $$TagsTableAnnotationComposer,
+          $$TagsTableCreateCompanionBuilder,
+          $$TagsTableUpdateCompanionBuilder,
+          (Tag, $$TagsTableReferences),
+          Tag,
+          PrefetchHooks Function({bool cardTagsRefs})
+        > {
+  $$TagsTableTableManager(_$AppDatabase db, $TagsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TagsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> normalizedName = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TagsCompanion(
+                id: id,
+                name: name,
+                normalizedName: normalizedName,
+                version: version,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String normalizedName,
+                Value<int> version = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TagsCompanion.insert(
+                id: id,
+                name: name,
+                normalizedName: normalizedName,
+                version: version,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) =>
+                    (e.readTable(table), $$TagsTableReferences(db, table, e)),
+              )
+              .toList(),
+          prefetchHooksCallback: ({cardTagsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (cardTagsRefs) db.cardTags],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (cardTagsRefs)
+                    await $_getPrefetchedData<Tag, $TagsTable, CardTag>(
+                      currentTable: table,
+                      referencedTable: $$TagsTableReferences._cardTagsRefsTable(
+                        db,
+                      ),
+                      managerFromTypedResult: (p0) =>
+                          $$TagsTableReferences(db, table, p0).cardTagsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.tagId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TagsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TagsTable,
+      Tag,
+      $$TagsTableFilterComposer,
+      $$TagsTableOrderingComposer,
+      $$TagsTableAnnotationComposer,
+      $$TagsTableCreateCompanionBuilder,
+      $$TagsTableUpdateCompanionBuilder,
+      (Tag, $$TagsTableReferences),
+      Tag,
+      PrefetchHooks Function({bool cardTagsRefs})
+    >;
+typedef $$CardTagsTableCreateCompanionBuilder =
+    CardTagsCompanion Function({
+      required String tagId,
+      required String definitionId,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$CardTagsTableUpdateCompanionBuilder =
+    CardTagsCompanion Function({
+      Value<String> tagId,
+      Value<String> definitionId,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$CardTagsTableReferences
+    extends BaseReferences<_$AppDatabase, $CardTagsTable, CardTag> {
+  $$CardTagsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TagsTable _tagIdTable(_$AppDatabase db) =>
+      db.tags.createAlias('card_tags__tag_id__tags__id');
+
+  $$TagsTableProcessedTableManager get tagId {
+    final $_column = $_itemColumn<String>('tag_id')!;
+
+    final manager = $$TagsTableTableManager(
+      $_db,
+      $_db.tags,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tagIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CardDefinitionsTable _definitionIdTable(_$AppDatabase db) => db
+      .cardDefinitions
+      .createAlias('card_tags__definition_id__card_definitions__id');
+
+  $$CardDefinitionsTableProcessedTableManager get definitionId {
+    final $_column = $_itemColumn<String>('definition_id')!;
+
+    final manager = $$CardDefinitionsTableTableManager(
+      $_db,
+      $_db.cardDefinitions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_definitionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CardTagsTableFilterComposer
+    extends Composer<_$AppDatabase, $CardTagsTable> {
+  $$CardTagsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TagsTableFilterComposer get tagId {
+    final $$TagsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableFilterComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardDefinitionsTableFilterComposer get definitionId {
+    final $$CardDefinitionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableFilterComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CardTagsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CardTagsTable> {
+  $$CardTagsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TagsTableOrderingComposer get tagId {
+    final $$TagsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableOrderingComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardDefinitionsTableOrderingComposer get definitionId {
+    final $$CardDefinitionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CardTagsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CardTagsTable> {
+  $$CardTagsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$TagsTableAnnotationComposer get tagId {
+    final $$TagsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tagId,
+      referencedTable: $db.tags,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TagsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tags,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardDefinitionsTableAnnotationComposer get definitionId {
+    final $$CardDefinitionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CardTagsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CardTagsTable,
+          CardTag,
+          $$CardTagsTableFilterComposer,
+          $$CardTagsTableOrderingComposer,
+          $$CardTagsTableAnnotationComposer,
+          $$CardTagsTableCreateCompanionBuilder,
+          $$CardTagsTableUpdateCompanionBuilder,
+          (CardTag, $$CardTagsTableReferences),
+          CardTag,
+          PrefetchHooks Function({bool tagId, bool definitionId})
+        > {
+  $$CardTagsTableTableManager(_$AppDatabase db, $CardTagsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CardTagsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CardTagsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CardTagsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> tagId = const Value.absent(),
+                Value<String> definitionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CardTagsCompanion(
+                tagId: tagId,
+                definitionId: definitionId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String tagId,
+                required String definitionId,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CardTagsCompanion.insert(
+                tagId: tagId,
+                definitionId: definitionId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CardTagsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({tagId = false, definitionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (tagId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.tagId,
+                                referencedTable: $$CardTagsTableReferences
+                                    ._tagIdTable(db),
+                                referencedColumn: $$CardTagsTableReferences
+                                    ._tagIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (definitionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.definitionId,
+                                referencedTable: $$CardTagsTableReferences
+                                    ._definitionIdTable(db),
+                                referencedColumn: $$CardTagsTableReferences
+                                    ._definitionIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CardTagsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CardTagsTable,
+      CardTag,
+      $$CardTagsTableFilterComposer,
+      $$CardTagsTableOrderingComposer,
+      $$CardTagsTableAnnotationComposer,
+      $$CardTagsTableCreateCompanionBuilder,
+      $$CardTagsTableUpdateCompanionBuilder,
+      (CardTag, $$CardTagsTableReferences),
+      CardTag,
+      PrefetchHooks Function({bool tagId, bool definitionId})
+    >;
+typedef $$SeriesRecordsTableCreateCompanionBuilder =
+    SeriesRecordsCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> description,
+      Value<int> version,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$SeriesRecordsTableUpdateCompanionBuilder =
+    SeriesRecordsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> description,
+      Value<int> version,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+final class $$SeriesRecordsTableReferences
+    extends BaseReferences<_$AppDatabase, $SeriesRecordsTable, SeriesRecord> {
+  $$SeriesRecordsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$SeriesCardsTable, List<SeriesCard>>
+  _seriesCardsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.seriesCards,
+    aliasName: 'series_records__id__series_cards__series_id',
+  );
+
+  $$SeriesCardsTableProcessedTableManager get seriesCardsRefs {
+    final manager = $$SeriesCardsTableTableManager(
+      $_db,
+      $_db.seriesCards,
+    ).filter((f) => f.seriesId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_seriesCardsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$SeriesSetsTable, List<SeriesSet>>
+  _seriesSetsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.seriesSets,
+    aliasName: 'series_records__id__series_sets__series_id',
+  );
+
+  $$SeriesSetsTableProcessedTableManager get seriesSetsRefs {
+    final manager = $$SeriesSetsTableTableManager(
+      $_db,
+      $_db.seriesSets,
+    ).filter((f) => f.seriesId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_seriesSetsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$SeriesRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $SeriesRecordsTable> {
+  $$SeriesRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> seriesCardsRefs(
+    Expression<bool> Function($$SeriesCardsTableFilterComposer f) f,
+  ) {
+    final $$SeriesCardsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seriesCards,
+      getReferencedColumn: (t) => t.seriesId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesCardsTableFilterComposer(
+            $db: $db,
+            $table: $db.seriesCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> seriesSetsRefs(
+    Expression<bool> Function($$SeriesSetsTableFilterComposer f) f,
+  ) {
+    final $$SeriesSetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seriesSets,
+      getReferencedColumn: (t) => t.seriesId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesSetsTableFilterComposer(
+            $db: $db,
+            $table: $db.seriesSets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SeriesRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SeriesRecordsTable> {
+  $$SeriesRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SeriesRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SeriesRecordsTable> {
+  $$SeriesRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  Expression<T> seriesCardsRefs<T extends Object>(
+    Expression<T> Function($$SeriesCardsTableAnnotationComposer a) f,
+  ) {
+    final $$SeriesCardsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seriesCards,
+      getReferencedColumn: (t) => t.seriesId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesCardsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.seriesCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> seriesSetsRefs<T extends Object>(
+    Expression<T> Function($$SeriesSetsTableAnnotationComposer a) f,
+  ) {
+    final $$SeriesSetsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.seriesSets,
+      getReferencedColumn: (t) => t.seriesId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesSetsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.seriesSets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SeriesRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SeriesRecordsTable,
+          SeriesRecord,
+          $$SeriesRecordsTableFilterComposer,
+          $$SeriesRecordsTableOrderingComposer,
+          $$SeriesRecordsTableAnnotationComposer,
+          $$SeriesRecordsTableCreateCompanionBuilder,
+          $$SeriesRecordsTableUpdateCompanionBuilder,
+          (SeriesRecord, $$SeriesRecordsTableReferences),
+          SeriesRecord,
+          PrefetchHooks Function({bool seriesCardsRefs, bool seriesSetsRefs})
+        > {
+  $$SeriesRecordsTableTableManager(_$AppDatabase db, $SeriesRecordsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SeriesRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SeriesRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SeriesRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SeriesRecordsCompanion(
+                id: id,
+                name: name,
+                description: description,
+                version: version,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> description = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SeriesRecordsCompanion.insert(
+                id: id,
+                name: name,
+                description: description,
+                version: version,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SeriesRecordsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({seriesCardsRefs = false, seriesSetsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (seriesCardsRefs) db.seriesCards,
+                    if (seriesSetsRefs) db.seriesSets,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (seriesCardsRefs)
+                        await $_getPrefetchedData<
+                          SeriesRecord,
+                          $SeriesRecordsTable,
+                          SeriesCard
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SeriesRecordsTableReferences
+                              ._seriesCardsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SeriesRecordsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).seriesCardsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.seriesId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (seriesSetsRefs)
+                        await $_getPrefetchedData<
+                          SeriesRecord,
+                          $SeriesRecordsTable,
+                          SeriesSet
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SeriesRecordsTableReferences
+                              ._seriesSetsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SeriesRecordsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).seriesSetsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.seriesId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$SeriesRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SeriesRecordsTable,
+      SeriesRecord,
+      $$SeriesRecordsTableFilterComposer,
+      $$SeriesRecordsTableOrderingComposer,
+      $$SeriesRecordsTableAnnotationComposer,
+      $$SeriesRecordsTableCreateCompanionBuilder,
+      $$SeriesRecordsTableUpdateCompanionBuilder,
+      (SeriesRecord, $$SeriesRecordsTableReferences),
+      SeriesRecord,
+      PrefetchHooks Function({bool seriesCardsRefs, bool seriesSetsRefs})
+    >;
+typedef $$SeriesCardsTableCreateCompanionBuilder =
+    SeriesCardsCompanion Function({
+      required String seriesId,
+      required String definitionId,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$SeriesCardsTableUpdateCompanionBuilder =
+    SeriesCardsCompanion Function({
+      Value<String> seriesId,
+      Value<String> definitionId,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$SeriesCardsTableReferences
+    extends BaseReferences<_$AppDatabase, $SeriesCardsTable, SeriesCard> {
+  $$SeriesCardsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SeriesRecordsTable _seriesIdTable(_$AppDatabase db) => db
+      .seriesRecords
+      .createAlias('series_cards__series_id__series_records__id');
+
+  $$SeriesRecordsTableProcessedTableManager get seriesId {
+    final $_column = $_itemColumn<String>('series_id')!;
+
+    final manager = $$SeriesRecordsTableTableManager(
+      $_db,
+      $_db.seriesRecords,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_seriesIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CardDefinitionsTable _definitionIdTable(_$AppDatabase db) => db
+      .cardDefinitions
+      .createAlias('series_cards__definition_id__card_definitions__id');
+
+  $$CardDefinitionsTableProcessedTableManager get definitionId {
+    final $_column = $_itemColumn<String>('definition_id')!;
+
+    final manager = $$CardDefinitionsTableTableManager(
+      $_db,
+      $_db.cardDefinitions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_definitionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SeriesCardsTableFilterComposer
+    extends Composer<_$AppDatabase, $SeriesCardsTable> {
+  $$SeriesCardsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SeriesRecordsTableFilterComposer get seriesId {
+    final $$SeriesRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.seriesId,
+      referencedTable: $db.seriesRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.seriesRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardDefinitionsTableFilterComposer get definitionId {
+    final $$CardDefinitionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableFilterComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeriesCardsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SeriesCardsTable> {
+  $$SeriesCardsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SeriesRecordsTableOrderingComposer get seriesId {
+    final $$SeriesRecordsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.seriesId,
+      referencedTable: $db.seriesRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesRecordsTableOrderingComposer(
+            $db: $db,
+            $table: $db.seriesRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardDefinitionsTableOrderingComposer get definitionId {
+    final $$CardDefinitionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeriesCardsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SeriesCardsTable> {
+  $$SeriesCardsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$SeriesRecordsTableAnnotationComposer get seriesId {
+    final $$SeriesRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.seriesId,
+      referencedTable: $db.seriesRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.seriesRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardDefinitionsTableAnnotationComposer get definitionId {
+    final $$CardDefinitionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeriesCardsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SeriesCardsTable,
+          SeriesCard,
+          $$SeriesCardsTableFilterComposer,
+          $$SeriesCardsTableOrderingComposer,
+          $$SeriesCardsTableAnnotationComposer,
+          $$SeriesCardsTableCreateCompanionBuilder,
+          $$SeriesCardsTableUpdateCompanionBuilder,
+          (SeriesCard, $$SeriesCardsTableReferences),
+          SeriesCard,
+          PrefetchHooks Function({bool seriesId, bool definitionId})
+        > {
+  $$SeriesCardsTableTableManager(_$AppDatabase db, $SeriesCardsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SeriesCardsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SeriesCardsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SeriesCardsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> seriesId = const Value.absent(),
+                Value<String> definitionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SeriesCardsCompanion(
+                seriesId: seriesId,
+                definitionId: definitionId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String seriesId,
+                required String definitionId,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SeriesCardsCompanion.insert(
+                seriesId: seriesId,
+                definitionId: definitionId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SeriesCardsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({seriesId = false, definitionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (seriesId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.seriesId,
+                                referencedTable: $$SeriesCardsTableReferences
+                                    ._seriesIdTable(db),
+                                referencedColumn: $$SeriesCardsTableReferences
+                                    ._seriesIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (definitionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.definitionId,
+                                referencedTable: $$SeriesCardsTableReferences
+                                    ._definitionIdTable(db),
+                                referencedColumn: $$SeriesCardsTableReferences
+                                    ._definitionIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SeriesCardsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SeriesCardsTable,
+      SeriesCard,
+      $$SeriesCardsTableFilterComposer,
+      $$SeriesCardsTableOrderingComposer,
+      $$SeriesCardsTableAnnotationComposer,
+      $$SeriesCardsTableCreateCompanionBuilder,
+      $$SeriesCardsTableUpdateCompanionBuilder,
+      (SeriesCard, $$SeriesCardsTableReferences),
+      SeriesCard,
+      PrefetchHooks Function({bool seriesId, bool definitionId})
+    >;
+typedef $$SeriesSetsTableCreateCompanionBuilder =
+    SeriesSetsCompanion Function({
+      required String seriesId,
+      required String setId,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$SeriesSetsTableUpdateCompanionBuilder =
+    SeriesSetsCompanion Function({
+      Value<String> seriesId,
+      Value<String> setId,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$SeriesSetsTableReferences
+    extends BaseReferences<_$AppDatabase, $SeriesSetsTable, SeriesSet> {
+  $$SeriesSetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SeriesRecordsTable _seriesIdTable(_$AppDatabase db) => db
+      .seriesRecords
+      .createAlias('series_sets__series_id__series_records__id');
+
+  $$SeriesRecordsTableProcessedTableManager get seriesId {
+    final $_column = $_itemColumn<String>('series_id')!;
+
+    final manager = $$SeriesRecordsTableTableManager(
+      $_db,
+      $_db.seriesRecords,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_seriesIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CardSetsTable _setIdTable(_$AppDatabase db) =>
+      db.cardSets.createAlias('series_sets__set_id__card_sets__id');
+
+  $$CardSetsTableProcessedTableManager get setId {
+    final $_column = $_itemColumn<String>('set_id')!;
+
+    final manager = $$CardSetsTableTableManager(
+      $_db,
+      $_db.cardSets,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_setIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SeriesSetsTableFilterComposer
+    extends Composer<_$AppDatabase, $SeriesSetsTable> {
+  $$SeriesSetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SeriesRecordsTableFilterComposer get seriesId {
+    final $$SeriesRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.seriesId,
+      referencedTable: $db.seriesRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.seriesRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardSetsTableFilterComposer get setId {
+    final $$CardSetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.setId,
+      referencedTable: $db.cardSets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardSetsTableFilterComposer(
+            $db: $db,
+            $table: $db.cardSets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeriesSetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SeriesSetsTable> {
+  $$SeriesSetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SeriesRecordsTableOrderingComposer get seriesId {
+    final $$SeriesRecordsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.seriesId,
+      referencedTable: $db.seriesRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesRecordsTableOrderingComposer(
+            $db: $db,
+            $table: $db.seriesRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardSetsTableOrderingComposer get setId {
+    final $$CardSetsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.setId,
+      referencedTable: $db.cardSets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardSetsTableOrderingComposer(
+            $db: $db,
+            $table: $db.cardSets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeriesSetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SeriesSetsTable> {
+  $$SeriesSetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$SeriesRecordsTableAnnotationComposer get seriesId {
+    final $$SeriesRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.seriesId,
+      referencedTable: $db.seriesRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SeriesRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.seriesRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CardSetsTableAnnotationComposer get setId {
+    final $$CardSetsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.setId,
+      referencedTable: $db.cardSets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardSetsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cardSets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SeriesSetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SeriesSetsTable,
+          SeriesSet,
+          $$SeriesSetsTableFilterComposer,
+          $$SeriesSetsTableOrderingComposer,
+          $$SeriesSetsTableAnnotationComposer,
+          $$SeriesSetsTableCreateCompanionBuilder,
+          $$SeriesSetsTableUpdateCompanionBuilder,
+          (SeriesSet, $$SeriesSetsTableReferences),
+          SeriesSet,
+          PrefetchHooks Function({bool seriesId, bool setId})
+        > {
+  $$SeriesSetsTableTableManager(_$AppDatabase db, $SeriesSetsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SeriesSetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SeriesSetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SeriesSetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> seriesId = const Value.absent(),
+                Value<String> setId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SeriesSetsCompanion(
+                seriesId: seriesId,
+                setId: setId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String seriesId,
+                required String setId,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SeriesSetsCompanion.insert(
+                seriesId: seriesId,
+                setId: setId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$SeriesSetsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({seriesId = false, setId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (seriesId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.seriesId,
+                                referencedTable: $$SeriesSetsTableReferences
+                                    ._seriesIdTable(db),
+                                referencedColumn: $$SeriesSetsTableReferences
+                                    ._seriesIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (setId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.setId,
+                                referencedTable: $$SeriesSetsTableReferences
+                                    ._setIdTable(db),
+                                referencedColumn: $$SeriesSetsTableReferences
+                                    ._setIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SeriesSetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SeriesSetsTable,
+      SeriesSet,
+      $$SeriesSetsTableFilterComposer,
+      $$SeriesSetsTableOrderingComposer,
+      $$SeriesSetsTableAnnotationComposer,
+      $$SeriesSetsTableCreateCompanionBuilder,
+      $$SeriesSetsTableUpdateCompanionBuilder,
+      (SeriesSet, $$SeriesSetsTableReferences),
+      SeriesSet,
+      PrefetchHooks Function({bool seriesId, bool setId})
+    >;
+typedef $$OrganizationFieldDefinitionsTableCreateCompanionBuilder =
+    OrganizationFieldDefinitionsCompanion Function({
+      required String id,
+      required String name,
+      required String normalizedName,
+      required CustomFieldType fieldType,
+      Value<int> version,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+typedef $$OrganizationFieldDefinitionsTableUpdateCompanionBuilder =
+    OrganizationFieldDefinitionsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> normalizedName,
+      Value<CustomFieldType> fieldType,
+      Value<int> version,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<int> rowid,
+    });
+
+final class $$OrganizationFieldDefinitionsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $OrganizationFieldDefinitionsTable,
+          OrganizationFieldDefinition
+        > {
+  $$OrganizationFieldDefinitionsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<
+    $OrganizationFieldValuesTable,
+    List<OrganizationFieldValue>
+  >
+  _organizationFieldValuesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.organizationFieldValues,
+        aliasName:
+            'custom_field_definitions__id__custom_field_values__field_id',
+      );
+
+  $$OrganizationFieldValuesTableProcessedTableManager
+  get organizationFieldValuesRefs {
+    final manager = $$OrganizationFieldValuesTableTableManager(
+      $_db,
+      $_db.organizationFieldValues,
+    ).filter((f) => f.fieldId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _organizationFieldValuesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$OrganizationFieldDefinitionsTableFilterComposer
+    extends Composer<_$AppDatabase, $OrganizationFieldDefinitionsTable> {
+  $$OrganizationFieldDefinitionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<CustomFieldType, CustomFieldType, String>
+  get fieldType => $composableBuilder(
+    column: $table.fieldType,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> organizationFieldValuesRefs(
+    Expression<bool> Function($$OrganizationFieldValuesTableFilterComposer f) f,
+  ) {
+    final $$OrganizationFieldValuesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.organizationFieldValues,
+          getReferencedColumn: (t) => t.fieldId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$OrganizationFieldValuesTableFilterComposer(
+                $db: $db,
+                $table: $db.organizationFieldValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$OrganizationFieldDefinitionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $OrganizationFieldDefinitionsTable> {
+  $$OrganizationFieldDefinitionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fieldType => $composableBuilder(
+    column: $table.fieldType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OrganizationFieldDefinitionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OrganizationFieldDefinitionsTable> {
+  $$OrganizationFieldDefinitionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get normalizedName => $composableBuilder(
+    column: $table.normalizedName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<CustomFieldType, String> get fieldType =>
+      $composableBuilder(column: $table.fieldType, builder: (column) => column);
+
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  Expression<T> organizationFieldValuesRefs<T extends Object>(
+    Expression<T> Function($$OrganizationFieldValuesTableAnnotationComposer a)
+    f,
+  ) {
+    final $$OrganizationFieldValuesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.organizationFieldValues,
+          getReferencedColumn: (t) => t.fieldId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$OrganizationFieldValuesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.organizationFieldValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$OrganizationFieldDefinitionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OrganizationFieldDefinitionsTable,
+          OrganizationFieldDefinition,
+          $$OrganizationFieldDefinitionsTableFilterComposer,
+          $$OrganizationFieldDefinitionsTableOrderingComposer,
+          $$OrganizationFieldDefinitionsTableAnnotationComposer,
+          $$OrganizationFieldDefinitionsTableCreateCompanionBuilder,
+          $$OrganizationFieldDefinitionsTableUpdateCompanionBuilder,
+          (
+            OrganizationFieldDefinition,
+            $$OrganizationFieldDefinitionsTableReferences,
+          ),
+          OrganizationFieldDefinition,
+          PrefetchHooks Function({bool organizationFieldValuesRefs})
+        > {
+  $$OrganizationFieldDefinitionsTableTableManager(
+    _$AppDatabase db,
+    $OrganizationFieldDefinitionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OrganizationFieldDefinitionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$OrganizationFieldDefinitionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$OrganizationFieldDefinitionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> normalizedName = const Value.absent(),
+                Value<CustomFieldType> fieldType = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OrganizationFieldDefinitionsCompanion(
+                id: id,
+                name: name,
+                normalizedName: normalizedName,
+                fieldType: fieldType,
+                version: version,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String normalizedName,
+                required CustomFieldType fieldType,
+                Value<int> version = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OrganizationFieldDefinitionsCompanion.insert(
+                id: id,
+                name: name,
+                normalizedName: normalizedName,
+                fieldType: fieldType,
+                version: version,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$OrganizationFieldDefinitionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({organizationFieldValuesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (organizationFieldValuesRefs) db.organizationFieldValues,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (organizationFieldValuesRefs)
+                    await $_getPrefetchedData<
+                      OrganizationFieldDefinition,
+                      $OrganizationFieldDefinitionsTable,
+                      OrganizationFieldValue
+                    >(
+                      currentTable: table,
+                      referencedTable:
+                          $$OrganizationFieldDefinitionsTableReferences
+                              ._organizationFieldValuesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$OrganizationFieldDefinitionsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).organizationFieldValuesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.fieldId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$OrganizationFieldDefinitionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OrganizationFieldDefinitionsTable,
+      OrganizationFieldDefinition,
+      $$OrganizationFieldDefinitionsTableFilterComposer,
+      $$OrganizationFieldDefinitionsTableOrderingComposer,
+      $$OrganizationFieldDefinitionsTableAnnotationComposer,
+      $$OrganizationFieldDefinitionsTableCreateCompanionBuilder,
+      $$OrganizationFieldDefinitionsTableUpdateCompanionBuilder,
+      (
+        OrganizationFieldDefinition,
+        $$OrganizationFieldDefinitionsTableReferences,
+      ),
+      OrganizationFieldDefinition,
+      PrefetchHooks Function({bool organizationFieldValuesRefs})
+    >;
+typedef $$OrganizationFieldValuesTableCreateCompanionBuilder =
+    OrganizationFieldValuesCompanion Function({
+      required String fieldId,
+      required String definitionId,
+      Value<String?> textValue,
+      Value<double?> numberValue,
+      Value<DateTime?> dateValue,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$OrganizationFieldValuesTableUpdateCompanionBuilder =
+    OrganizationFieldValuesCompanion Function({
+      Value<String> fieldId,
+      Value<String> definitionId,
+      Value<String?> textValue,
+      Value<double?> numberValue,
+      Value<DateTime?> dateValue,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$OrganizationFieldValuesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $OrganizationFieldValuesTable,
+          OrganizationFieldValue
+        > {
+  $$OrganizationFieldValuesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $OrganizationFieldDefinitionsTable _fieldIdTable(_$AppDatabase db) =>
+      db.organizationFieldDefinitions.createAlias(
+        'custom_field_values__field_id__custom_field_definitions__id',
+      );
+
+  $$OrganizationFieldDefinitionsTableProcessedTableManager get fieldId {
+    final $_column = $_itemColumn<String>('field_id')!;
+
+    final manager = $$OrganizationFieldDefinitionsTableTableManager(
+      $_db,
+      $_db.organizationFieldDefinitions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fieldIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CardDefinitionsTable _definitionIdTable(_$AppDatabase db) => db
+      .cardDefinitions
+      .createAlias('custom_field_values__definition_id__card_definitions__id');
+
+  $$CardDefinitionsTableProcessedTableManager get definitionId {
+    final $_column = $_itemColumn<String>('definition_id')!;
+
+    final manager = $$CardDefinitionsTableTableManager(
+      $_db,
+      $_db.cardDefinitions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_definitionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$OrganizationFieldValuesTableFilterComposer
+    extends Composer<_$AppDatabase, $OrganizationFieldValuesTable> {
+  $$OrganizationFieldValuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get textValue => $composableBuilder(
+    column: $table.textValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get numberValue => $composableBuilder(
+    column: $table.numberValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dateValue => $composableBuilder(
+    column: $table.dateValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$OrganizationFieldDefinitionsTableFilterComposer get fieldId {
+    final $$OrganizationFieldDefinitionsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.fieldId,
+          referencedTable: $db.organizationFieldDefinitions,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$OrganizationFieldDefinitionsTableFilterComposer(
+                $db: $db,
+                $table: $db.organizationFieldDefinitions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$CardDefinitionsTableFilterComposer get definitionId {
+    final $$CardDefinitionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableFilterComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$OrganizationFieldValuesTableOrderingComposer
+    extends Composer<_$AppDatabase, $OrganizationFieldValuesTable> {
+  $$OrganizationFieldValuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get textValue => $composableBuilder(
+    column: $table.textValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get numberValue => $composableBuilder(
+    column: $table.numberValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dateValue => $composableBuilder(
+    column: $table.dateValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$OrganizationFieldDefinitionsTableOrderingComposer get fieldId {
+    final $$OrganizationFieldDefinitionsTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.fieldId,
+          referencedTable: $db.organizationFieldDefinitions,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$OrganizationFieldDefinitionsTableOrderingComposer(
+                $db: $db,
+                $table: $db.organizationFieldDefinitions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$CardDefinitionsTableOrderingComposer get definitionId {
+    final $$CardDefinitionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$OrganizationFieldValuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OrganizationFieldValuesTable> {
+  $$OrganizationFieldValuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get textValue =>
+      $composableBuilder(column: $table.textValue, builder: (column) => column);
+
+  GeneratedColumn<double> get numberValue => $composableBuilder(
+    column: $table.numberValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get dateValue =>
+      $composableBuilder(column: $table.dateValue, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$OrganizationFieldDefinitionsTableAnnotationComposer get fieldId {
+    final $$OrganizationFieldDefinitionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.fieldId,
+          referencedTable: $db.organizationFieldDefinitions,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$OrganizationFieldDefinitionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.organizationFieldDefinitions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$CardDefinitionsTableAnnotationComposer get definitionId {
+    final $$CardDefinitionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.definitionId,
+      referencedTable: $db.cardDefinitions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CardDefinitionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cardDefinitions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$OrganizationFieldValuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OrganizationFieldValuesTable,
+          OrganizationFieldValue,
+          $$OrganizationFieldValuesTableFilterComposer,
+          $$OrganizationFieldValuesTableOrderingComposer,
+          $$OrganizationFieldValuesTableAnnotationComposer,
+          $$OrganizationFieldValuesTableCreateCompanionBuilder,
+          $$OrganizationFieldValuesTableUpdateCompanionBuilder,
+          (OrganizationFieldValue, $$OrganizationFieldValuesTableReferences),
+          OrganizationFieldValue,
+          PrefetchHooks Function({bool fieldId, bool definitionId})
+        > {
+  $$OrganizationFieldValuesTableTableManager(
+    _$AppDatabase db,
+    $OrganizationFieldValuesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OrganizationFieldValuesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$OrganizationFieldValuesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$OrganizationFieldValuesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> fieldId = const Value.absent(),
+                Value<String> definitionId = const Value.absent(),
+                Value<String?> textValue = const Value.absent(),
+                Value<double?> numberValue = const Value.absent(),
+                Value<DateTime?> dateValue = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OrganizationFieldValuesCompanion(
+                fieldId: fieldId,
+                definitionId: definitionId,
+                textValue: textValue,
+                numberValue: numberValue,
+                dateValue: dateValue,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String fieldId,
+                required String definitionId,
+                Value<String?> textValue = const Value.absent(),
+                Value<double?> numberValue = const Value.absent(),
+                Value<DateTime?> dateValue = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => OrganizationFieldValuesCompanion.insert(
+                fieldId: fieldId,
+                definitionId: definitionId,
+                textValue: textValue,
+                numberValue: numberValue,
+                dateValue: dateValue,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$OrganizationFieldValuesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({fieldId = false, definitionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (fieldId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.fieldId,
+                                referencedTable:
+                                    $$OrganizationFieldValuesTableReferences
+                                        ._fieldIdTable(db),
+                                referencedColumn:
+                                    $$OrganizationFieldValuesTableReferences
+                                        ._fieldIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (definitionId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.definitionId,
+                                referencedTable:
+                                    $$OrganizationFieldValuesTableReferences
+                                        ._definitionIdTable(db),
+                                referencedColumn:
+                                    $$OrganizationFieldValuesTableReferences
+                                        ._definitionIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$OrganizationFieldValuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OrganizationFieldValuesTable,
+      OrganizationFieldValue,
+      $$OrganizationFieldValuesTableFilterComposer,
+      $$OrganizationFieldValuesTableOrderingComposer,
+      $$OrganizationFieldValuesTableAnnotationComposer,
+      $$OrganizationFieldValuesTableCreateCompanionBuilder,
+      $$OrganizationFieldValuesTableUpdateCompanionBuilder,
+      (OrganizationFieldValue, $$OrganizationFieldValuesTableReferences),
+      OrganizationFieldValue,
+      PrefetchHooks Function({bool fieldId, bool definitionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5672,4 +11843,24 @@ class $AppDatabaseManager {
       $$CardSetsTableTableManager(_db, _db.cardSets);
   $$CardSetMembersTableTableManager get cardSetMembers =>
       $$CardSetMembersTableTableManager(_db, _db.cardSetMembers);
+  $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
+  $$CardTagsTableTableManager get cardTags =>
+      $$CardTagsTableTableManager(_db, _db.cardTags);
+  $$SeriesRecordsTableTableManager get seriesRecords =>
+      $$SeriesRecordsTableTableManager(_db, _db.seriesRecords);
+  $$SeriesCardsTableTableManager get seriesCards =>
+      $$SeriesCardsTableTableManager(_db, _db.seriesCards);
+  $$SeriesSetsTableTableManager get seriesSets =>
+      $$SeriesSetsTableTableManager(_db, _db.seriesSets);
+  $$OrganizationFieldDefinitionsTableTableManager
+  get organizationFieldDefinitions =>
+      $$OrganizationFieldDefinitionsTableTableManager(
+        _db,
+        _db.organizationFieldDefinitions,
+      );
+  $$OrganizationFieldValuesTableTableManager get organizationFieldValues =>
+      $$OrganizationFieldValuesTableTableManager(
+        _db,
+        _db.organizationFieldValues,
+      );
 }

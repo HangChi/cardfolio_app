@@ -12,9 +12,9 @@ CardDefinition
 │   └── CardImage
 └── CardSetMember ── CardSet
 
-CardDefinition / CardSet ── SeriesMembership ── Series
-CardDefinition / CardItem ── CardTag ── Tag
-CardDefinition / CardItem ── CustomFieldValue
+CardDefinition / CardSet ── SeriesCard / SeriesSet ── Series
+CardDefinition ── CardTag ── Tag
+CardDefinition ── CustomFieldValue ── CustomFieldDefinition
 
 Purchase
 └── PurchaseItem ── CardItem / CardSet
@@ -72,7 +72,7 @@ SyncRecord ── any syncable entity
 
 ### Series
 
-宽泛归类，可包含多个卡片或套卡，不承担完成度。
+宽泛归类，可包含多个卡片款式或套卡，不承担完成度。同一款式或套卡可属于多个系列；保存系列时完整替换两类成员关系。
 
 ### Tag
 
@@ -80,7 +80,7 @@ SyncRecord ── any syncable entity
 
 ### CustomFieldDefinition / CustomFieldValue
 
-字段定义和值分离。值类型必须与定义类型一致；删除定义前展示影响并按策略处理既有值。
+字段定义和值分离，当前作用域为 `CardDefinition`。值类型必须与定义类型一致；删除定义前展示影响，定义软删除但既有值保留。
 
 ### Purchase / PurchaseItem
 
