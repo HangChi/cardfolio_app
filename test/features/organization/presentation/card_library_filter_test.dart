@@ -103,4 +103,19 @@ void main() {
     expect(query.sortDirection, SortDirection.ascending);
     expect(query.isFiltering, isFalse);
   });
+
+  testWidgets('sort menu exposes grouped original-currency acquisition cost', (
+    tester,
+  ) async {
+    await pumpLibrary(tester);
+
+    await tester.tap(find.byKey(const Key('library-sort-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('入手成本：按币种高到低').last);
+    await tester.pumpAndSettle();
+
+    final query = container.read(cardLibraryQueryProvider);
+    expect(query.sortField, CardSortField.acquisitionCost);
+    expect(query.sortDirection, SortDirection.descending);
+  });
 }

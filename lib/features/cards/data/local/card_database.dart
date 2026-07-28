@@ -3,6 +3,7 @@ import 'package:meta/meta.dart';
 
 import '../../domain/card_models.dart';
 import '../../../organization/domain/organization_models.dart';
+import '../../../purchases/domain/purchase_models.dart';
 import 'card_database.steps.dart';
 
 part 'card_database.g.dart';
@@ -339,6 +340,119 @@ class OrganizationFieldValues extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{fieldId, definitionId};
 }
 
+@TableIndex(name: 'idx_purchases_purchased_at', columns: {#purchasedAt})
+@TableIndex(name: 'idx_purchases_currency', columns: {#currency})
+@TableIndex(name: 'idx_purchases_adjustment_of_id', columns: {#adjustmentOfId})
+class Purchases extends Table {
+  TextColumn get id => text()();
+
+  DateTimeColumn get purchasedAt => dateTime()();
+
+  IntColumn get amountMinor => integer()();
+
+  TextColumn get currency => text().withLength(min: 3, max: 3)();
+
+  IntColumn get shippingMinor => integer().withDefault(const Constant(0))();
+
+  IntColumn get feesMinor => integer().withDefault(const Constant(0))();
+
+  TextColumn get channel => text().nullable()();
+
+  TextColumn get seller => text().nullable()();
+
+  TextColumn get notes => text().nullable()();
+
+  TextColumn get adjustmentOfId =>
+      text().nullable().references(Purchases, #id)();
+
+  IntColumn get version => integer()
+      .withDefault(const Constant(1))
+      // ignore: recursive_getters, Drift check() references the column itself.
+      .check(version.isBiggerThanValue(0))();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK ('
+        '(adjustment_of_id IS NULL AND amount_minor >= 0 '
+        'AND shipping_minor >= 0 AND fees_minor >= 0) '
+        'OR '
+        '(adjustment_of_id IS NOT NULL AND amount_minor < 0 '
+        'AND shipping_minor = 0 AND fees_minor = 0)'
+        ')',
+  ];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+@TableIndex(
+  name: 'idx_purchase_items_target',
+  columns: {#targetType, #targetId},
+)
+class PurchaseItems extends Table {
+  TextColumn get purchaseId => text().references(Purchases, #id)();
+
+  TextColumn get targetType => textEnum<PurchaseTargetType>()();
+
+  TextColumn get targetId => text()();
+
+  TextColumn get targetName => text()();
+
+  IntColumn get allocatedMinor => integer().nullable()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (allocated_minor IS NULL OR allocated_minor >= 0)',
+  ];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{
+    purchaseId,
+    targetType,
+    targetId,
+  };
+}
+
+@TableIndex(
+  name: 'idx_exchange_rates_lookup',
+  columns: {#baseCurrency, #quoteCurrency, #rateDate},
+)
+class ExchangeRates extends Table {
+  TextColumn get baseCurrency => text().withLength(min: 3, max: 3)();
+
+  TextColumn get quoteCurrency => text().withLength(min: 3, max: 3)();
+
+  DateTimeColumn get rateDate => dateTime()();
+
+  IntColumn get numerator =>
+      integer()
+      // ignore: recursive_getters, Drift check() references the column itself.
+      .check(numerator.isBiggerThanValue(0))();
+
+  IntColumn get denominator =>
+      integer()
+      // ignore: recursive_getters, Drift check() references the column itself.
+      .check(denominator.isBiggerThanValue(0))();
+
+  TextColumn get source => text()();
+
+  DateTimeColumn get capturedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{
+    baseCurrency,
+    quoteCurrency,
+    rateDate,
+    source,
+  };
+}
+
 /// 一次建卡写入涉及的全部行。三张表在同一事务内插入。
 class CardRowGraph {
   const CardRowGraph({
@@ -379,13 +493,16 @@ class RemovedImageRecord {
     SeriesSets,
     OrganizationFieldDefinitions,
     OrganizationFieldValues,
+    Purchases,
+    PurchaseItems,
+    ExchangeRates,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -394,6 +511,7 @@ class AppDatabase extends _$AppDatabase {
       await _createImageIndexes();
       await _createCardSetIndexes();
       await _createOrganizationIndexes();
+      await _createPurchaseIndexes();
     },
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
@@ -429,6 +547,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.customFieldDefinitions);
         await m.createTable(schema.customFieldValues);
         await _createOrganizationIndexes();
+      },
+      from4To5: (m, schema) async {
+        await m.createTable(schema.purchases);
+        await m.createTable(schema.purchaseItems);
+        await m.createTable(schema.exchangeRates);
+        await _createPurchaseIndexes();
       },
     ),
     beforeOpen: (details) async {
@@ -549,6 +673,29 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_series_name '
       'ON series_records(name);',
+    );
+  }
+
+  Future<void> _createPurchaseIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_purchases_purchased_at '
+      'ON purchases(purchased_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_purchases_currency '
+      'ON purchases(currency);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_purchases_adjustment_of_id '
+      'ON purchases(adjustment_of_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_purchase_items_target '
+      'ON purchase_items(target_type, target_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_exchange_rates_lookup '
+      'ON exchange_rates(base_currency, quote_currency, rate_date);',
     );
   }
 

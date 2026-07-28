@@ -7,7 +7,7 @@ enum TagMatchMode { any, all }
 
 enum SetMembershipFilter { any, inSet, notInSet }
 
-enum CardSortField { createdAt, issuedAt, acquiredAt, name }
+enum CardSortField { createdAt, issuedAt, acquiredAt, name, acquisitionCost }
 
 enum SortDirection { ascending, descending }
 
@@ -613,6 +613,8 @@ final class OrganizedCardSummary {
     this.issuedAt,
     this.acquiredAt,
     this.cardType,
+    this.acquisitionCostCurrency,
+    this.acquisitionCostMinor,
   });
 
   final String cardItemId;
@@ -627,6 +629,8 @@ final class OrganizedCardSummary {
   final PartialDate? issuedAt;
   final DateTime? acquiredAt;
   final String? cardType;
+  final String? acquisitionCostCurrency;
+  final int? acquisitionCostMinor;
 }
 
 @immutable

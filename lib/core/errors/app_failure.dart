@@ -47,6 +47,27 @@ final class OrganizationValidationFailure extends AppFailure {
   final OrganizationField field;
 }
 
+/// 购买账本、金额、分摊和调整可定位的输入范围。
+enum PurchaseField {
+  amount,
+  currency,
+  date,
+  channel,
+  seller,
+  notes,
+  target,
+  allocation,
+  adjustment,
+  exchangeRate,
+}
+
+/// 购买输入、关系或金额口径不满足业务约束。
+final class PurchaseValidationFailure extends AppFailure {
+  const PurchaseValidationFailure(this.field, super.userMessage, [super.cause]);
+
+  final PurchaseField field;
+}
+
 /// 相册选择器不可用、权限被拒绝或返回了无法使用的结果。
 final class GalleryAccessFailure extends AppFailure {
   const GalleryAccessFailure([

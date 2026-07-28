@@ -5,6 +5,8 @@ import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/organization/data/local/card_search_database.dart';
 import 'package:cardfolio_app/features/organization/data/local/organization_database.dart';
 import 'package:cardfolio_app/features/organization/domain/organization_models.dart';
+import 'package:cardfolio_app/features/purchases/data/local/purchase_database.dart';
+import 'package:cardfolio_app/features/purchases/domain/purchase_models.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -268,6 +270,80 @@ void main() {
           )
           .first;
       expect(acquired.last.cardItemId, 'item-c');
+    },
+  );
+
+  test(
+    'sorts attributable acquisition cost within original currency groups',
+    () async {
+      for (final (suffix, name) in <(String, String)>[
+        ('cost-a', '高成本人民币卡'),
+        ('cost-b', '低成本人民币卡'),
+        ('cost-c', '日元卡'),
+        ('cost-d', '无购买卡'),
+      ]) {
+        await insertCard(suffix: suffix, name: name);
+      }
+      for (final request in <CreatePurchaseRequest>[
+        CreatePurchaseRequest(
+          id: 'purchase-a',
+          purchasedAt: now,
+          amountMinor: 50000,
+          currency: 'CNY',
+          targets: const <PurchaseTargetInput>[
+            PurchaseTargetInput(
+              targetType: PurchaseTargetType.card,
+              targetId: 'item-cost-a',
+            ),
+          ],
+        ),
+        CreatePurchaseRequest(
+          id: 'purchase-b',
+          purchasedAt: now,
+          amountMinor: 30000,
+          currency: 'CNY',
+          targets: const <PurchaseTargetInput>[
+            PurchaseTargetInput(
+              targetType: PurchaseTargetType.card,
+              targetId: 'item-cost-b',
+            ),
+          ],
+        ),
+        CreatePurchaseRequest(
+          id: 'purchase-c',
+          purchasedAt: now,
+          amountMinor: 1000,
+          currency: 'JPY',
+          targets: const <PurchaseTargetInput>[
+            PurchaseTargetInput(
+              targetType: PurchaseTargetType.card,
+              targetId: 'item-cost-c',
+            ),
+          ],
+        ),
+      ]) {
+        await db.createPurchase(request: request.normalized(), now: now);
+      }
+
+      final cards = await db
+          .watchOrganizedCards(
+            const CardLibraryQuery(
+              sortField: CardSortField.acquisitionCost,
+              sortDirection: SortDirection.descending,
+            ).normalized(),
+          )
+          .first;
+
+      expect(cards.map((card) => card.cardItemId), <String>[
+        'item-cost-a',
+        'item-cost-b',
+        'item-cost-c',
+        'item-cost-d',
+      ]);
+      expect(cards.first.acquisitionCostCurrency, 'CNY');
+      expect(cards.first.acquisitionCostMinor, 50000);
+      expect(cards[2].acquisitionCostCurrency, 'JPY');
+      expect(cards.last.acquisitionCostCurrency, isNull);
     },
   );
 

@@ -10,6 +10,7 @@ import '../../../card_sets/presentation/library/card_set_collection_view.dart';
 import '../../../organization/data/organization_providers.dart';
 import '../../../organization/domain/organization_models.dart';
 import '../../../organization/presentation/series/series_collection_view.dart';
+import '../../../purchases/domain/purchase_models.dart';
 import '../create/create_card_controller.dart';
 import '../widgets/card_image.dart';
 
@@ -659,6 +660,10 @@ class _CardTile extends StatelessWidget {
       ?card.city,
       ?card.issuedAt?.toIsoString(),
       '${card.quantity} 张',
+      if (card.acquisitionCostCurrency != null &&
+          card.acquisitionCostMinor != null)
+        '成本 ${card.acquisitionCostCurrency} '
+            '${CurrencyAmount(minorUnits: card.acquisitionCostMinor!, currency: card.acquisitionCostCurrency!).formatted}',
     ].join(' · ');
 
     return Card(
@@ -751,7 +756,17 @@ enum _SortOption {
     SortDirection.descending,
   ),
   nameAscending('名称 A–Z', CardSortField.name, SortDirection.ascending),
-  nameDescending('名称 Z–A', CardSortField.name, SortDirection.descending);
+  nameDescending('名称 Z–A', CardSortField.name, SortDirection.descending),
+  costDescending(
+    '入手成本：按币种高到低',
+    CardSortField.acquisitionCost,
+    SortDirection.descending,
+  ),
+  costAscending(
+    '入手成本：按币种低到高',
+    CardSortField.acquisitionCost,
+    SortDirection.ascending,
+  );
 
   const _SortOption(this.label, this.field, this.direction);
 

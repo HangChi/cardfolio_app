@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
 import '../../../cards/data/card_providers.dart';
@@ -26,6 +28,16 @@ class OrganizationSettingsScreen extends ConsumerWidget {
           tokens.spaceXl,
         ),
         children: <Widget>[
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('购买记录'),
+              subtitle: const Text('记录购买、分摊与退款，按原币种查看累计花费。'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(purchasesPath),
+            ),
+          ),
+          SizedBox(height: tokens.spaceXl),
           _SectionHeader(
             title: '标签',
             description: '轻量标记卡片，可用于搜索和组合筛选。',

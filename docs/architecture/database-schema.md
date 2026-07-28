@@ -1,6 +1,6 @@
 # 数据库模型与迁移规范
 
-状态：schema v4 已实现
+状态：schema v5 已实现
 日期：2026-07-28
 存储实现：Drift + SQLite
 
@@ -46,9 +46,9 @@
 
 | 表 | 关键列 | 约束/索引 |
 |---|---|---|
-| purchases | purchased_at, amount_minor, currency, shipping_minor, fees_minor, channel, seller, notes, adjustment_of_id | 币种非空；普通购买 amount >= 0；调整允许负值 |
-| purchase_items | purchase_id, target_type, target_id, allocated_minor | FK purchase；组合索引 |
-| exchange_rates | base_currency, quote_currency, rate_date, numerator, denominator, source | 精确比率；组合唯一 |
+| purchases | purchased_at, amount_minor, currency, shipping_minor, fees_minor, channel, seller, notes, adjustment_of_id | 三位币种；普通购买金额/费用非负；调整金额为负且费用为 0；调整引用原购买 |
+| purchase_items | purchase_id, target_type, target_id, target_name, allocated_minor | FK purchase；purchase+target 组合主键；名称快照在目标删除后保留审计 |
+| exchange_rates | base_currency, quote_currency, rate_date, numerator, denominator, source, captured_at | 正整数精确比率；币种对+日期+来源组合唯一 |
 
 ### lifecycle and sync
 
@@ -93,6 +93,8 @@ MVP 必须覆盖：
 5. 迁移失败保留原数据库，并展示可重试错误。
 6. 破坏性变更采用新列/新表、回填、验证、后续版本清理的分阶段方式。
 7. 发布构建禁止使用自动清库作为迁移兜底。
+
+schema v5 新增购买、购买项目和汇率表；v4→v5 只创建新表和索引，不改写既有卡片、套卡或整理数据。
 
 ## 6. 事务边界
 

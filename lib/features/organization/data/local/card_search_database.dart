@@ -119,6 +119,8 @@ SELECT
   cd.issued_at AS issued_at,
   ci.acquired_at AS acquired_at,
   cd.card_type AS card_type,
+  $_acquisitionCurrencySql AS acquisition_cost_currency,
+  $_acquisitionMinorSql AS acquisition_cost_minor,
   (
     SELECT COALESCE(cover.derived_relative_path, cover.relative_path)
     FROM card_images cover
@@ -166,6 +168,8 @@ ORDER BY ${_orderSql(normalized)}
         cardTags,
         cardSets,
         cardSetMembers,
+        purchases,
+        purchaseItems,
       },
     ).watch().map(
       (rows) => rows.map(_mapOrganizedCard).toList(growable: false),
@@ -195,6 +199,9 @@ String _orderSql(CardLibraryQuery query) {
       'CASE WHEN ci.acquired_at IS NULL THEN 1 ELSE 0 END ASC, '
           'ci.acquired_at $direction',
     CardSortField.name => 'cd.name COLLATE NOCASE $direction',
+    CardSortField.acquisitionCost =>
+      'CASE WHEN acquisition_cost_currency IS NULL THEN 1 ELSE 0 END ASC, '
+          'acquisition_cost_currency ASC, acquisition_cost_minor $direction',
   };
   return '$primary, ci.id ASC';
 }
@@ -222,8 +229,53 @@ OrganizedCardSummary _mapOrganizedCard(QueryRow row) {
     issuedAt: PartialDate.tryParse(row.readNullable<String>('issued_at')),
     acquiredAt: _nullableTimestamp(row.readNullable<int>('acquired_at')),
     cardType: row.readNullable<String>('card_type'),
+    acquisitionCostCurrency: row.readNullable<String>(
+      'acquisition_cost_currency',
+    ),
+    acquisitionCostMinor: row.readNullable<int>('acquisition_cost_minor'),
   );
 }
+
+const String _acquisitionCurrencySql =
+    '('
+    'SELECT MIN(currency_p.currency) '
+    'FROM purchase_items currency_pi '
+    'JOIN purchases currency_p '
+    'ON currency_p.id = currency_pi.purchase_id '
+    'OR currency_p.adjustment_of_id = currency_pi.purchase_id '
+    "WHERE currency_pi.target_type = 'card' "
+    'AND currency_pi.target_id = ci.id'
+    ')';
+
+const String _acquisitionMinorSql =
+    '('
+    'SELECT SUM('
+    'CASE '
+    'WHEN cost_p.adjustment_of_id IS NULL THEN '
+    'COALESCE('
+    'cost_pi.allocated_minor, '
+    'CASE WHEN ('
+    'SELECT COUNT(*) FROM purchase_items count_pi '
+    'WHERE count_pi.purchase_id = cost_p.id'
+    ') = 1 '
+    'THEN cost_p.amount_minor + cost_p.shipping_minor + cost_p.fees_minor '
+    'ELSE 0 END'
+    ') '
+    'ELSE '
+    'CASE WHEN ('
+    'SELECT COUNT(*) FROM purchase_items count_pi '
+    'WHERE count_pi.purchase_id = cost_p.adjustment_of_id'
+    ') = 1 THEN cost_p.amount_minor ELSE 0 END '
+    'END'
+    ') '
+    'FROM purchase_items cost_pi '
+    'JOIN purchases cost_p '
+    'ON cost_p.id = cost_pi.purchase_id '
+    'OR cost_p.adjustment_of_id = cost_pi.purchase_id '
+    "WHERE cost_pi.target_type = 'card' "
+    'AND cost_pi.target_id = ci.id '
+    'AND cost_p.currency = $_acquisitionCurrencySql'
+    ')';
 
 DateTime _timestamp(int seconds) =>
     DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);

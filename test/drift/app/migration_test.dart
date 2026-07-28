@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'generated/schema.dart';
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
+import 'generated/schema_v4.dart' as v4;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -153,6 +154,51 @@ void main() {
     expect(await db.select(db.tags).get(), isEmpty);
     expect(await db.select(db.seriesRecords).get(), isEmpty);
     expect(await db.select(db.organizationFieldDefinitions).get(), isEmpty);
+    await db.close();
+  });
+
+  test('v4 organization data survives the v5 purchase migration', () async {
+    final schema = await verifier.schemaAt(4);
+    final oldDb = v4.DatabaseAtV4(schema.newConnection());
+    final createdAt =
+        DateTime.utc(2026, 7, 28).millisecondsSinceEpoch ~/
+        Duration.millisecondsPerSecond;
+    await oldDb
+        .into(oldDb.cardDefinitions)
+        .insert(
+          v4.CardDefinitionsCompanion.insert(
+            id: 'definition-v4',
+            name: '迁移前卡片',
+            cardType: const Value('纪念卡'),
+            needsCompletion: const Value(1),
+            createdAt: createdAt,
+            updatedAt: createdAt,
+          ),
+        );
+    await oldDb
+        .into(oldDb.cardItems)
+        .insert(
+          v4.CardItemsCompanion.insert(
+            id: 'item-v4',
+            definitionId: 'definition-v4',
+            acquiredAt: Value(createdAt),
+            createdAt: createdAt,
+            updatedAt: createdAt,
+          ),
+        );
+    await oldDb.close();
+
+    final db = AppDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 5);
+
+    final card = await db.watchCardDetail('item-v4').first;
+    expect(card?.name, '迁移前卡片');
+    final definition = await db.select(db.cardDefinitions).getSingle();
+    expect(definition.cardType, '纪念卡');
+    expect(definition.needsCompletion, isTrue);
+    expect(await db.select(db.purchases).get(), isEmpty);
+    expect(await db.select(db.purchaseItems).get(), isEmpty);
+    expect(await db.select(db.exchangeRates).get(), isEmpty);
     await db.close();
   });
 }

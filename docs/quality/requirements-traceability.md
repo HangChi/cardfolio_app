@@ -14,7 +14,7 @@
 | FR-SER-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T06：卡片/套卡多对多关联与系列页面自动化通过；设备验收待执行 |
 | FR-TAG-001..002 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T03..T05、T10：标签管理、合并、影响预览与组合筛选自动化通过 |
 | FR-CF-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T07..T08：三类字段、原子保存、删除影响和值保留自动化通过 |
-| FR-PUR-001..004 | 005 | 金额、分摊、退款、多币种 |
+| FR-PUR-001..004 | 005 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) T01..T11：精确金额、分摊、退款、多币种、删除审计与成本排序自动化通过；设备验收待执行 |
 | FR-SCH-001..004 | 004、006 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T09..T14：搜索、组合筛选、稳定排序与 10,000 款式性能通过 |
 | FR-HOME-001..002 | 006 | 首页口径、空状态 |
 | FR-STAT-001..002 | 006 | 聚合与下钻一致 |
@@ -28,7 +28,7 @@
 |---|---:|---|
 | BR-CARD-001..004 | 001、003、004 | 款式/藏品身份、数量、字段语义 |
 | BR-SET-001..005 | 003、006、007 | 完成度、重复、删除/恢复 |
-| BR-COST-001..006 | 005、006、008 | 金额口径、分摊、币种、恢复 |
+| BR-COST-001..006 | 005、006、008 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md)：购买事实、费用口径、分摊、币种和调整自动化通过 |
 | BR-IMG-001..003 | 001、002、008、009 | 原图、派生图、引用与删除 |
 | BR-DEL-001..002 | 007 | 软删除、恢复、永久删除 |
 | BR-SYNC-001..004 | 010 | 本地优先、版本、幂等、冲突 |
@@ -54,7 +54,7 @@
 | AC-P0-001..003 | 001 | [Feature 001 测试矩阵](../features/001-local-card-creation/test-matrix.md) |
 | AC-P0-004 | 002 | [Feature 002 测试矩阵](../features/002-multi-image-management/test-matrix.md)；设备验收待执行 |
 | AC-P0-005 | 003 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md) T07：4 个必需、3 个拥有、1 个重复仍为 3/4 |
-| AC-P0-006 | 005 | 总价 500 与分摊不重复夹具 |
+| AC-P0-006 | 005 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) T05：总价 500、分摊合计 500，累计只增加 500 |
 | AC-P0-007 | 007 | 删除/恢复前后数量与进度 |
 | AC-P0-008 | 008 | 全实体导出导入一致性报告 |
 | AC-V1-001..003 | 010 | 离线 20 条、双设备冲突、退出保留本地 |

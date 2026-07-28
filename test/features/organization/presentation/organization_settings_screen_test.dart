@@ -88,6 +88,17 @@ void main() {
     await _disposeApp(tester);
   });
 
+  testWidgets('exposes the purchase ledger entry from profile management', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    expect(find.text('购买记录'), findsOneWidget);
+    expect(find.textContaining('分摊与退款'), findsOneWidget);
+    await _disposeApp(tester);
+  });
+
   testWidgets('previews tag deletion impact and keeps the card', (
     tester,
   ) async {
