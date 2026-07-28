@@ -3,6 +3,8 @@ import 'package:cardfolio_app/app/cardfolio_app.dart';
 import 'package:cardfolio_app/features/cards/data/card_providers.dart';
 import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
+import 'package:cardfolio_app/features/dashboard/data/dashboard_providers.dart';
+import 'package:cardfolio_app/features/dashboard/domain/dashboard_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -70,6 +72,14 @@ void main() {
       ProviderScope(
         overrides: [
           cardRepositoryProvider.overrideWithValue(_EmptyCardRepository()),
+          homeDashboardProvider.overrideWith(
+            (ref) => Stream<HomeDashboard>.value(const HomeDashboard.empty()),
+          ),
+          statisticsProvider.overrideWith(
+            (ref) => Stream<StatisticsSnapshot>.value(
+              const StatisticsSnapshot.empty(),
+            ),
+          ),
         ],
         child: CardfolioApp(
           router: createAppRouter(
@@ -120,9 +130,12 @@ void main() {
     expect(shellBar(tester).selectedIndex, 3);
   });
 
-  testWidgets('unimplemented destinations announce 后续开放', (tester) async {
+  testWidgets('statistics destination renders the implemented page', (
+    tester,
+  ) async {
     await pumpShell(tester, initialLocation: statsPath);
 
-    expect(find.text('后续开放'), findsOneWidget);
+    expect(find.text('数量分布'), findsOneWidget);
+    expect(find.text('暂无统计数据'), findsOneWidget);
   });
 }

@@ -7,6 +7,8 @@ enum TagMatchMode { any, all }
 
 enum SetMembershipFilter { any, inSet, notInSet }
 
+enum CardSetStatusFilter { complete, nearlyComplete, incomplete, unknown }
+
 enum CardSortField { createdAt, issuedAt, acquiredAt, name, acquisitionCost }
 
 enum SortDirection { ascending, descending }
@@ -19,12 +21,14 @@ final class CardLibraryQuery {
     this.searchText,
     this.cardType,
     this.city,
+    this.issuer,
     this.year,
     this.tagIds = const <String>[],
     this.tagMatchMode = TagMatchMode.any,
     this.setMembership = SetMembershipFilter.any,
     this.duplicate,
     this.needsCompletion,
+    this.setStatus,
     this.sortField = CardSortField.createdAt,
     this.sortDirection = SortDirection.descending,
     this.isNormalized = false,
@@ -33,12 +37,14 @@ final class CardLibraryQuery {
   final String? searchText;
   final String? cardType;
   final String? city;
+  final String? issuer;
   final int? year;
   final List<String> tagIds;
   final TagMatchMode tagMatchMode;
   final SetMembershipFilter setMembership;
   final bool? duplicate;
   final bool? needsCompletion;
+  final CardSetStatusFilter? setStatus;
   final CardSortField sortField;
   final SortDirection sortDirection;
   final bool isNormalized;
@@ -47,11 +53,13 @@ final class CardLibraryQuery {
       searchText != null ||
       cardType != null ||
       city != null ||
+      issuer != null ||
       year != null ||
       tagIds.isNotEmpty ||
       setMembership != SetMembershipFilter.any ||
       duplicate != null ||
-      needsCompletion != null;
+      needsCompletion != null ||
+      setStatus != null;
 
   CardLibraryQuery normalized() {
     if (isNormalized) return this;
@@ -65,12 +73,14 @@ final class CardLibraryQuery {
       searchText: _optional(searchText),
       cardType: _optional(cardType),
       city: _optional(city),
+      issuer: _optional(issuer),
       year: year,
       tagIds: List<String>.unmodifiable(_normalizedIds(tagIds)),
       tagMatchMode: tagMatchMode,
       setMembership: setMembership,
       duplicate: duplicate,
       needsCompletion: needsCompletion,
+      setStatus: setStatus,
       sortField: sortField,
       sortDirection: sortDirection,
       isNormalized: true,
@@ -84,6 +94,8 @@ final class CardLibraryQuery {
     bool clearCardType = false,
     String? city,
     bool clearCity = false,
+    String? issuer,
+    bool clearIssuer = false,
     int? year,
     bool clearYear = false,
     List<String>? tagIds,
@@ -93,6 +105,8 @@ final class CardLibraryQuery {
     bool clearDuplicate = false,
     bool? needsCompletion,
     bool clearNeedsCompletion = false,
+    CardSetStatusFilter? setStatus,
+    bool clearSetStatus = false,
     CardSortField? sortField,
     SortDirection? sortDirection,
   }) {
@@ -100,6 +114,7 @@ final class CardLibraryQuery {
       searchText: clearSearchText ? null : searchText ?? this.searchText,
       cardType: clearCardType ? null : cardType ?? this.cardType,
       city: clearCity ? null : city ?? this.city,
+      issuer: clearIssuer ? null : issuer ?? this.issuer,
       year: clearYear ? null : year ?? this.year,
       tagIds: tagIds ?? this.tagIds,
       tagMatchMode: tagMatchMode ?? this.tagMatchMode,
@@ -108,6 +123,7 @@ final class CardLibraryQuery {
       needsCompletion: clearNeedsCompletion
           ? null
           : needsCompletion ?? this.needsCompletion,
+      setStatus: clearSetStatus ? null : setStatus ?? this.setStatus,
       sortField: sortField ?? this.sortField,
       sortDirection: sortDirection ?? this.sortDirection,
     );

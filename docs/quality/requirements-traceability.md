@@ -15,9 +15,9 @@
 | FR-TAG-001..002 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T03..T05、T10：标签管理、合并、影响预览与组合筛选自动化通过 |
 | FR-CF-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T07..T08：三类字段、原子保存、删除影响和值保留自动化通过 |
 | FR-PUR-001..004 | 005 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) T01..T11：精确金额、分摊、退款、多币种、删除审计与成本排序自动化通过；设备验收待执行 |
-| FR-SCH-001..004 | 004、006 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T09..T14：搜索、组合筛选、稳定排序与 10,000 款式性能通过 |
-| FR-HOME-001..002 | 006 | 首页口径、空状态 |
-| FR-STAT-001..002 | 006 | 聚合与下钻一致 |
+| FR-SCH-001..004 | 004、006 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T09..T14 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T01、T09：搜索、组合筛选、稳定排序、共享统计下钻与 10,000 款式性能通过 |
+| FR-HOME-001..002 | 006 | [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T02..T03、T05..T08：摘要口径、软删除、多币种、响应式查询和页面状态自动化通过；设备验收待执行 |
+| FR-STAT-001..002 | 006 | [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T01、T03..T07、T09..T10：六维聚合、成本趋势与共享查询下钻自动化通过；设备验收待执行 |
 | FR-DATA-001..002 | 008 | 导出/导入完整性与安全 |
 | FR-DATA-003 | 007 | 软删除、恢复、永久删除 |
 | FR-SYNC-001..003 | 010 | 离线队列、幂等、冲突副本 |
@@ -27,8 +27,8 @@
 | 规则 | 所有者 | 验证焦点 |
 |---|---:|---|
 | BR-CARD-001..004 | 001、003、004 | 款式/藏品身份、数量、字段语义 |
-| BR-SET-001..005 | 003、006、007 | 完成度、重复、删除/恢复 |
-| BR-COST-001..006 | 005、006、008 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md)：购买事实、费用口径、分摊、币种和调整自动化通过 |
+| BR-SET-001..005 | 003、006、007 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md) 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T03、T09：完成度、重复、删除与统计下钻口径自动化通过；恢复属于 Feature 007 |
+| BR-COST-001..006 | 005、006、008 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T05：购买事实、费用口径、分摊、原币种和调整自动化通过 |
 | BR-IMG-001..003 | 001、002、008、009 | 原图、派生图、引用与删除 |
 | BR-DEL-001..002 | 007 | 软删除、恢复、永久删除 |
 | BR-SYNC-001..004 | 010 | 本地优先、版本、幂等、冲突 |
@@ -37,7 +37,7 @@
 
 | 需求 | 主要文档 | 发布证据 |
 |---|---|---|
-| NFR-PERF-001..003、NFR-CAP-001 | [性能计划](performance-plan.md) | 固定设备和大数据基准 |
+| NFR-PERF-001..003、NFR-CAP-001 | [性能计划](performance-plan.md)、[Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) | 10,000 款式无设备聚合门槛通过；固定设备与真实图片基准待执行 |
 | NFR-DATA-001..003 | [测试策略](test-strategy.md)、[备份恢复](../operations/backup-and-recovery.md) | 事务、重启、迁移、导入恢复 |
 | NFR-SYNC-001 | [Feature 010](../features/010-account-and-local-first-sync/README.md) | 重试/重放与无重复 |
 | NFR-UX-001..002、NFR-A11Y-001..002 | [设计系统](../design/design-system.md) | Widget、语义、字体缩放、设备验收 |

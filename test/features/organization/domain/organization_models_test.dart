@@ -9,12 +9,14 @@ void main() {
         searchText: ' 樱花 ',
         cardType: ' 纪念卡 ',
         city: ' 东京 ',
+        issuer: ' Metro ',
         year: 2026,
         tagIds: <String>[' tag-2 ', 'tag-1', 'tag-2', ' '],
         tagMatchMode: TagMatchMode.all,
         setMembership: SetMembershipFilter.inSet,
         duplicate: true,
         needsCompletion: false,
+        setStatus: CardSetStatusFilter.nearlyComplete,
         sortField: CardSortField.name,
         sortDirection: SortDirection.ascending,
       );
@@ -24,9 +26,11 @@ void main() {
       expect(result.searchText, '樱花');
       expect(result.cardType, '纪念卡');
       expect(result.city, '东京');
+      expect(result.issuer, 'Metro');
       expect(result.tagIds, <String>['tag-2', 'tag-1']);
       expect(result.tagMatchMode, TagMatchMode.all);
       expect(result.setMembership, SetMembershipFilter.inSet);
+      expect(result.setStatus, CardSetStatusFilter.nearlyComplete);
       expect(result.sortField, CardSortField.name);
       expect(result.sortDirection, SortDirection.ascending);
       expect(result.isFiltering, isTrue);
@@ -37,6 +41,7 @@ void main() {
         searchText: ' ',
         cardType: '',
         city: '  ',
+        issuer: ' ',
         tagIds: <String>[' '],
       );
 
@@ -45,8 +50,28 @@ void main() {
       expect(result.searchText, isNull);
       expect(result.cardType, isNull);
       expect(result.city, isNull);
+      expect(result.issuer, isNull);
       expect(result.tagIds, isEmpty);
       expect(result.isFiltering, isFalse);
+    });
+
+    test('copies and clears dashboard drill-down filters', () {
+      const query = CardLibraryQuery(
+        issuer: 'Metro',
+        setStatus: CardSetStatusFilter.complete,
+      );
+
+      final changed = query.copyWith(
+        issuer: '申通地铁',
+        setStatus: CardSetStatusFilter.unknown,
+      );
+      final cleared = changed.copyWith(clearIssuer: true, clearSetStatus: true);
+
+      expect(changed.issuer, '申通地铁');
+      expect(changed.setStatus, CardSetStatusFilter.unknown);
+      expect(cleared.issuer, isNull);
+      expect(cleared.setStatus, isNull);
+      expect(cleared.isFiltering, isFalse);
     });
 
     test('rejects years outside the supported partial-date range', () {

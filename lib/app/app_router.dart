@@ -7,7 +7,8 @@ import '../features/cards/presentation/capture/capture_entry_screen.dart';
 import '../features/cards/presentation/create/create_card_screen.dart';
 import '../features/cards/presentation/detail/card_detail_screen.dart';
 import '../features/cards/presentation/library/card_library_screen.dart';
-import '../features/cards/presentation/widgets/phase_placeholder_screen.dart';
+import '../features/dashboard/presentation/home_screen.dart';
+import '../features/dashboard/presentation/statistics_screen.dart';
 import '../features/organization/presentation/card/card_organization_screen.dart';
 import '../features/organization/presentation/management/organization_settings_screen.dart';
 import '../features/organization/presentation/series/series_detail_screen.dart';
@@ -34,10 +35,7 @@ String editCardSetPath(String id) => '/sets/$id/edit';
 String seriesDetailPath(String id) => '/series/$id';
 String editSeriesPath(String id) => '/series/$id/edit';
 
-/// Feature 001 的路由骨架。
-///
-/// 收藏、拍摄、新建与详情在 Task 6 替换为真实页面；首页、统计、我的保留导航位置
-/// 但显式标注为“后续开放”。
+/// Cardfolio 的五入口路由骨架。
 GoRouter createAppRouter({String initialLocation = libraryPath}) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -49,22 +47,10 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
         branches: <StatefulShellBranch>[
-          _branch(
-            homePath,
-            const PhasePlaceholderScreen(
-              title: '首页',
-              description: '收藏总览与最近录入将在首页统计能力开放后可用。',
-            ),
-          ),
+          _branch(homePath, const HomeScreen()),
           _branch(libraryPath, const CardLibraryScreen()),
           _branch(capturePath, const CaptureEntryScreen()),
-          _branch(
-            statsPath,
-            const PhasePlaceholderScreen(
-              title: '统计',
-              description: '数量、花费与套卡统计将在购买与统计能力开放后可用。',
-            ),
-          ),
+          _branch(statsPath, const StatisticsScreen()),
           _branch(profilePath, const OrganizationSettingsScreen()),
         ],
       ),

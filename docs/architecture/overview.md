@@ -60,7 +60,7 @@ lib/
     ├── sets/
     ├── organization/
     ├── purchases/
-    ├── insights/
+    ├── dashboard/
     ├── recycle_bin/
     ├── transfer/
     └── sync/

@@ -235,6 +235,106 @@ void main() {
   );
 
   test(
+    'filters issuer and every dashboard set status with shared rules',
+    () async {
+      Future<void> createStatusSet({
+        required String suffix,
+        required bool countKnown,
+        required int memberCount,
+        required int ownedCount,
+      }) async {
+        for (var index = 0; index < ownedCount; index++) {
+          await insertCard(
+            suffix: '$suffix-owned-$index',
+            name: '$suffix 已拥有 $index',
+            issuer: suffix == 'complete' ? 'Metro' : '其他机构',
+          );
+        }
+        await db.createCardSet(
+          request: CreateCardSetRequest(
+            id: 'set-$suffix',
+            name: '套卡 $suffix',
+            countKnown: countKnown,
+            expectedCount: countKnown ? memberCount : null,
+          ).normalized(),
+          now: now,
+        );
+        for (var index = 0; index < memberCount; index++) {
+          final definitionId = 'definition-$suffix-member-$index';
+          if (index < ownedCount) {
+            await db.addCardSetMember(
+              request: AddCardSetMemberRequest.existing(
+                id: 'member-$suffix-$index',
+                setId: 'set-$suffix',
+                definitionId: 'definition-$suffix-owned-$index',
+              ).normalized(),
+              now: now,
+            );
+          } else {
+            await db.addCardSetMember(
+              request: AddCardSetMemberRequest.missing(
+                id: 'member-$suffix-$index',
+                setId: 'set-$suffix',
+                definitionId: definitionId,
+                definitionName: '$suffix 缺少 $index',
+              ).normalized(),
+              now: now,
+            );
+          }
+        }
+      }
+
+      await createStatusSet(
+        suffix: 'complete',
+        countKnown: true,
+        memberCount: 1,
+        ownedCount: 1,
+      );
+      await createStatusSet(
+        suffix: 'near',
+        countKnown: true,
+        memberCount: 2,
+        ownedCount: 1,
+      );
+      await createStatusSet(
+        suffix: 'incomplete',
+        countKnown: true,
+        memberCount: 3,
+        ownedCount: 1,
+      );
+      await createStatusSet(
+        suffix: 'unknown',
+        countKnown: false,
+        memberCount: 1,
+        ownedCount: 1,
+      );
+
+      final issuer = await db
+          .watchOrganizedCards(
+            const CardLibraryQuery(issuer: 'metro').normalized(),
+          )
+          .first;
+      expect(issuer.map((card) => card.cardItemId), <String>[
+        'item-complete-owned-0',
+      ]);
+
+      for (final (status, expected) in <(CardSetStatusFilter, String)>[
+        (CardSetStatusFilter.complete, 'item-complete-owned-0'),
+        (CardSetStatusFilter.nearlyComplete, 'item-near-owned-0'),
+        (CardSetStatusFilter.incomplete, 'item-incomplete-owned-0'),
+        (CardSetStatusFilter.unknown, 'item-unknown-owned-0'),
+      ]) {
+        final cards = await db
+            .watchOrganizedCards(
+              CardLibraryQuery(setStatus: status).normalized(),
+            )
+            .first;
+        expect(cards.map((card) => card.cardItemId), <String>[expected]);
+      }
+    },
+  );
+
+  test(
     'sorts null dates last and uses item id as a stable tiebreaker',
     () async {
       await seedDiscoveryFixture();

@@ -7,7 +7,7 @@
 | 003 | [套卡与完成度](003-card-set-progress/README.md) | 001、002 | 实现完成，待设备验收 |
 | 004 | [标签、系列与筛选](004-tags-series-and-filters/README.md) | 001 | 实现完成，自动化通过，待设备验收 |
 | 005 | [购买记录与累计花费](005-purchases-and-costs/README.md) | 001、003 | 实现完成，自动化通过，待设备验收 |
-| 006 | [首页与统计查询](006-dashboard-and-statistics/README.md) | 003、004、005 | 规格索引与开发门禁已完成 |
+| 006 | [首页与统计查询](006-dashboard-and-statistics/README.md) | 003、004、005 | 实现完成，自动化通过，待设备验收 |
 | 007 | [回收站与永久删除](007-recycle-bin/README.md) | 001–005 | 规格索引与开发门禁已完成 |
 | 008 | [导出、导入与迁移](008-import-export-and-migration/README.md) | 001–007 | 规格索引与开发门禁已完成 |
 | 009 | [相机与图片处理](009-camera-and-image-processing/README.md) | 002 | Spike 门禁已完成 |

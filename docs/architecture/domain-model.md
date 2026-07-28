@@ -19,6 +19,9 @@ CardDefinition ── CustomFieldValue ── CustomFieldDefinition
 Purchase
 └── PurchaseItem ── CardItem / CardSet
 
+DashboardSnapshot / StatisticsSnapshot
+└── read-only projection of CardItem / CardSet / Tag / Purchase
+
 SyncRecord ── any syncable entity
 ```
 
@@ -95,6 +98,12 @@ SyncRecord ── any syncable entity
 - 调整引用原购买、继承币种并保存为独立负向记录；
 - 购买项目保存目标名称快照，目标删除不破坏审计；
 - 原币种永久保留。
+
+### DashboardSnapshot / StatisticsSnapshot
+
+首页与统计是只读派生模型，不拥有业务事实。实体数量来自活跃 `CardItem.quantity`，
+套卡状态沿用完成度规则，累计花费来自购买账本并按原币种分组。统计桶携带与收藏页
+共享的查询条件；任何结果都能从源表重建。
 
 ### SyncRecord
 

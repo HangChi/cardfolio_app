@@ -45,6 +45,11 @@ extension CardSearchDatabase on AppDatabase {
       where.add('LOWER(cd.city) = LOWER(?)');
       variables.add(Variable<String>(city));
     }
+    final issuer = normalized.issuer;
+    if (issuer != null) {
+      where.add('LOWER(cd.issuer) = LOWER(?)');
+      variables.add(Variable<String>(issuer));
+    }
     final year = normalized.year;
     if (year != null) {
       where.add('SUBSTR(cd.issued_at, 1, 4) = ?');
@@ -104,6 +109,11 @@ extension CardSearchDatabase on AppDatabase {
     if (needsCompletion != null) {
       where.add('cd.needs_completion = ?');
       variables.add(Variable<int>(needsCompletion ? 1 : 0));
+    }
+
+    final setStatus = normalized.setStatus;
+    if (setStatus != null) {
+      where.add(_setStatusSql(setStatus));
     }
 
     final sql =
@@ -185,6 +195,53 @@ const String _setMembershipSql =
     'AND membership.deleted_at IS NULL '
     'AND membership_set.deleted_at IS NULL'
     ')';
+
+String _setStatusSql(CardSetStatusFilter status) {
+  const requiredCount =
+      '('
+      'SELECT COUNT(*) FROM card_set_members status_required '
+      'WHERE status_required.set_id = status_set.id '
+      'AND status_required.deleted_at IS NULL '
+      'AND status_required.required = 1'
+      ')';
+  const ownedCount =
+      '('
+      'SELECT COUNT(*) FROM card_set_members status_owned '
+      'WHERE status_owned.set_id = status_set.id '
+      'AND status_owned.deleted_at IS NULL '
+      'AND status_owned.required = 1 '
+      'AND EXISTS ('
+      'SELECT 1 FROM card_items status_item '
+      'JOIN card_definitions status_definition '
+      'ON status_definition.id = status_item.definition_id '
+      'WHERE status_item.definition_id = status_owned.definition_id '
+      'AND status_item.deleted_at IS NULL '
+      'AND status_definition.deleted_at IS NULL'
+      ')'
+      ')';
+  final predicate = switch (status) {
+    CardSetStatusFilter.complete =>
+      'status_set.count_known = 1 '
+          'AND $requiredCount > 0 '
+          'AND $ownedCount = $requiredCount',
+    CardSetStatusFilter.nearlyComplete =>
+      'status_set.count_known = 1 '
+          'AND $requiredCount > 0 '
+          'AND $requiredCount - $ownedCount = 1',
+    CardSetStatusFilter.incomplete =>
+      'status_set.count_known = 1 '
+          'AND ($requiredCount = 0 OR $requiredCount - $ownedCount > 1)',
+    CardSetStatusFilter.unknown => 'status_set.count_known = 0',
+  };
+  return 'EXISTS ('
+      'SELECT 1 FROM card_set_members status_membership '
+      'JOIN card_sets status_set ON status_set.id = status_membership.set_id '
+      'WHERE status_membership.definition_id = cd.id '
+      'AND status_membership.deleted_at IS NULL '
+      'AND status_set.deleted_at IS NULL '
+      'AND $predicate'
+      ')';
+}
 
 String _orderSql(CardLibraryQuery query) {
   final direction = query.sortDirection == SortDirection.ascending
