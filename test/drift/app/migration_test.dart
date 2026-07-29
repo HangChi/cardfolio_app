@@ -8,6 +8,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
+import 'generated/schema_v5.dart' as v5;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -199,6 +200,43 @@ void main() {
     expect(await db.select(db.purchases).get(), isEmpty);
     expect(await db.select(db.purchaseItems).get(), isEmpty);
     expect(await db.select(db.exchangeRates).get(), isEmpty);
+    await db.close();
+  });
+
+  test('v5 card data survives the v6 recycle-bin migration', () async {
+    final schema = await verifier.schemaAt(5);
+    final oldDb = v5.DatabaseAtV5(schema.newConnection());
+    final createdAt =
+        DateTime.utc(2026, 7, 29).millisecondsSinceEpoch ~/
+        Duration.millisecondsPerSecond;
+    await oldDb
+        .into(oldDb.cardDefinitions)
+        .insert(
+          v5.CardDefinitionsCompanion.insert(
+            id: 'definition-v5',
+            name: '迁移前卡片',
+            createdAt: createdAt,
+            updatedAt: createdAt,
+          ),
+        );
+    await oldDb
+        .into(oldDb.cardItems)
+        .insert(
+          v5.CardItemsCompanion.insert(
+            id: 'item-v5',
+            definitionId: 'definition-v5',
+            createdAt: createdAt,
+            updatedAt: createdAt,
+          ),
+        );
+    await oldDb.close();
+
+    final db = AppDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 6);
+
+    expect((await db.watchCardDetail('item-v5').first)?.name, '迁移前卡片');
+    expect(await db.select(db.recycleBinSettingsRows).get(), isEmpty);
+    expect(await db.select(db.fileCleanupQueueEntries).get(), isEmpty);
     await db.close();
   });
 }

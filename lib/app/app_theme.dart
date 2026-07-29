@@ -223,7 +223,7 @@ ThemeData buildCardfolioTheme() {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: Size.fromHeight(tokens.minTapTarget),
+        minimumSize: Size(0, tokens.minTapTarget),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(tokens.radiusMd),
         ),

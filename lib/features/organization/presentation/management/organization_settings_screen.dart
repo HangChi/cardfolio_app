@@ -37,6 +37,16 @@ class OrganizationSettingsScreen extends ConsumerWidget {
               onTap: () => context.push(purchasesPath),
             ),
           ),
+          SizedBox(height: tokens.spaceMd),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('回收站'),
+              subtitle: const Text('恢复已删除卡片，或将其永久删除。'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(recycleBinPath),
+            ),
+          ),
           SizedBox(height: tokens.spaceXl),
           _SectionHeader(
             title: '标签',

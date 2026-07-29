@@ -1,7 +1,7 @@
 # 数据库模型与迁移规范
 
-状态：schema v5 已实现
-日期：2026-07-28
+状态：schema v6 已实现
+日期：2026-07-29
 存储实现：Drift + SQLite
 
 ## 1. 通用列
@@ -50,6 +50,13 @@
 | purchase_items | purchase_id, target_type, target_id, target_name, allocated_minor | FK purchase；purchase+target 组合主键；名称快照在目标删除后保留审计 |
 | exchange_rates | base_currency, quote_currency, rate_date, numerator, denominator, source, captured_at | 正整数精确比率；币种对+日期+来源组合唯一 |
 
+### recycle bin
+
+| 表 | 关键列 | 约束/索引 |
+|---|---|---|
+| recycle_bin_settings | id, retention_days, updated_at | 单例 id=1；保留期仅 7/30/90，默认 30 |
+| file_cleanup_queue | relative_path, created_at, attempt_count, last_attempt_at | 相对路径主键；尝试次数非负；创建时间索引 |
+
 ### lifecycle and sync
 
 | 表 | 关键列 | 约束/索引 |
@@ -94,7 +101,7 @@ MVP 必须覆盖：
 6. 破坏性变更采用新列/新表、回填、验证、后续版本清理的分阶段方式。
 7. 发布构建禁止使用自动清库作为迁移兜底。
 
-schema v5 新增购买、购买项目和汇率表；v4→v5 只创建新表和索引，不改写既有卡片、套卡或整理数据。
+schema v6 新增回收站设置与文件清理队列；v5→v6 只创建新表和索引，不改写既有卡片、套卡、整理或购买数据。
 
 ## 6. 事务边界
 
@@ -102,6 +109,7 @@ schema v5 新增购买、购买项目和汇率表；v4→v5 只创建新表和�
 - 套卡及成员批量调整：同一事务。
 - 删除被套卡引用的图片时，同一事务先清空 `card_sets.cover_image_id`，再软删或物理删除图片。
 - 购买及购买项目：同一事务。
+- 卡片永久删除：同一事务先写文件清理队列，再清理套卡封面引用、购买目标、图片和藏品实例。
 - 业务实体变更及同步记录：同一事务。
 - 导入：先在隔离数据库或暂存表验证，最终合并为可回滚事务批次。
 

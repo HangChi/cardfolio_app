@@ -68,6 +68,20 @@ final class PurchaseValidationFailure extends AppFailure {
   final PurchaseField field;
 }
 
+/// 回收站设置与状态操作可定位的输入范围。
+enum RecycleBinField { card, retention }
+
+/// 回收站操作不满足状态或保留期约束。
+final class RecycleBinValidationFailure extends AppFailure {
+  const RecycleBinValidationFailure(
+    this.field,
+    super.userMessage, [
+    super.cause,
+  ]);
+
+  final RecycleBinField field;
+}
+
 /// 相册选择器不可用、权限被拒绝或返回了无法使用的结果。
 final class GalleryAccessFailure extends AppFailure {
   const GalleryAccessFailure([

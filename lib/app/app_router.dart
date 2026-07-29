@@ -15,6 +15,7 @@ import '../features/organization/presentation/series/series_detail_screen.dart';
 import '../features/organization/presentation/series/series_form_screen.dart';
 import '../features/purchases/presentation/purchase_form_screen.dart';
 import '../features/purchases/presentation/purchase_list_screen.dart';
+import '../features/recycle_bin/presentation/recycle_bin_screen.dart';
 import 'navigation/app_shell.dart';
 
 const String homePath = '/home';
@@ -27,6 +28,7 @@ const String createCardSetPath = '/sets/new';
 const String createSeriesPath = '/series/new';
 const String purchasesPath = '/purchases';
 const String createPurchasePath = '/purchases/new';
+const String recycleBinPath = '/recycle-bin';
 
 String cardDetailPath(String id) => '/cards/$id';
 String cardOrganizationPath(String id) => '/cards/$id/organization';
@@ -103,6 +105,10 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
       GoRoute(
         path: createPurchasePath,
         builder: (context, state) => const PurchaseFormScreen(),
+      ),
+      GoRoute(
+        path: recycleBinPath,
+        builder: (context, state) => const RecycleBinScreen(),
       ),
     ],
   );

@@ -7711,6 +7711,605 @@ class ExchangeRatesCompanion extends UpdateCompanion<ExchangeRate> {
   }
 }
 
+class $RecycleBinSettingsRowsTable extends RecycleBinSettingsRows
+    with TableInfo<$RecycleBinSettingsRowsTable, RecycleBinSettingsRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecycleBinSettingsRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _retentionDaysMeta = const VerificationMeta(
+    'retentionDays',
+  );
+  @override
+  late final GeneratedColumn<int> retentionDays = GeneratedColumn<int>(
+    'retention_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(30),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, retentionDays, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recycle_bin_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecycleBinSettingsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('retention_days')) {
+      context.handle(
+        _retentionDaysMeta,
+        retentionDays.isAcceptableOrUnknown(
+          data['retention_days']!,
+          _retentionDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RecycleBinSettingsRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecycleBinSettingsRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      retentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_days'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RecycleBinSettingsRowsTable createAlias(String alias) {
+    return $RecycleBinSettingsRowsTable(attachedDatabase, alias);
+  }
+}
+
+class RecycleBinSettingsRow extends DataClass
+    implements Insertable<RecycleBinSettingsRow> {
+  final int id;
+  final int retentionDays;
+  final DateTime updatedAt;
+  const RecycleBinSettingsRow({
+    required this.id,
+    required this.retentionDays,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['retention_days'] = Variable<int>(retentionDays);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RecycleBinSettingsRowsCompanion toCompanion(bool nullToAbsent) {
+    return RecycleBinSettingsRowsCompanion(
+      id: Value(id),
+      retentionDays: Value(retentionDays),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RecycleBinSettingsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecycleBinSettingsRow(
+      id: serializer.fromJson<int>(json['id']),
+      retentionDays: serializer.fromJson<int>(json['retentionDays']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'retentionDays': serializer.toJson<int>(retentionDays),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  RecycleBinSettingsRow copyWith({
+    int? id,
+    int? retentionDays,
+    DateTime? updatedAt,
+  }) => RecycleBinSettingsRow(
+    id: id ?? this.id,
+    retentionDays: retentionDays ?? this.retentionDays,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RecycleBinSettingsRow copyWithCompanion(
+    RecycleBinSettingsRowsCompanion data,
+  ) {
+    return RecycleBinSettingsRow(
+      id: data.id.present ? data.id.value : this.id,
+      retentionDays: data.retentionDays.present
+          ? data.retentionDays.value
+          : this.retentionDays,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecycleBinSettingsRow(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, retentionDays, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecycleBinSettingsRow &&
+          other.id == this.id &&
+          other.retentionDays == this.retentionDays &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RecycleBinSettingsRowsCompanion
+    extends UpdateCompanion<RecycleBinSettingsRow> {
+  final Value<int> id;
+  final Value<int> retentionDays;
+  final Value<DateTime> updatedAt;
+  const RecycleBinSettingsRowsCompanion({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  RecycleBinSettingsRowsCompanion.insert({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    required DateTime updatedAt,
+  }) : updatedAt = Value(updatedAt);
+  static Insertable<RecycleBinSettingsRow> custom({
+    Expression<int>? id,
+    Expression<int>? retentionDays,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (retentionDays != null) 'retention_days': retentionDays,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  RecycleBinSettingsRowsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? retentionDays,
+    Value<DateTime>? updatedAt,
+  }) {
+    return RecycleBinSettingsRowsCompanion(
+      id: id ?? this.id,
+      retentionDays: retentionDays ?? this.retentionDays,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (retentionDays.present) {
+      map['retention_days'] = Variable<int>(retentionDays.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecycleBinSettingsRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FileCleanupQueueEntriesTable extends FileCleanupQueueEntries
+    with TableInfo<$FileCleanupQueueEntriesTable, FileCleanupQueueEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FileCleanupQueueEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _relativePathMeta = const VerificationMeta(
+    'relativePath',
+  );
+  @override
+  late final GeneratedColumn<String> relativePath = GeneratedColumn<String>(
+    'relative_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attemptCountMeta = const VerificationMeta(
+    'attemptCount',
+  );
+  @override
+  late final GeneratedColumn<int> attemptCount = GeneratedColumn<int>(
+    'attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    relativePath,
+    createdAt,
+    attemptCount,
+    lastAttemptAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'file_cleanup_queue';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FileCleanupQueueEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('relative_path')) {
+      context.handle(
+        _relativePathMeta,
+        relativePath.isAcceptableOrUnknown(
+          data['relative_path']!,
+          _relativePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_relativePathMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('attempt_count')) {
+      context.handle(
+        _attemptCountMeta,
+        attemptCount.isAcceptableOrUnknown(
+          data['attempt_count']!,
+          _attemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {relativePath};
+  @override
+  FileCleanupQueueEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FileCleanupQueueEntry(
+      relativePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relative_path'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      attemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempt_count'],
+      )!,
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
+    );
+  }
+
+  @override
+  $FileCleanupQueueEntriesTable createAlias(String alias) {
+    return $FileCleanupQueueEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class FileCleanupQueueEntry extends DataClass
+    implements Insertable<FileCleanupQueueEntry> {
+  final String relativePath;
+  final DateTime createdAt;
+  final int attemptCount;
+  final DateTime? lastAttemptAt;
+  const FileCleanupQueueEntry({
+    required this.relativePath,
+    required this.createdAt,
+    required this.attemptCount,
+    this.lastAttemptAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['relative_path'] = Variable<String>(relativePath);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['attempt_count'] = Variable<int>(attemptCount);
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    return map;
+  }
+
+  FileCleanupQueueEntriesCompanion toCompanion(bool nullToAbsent) {
+    return FileCleanupQueueEntriesCompanion(
+      relativePath: Value(relativePath),
+      createdAt: Value(createdAt),
+      attemptCount: Value(attemptCount),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+    );
+  }
+
+  factory FileCleanupQueueEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FileCleanupQueueEntry(
+      relativePath: serializer.fromJson<String>(json['relativePath']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      attemptCount: serializer.fromJson<int>(json['attemptCount']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'relativePath': serializer.toJson<String>(relativePath),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'attemptCount': serializer.toJson<int>(attemptCount),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+    };
+  }
+
+  FileCleanupQueueEntry copyWith({
+    String? relativePath,
+    DateTime? createdAt,
+    int? attemptCount,
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+  }) => FileCleanupQueueEntry(
+    relativePath: relativePath ?? this.relativePath,
+    createdAt: createdAt ?? this.createdAt,
+    attemptCount: attemptCount ?? this.attemptCount,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+  );
+  FileCleanupQueueEntry copyWithCompanion(
+    FileCleanupQueueEntriesCompanion data,
+  ) {
+    return FileCleanupQueueEntry(
+      relativePath: data.relativePath.present
+          ? data.relativePath.value
+          : this.relativePath,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      attemptCount: data.attemptCount.present
+          ? data.attemptCount.value
+          : this.attemptCount,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FileCleanupQueueEntry(')
+          ..write('relativePath: $relativePath, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(relativePath, createdAt, attemptCount, lastAttemptAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FileCleanupQueueEntry &&
+          other.relativePath == this.relativePath &&
+          other.createdAt == this.createdAt &&
+          other.attemptCount == this.attemptCount &&
+          other.lastAttemptAt == this.lastAttemptAt);
+}
+
+class FileCleanupQueueEntriesCompanion
+    extends UpdateCompanion<FileCleanupQueueEntry> {
+  final Value<String> relativePath;
+  final Value<DateTime> createdAt;
+  final Value<int> attemptCount;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<int> rowid;
+  const FileCleanupQueueEntriesCompanion({
+    this.relativePath = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FileCleanupQueueEntriesCompanion.insert({
+    required String relativePath,
+    required DateTime createdAt,
+    this.attemptCount = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : relativePath = Value(relativePath),
+       createdAt = Value(createdAt);
+  static Insertable<FileCleanupQueueEntry> custom({
+    Expression<String>? relativePath,
+    Expression<DateTime>? createdAt,
+    Expression<int>? attemptCount,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (relativePath != null) 'relative_path': relativePath,
+      if (createdAt != null) 'created_at': createdAt,
+      if (attemptCount != null) 'attempt_count': attemptCount,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FileCleanupQueueEntriesCompanion copyWith({
+    Value<String>? relativePath,
+    Value<DateTime>? createdAt,
+    Value<int>? attemptCount,
+    Value<DateTime?>? lastAttemptAt,
+    Value<int>? rowid,
+  }) {
+    return FileCleanupQueueEntriesCompanion(
+      relativePath: relativePath ?? this.relativePath,
+      createdAt: createdAt ?? this.createdAt,
+      attemptCount: attemptCount ?? this.attemptCount,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (relativePath.present) {
+      map['relative_path'] = Variable<String>(relativePath.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (attemptCount.present) {
+      map['attempt_count'] = Variable<int>(attemptCount.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FileCleanupQueueEntriesCompanion(')
+          ..write('relativePath: $relativePath, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7733,6 +8332,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PurchasesTable purchases = $PurchasesTable(this);
   late final $PurchaseItemsTable purchaseItems = $PurchaseItemsTable(this);
   late final $ExchangeRatesTable exchangeRates = $ExchangeRatesTable(this);
+  late final $RecycleBinSettingsRowsTable recycleBinSettingsRows =
+      $RecycleBinSettingsRowsTable(this);
+  late final $FileCleanupQueueEntriesTable fileCleanupQueueEntries =
+      $FileCleanupQueueEntriesTable(this);
   late final Index idxCardDefinitionsDeletedAt = Index(
     'idx_card_definitions_deleted_at',
     'CREATE INDEX idx_card_definitions_deleted_at ON card_definitions (deleted_at)',
@@ -7837,6 +8440,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_exchange_rates_lookup',
     'CREATE INDEX idx_exchange_rates_lookup ON exchange_rates (base_currency, quote_currency, rate_date)',
   );
+  late final Index idxFileCleanupCreatedAt = Index(
+    'idx_file_cleanup_created_at',
+    'CREATE INDEX idx_file_cleanup_created_at ON file_cleanup_queue (created_at)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7857,6 +8464,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     purchases,
     purchaseItems,
     exchangeRates,
+    recycleBinSettingsRows,
+    fileCleanupQueueEntries,
     idxCardDefinitionsDeletedAt,
     idxCardItemsDefinitionId,
     idxCardItemsDeletedAt,
@@ -7883,6 +8492,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxPurchasesAdjustmentOfId,
     idxPurchaseItemsTarget,
     idxExchangeRatesLookup,
+    idxFileCleanupCreatedAt,
   ];
 }
 
@@ -14742,6 +15352,389 @@ typedef $$ExchangeRatesTableProcessedTableManager =
       ExchangeRate,
       PrefetchHooks Function()
     >;
+typedef $$RecycleBinSettingsRowsTableCreateCompanionBuilder =
+    RecycleBinSettingsRowsCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      required DateTime updatedAt,
+    });
+typedef $$RecycleBinSettingsRowsTableUpdateCompanionBuilder =
+    RecycleBinSettingsRowsCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<DateTime> updatedAt,
+    });
+
+class $$RecycleBinSettingsRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $RecycleBinSettingsRowsTable> {
+  $$RecycleBinSettingsRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RecycleBinSettingsRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecycleBinSettingsRowsTable> {
+  $$RecycleBinSettingsRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RecycleBinSettingsRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecycleBinSettingsRowsTable> {
+  $$RecycleBinSettingsRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RecycleBinSettingsRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecycleBinSettingsRowsTable,
+          RecycleBinSettingsRow,
+          $$RecycleBinSettingsRowsTableFilterComposer,
+          $$RecycleBinSettingsRowsTableOrderingComposer,
+          $$RecycleBinSettingsRowsTableAnnotationComposer,
+          $$RecycleBinSettingsRowsTableCreateCompanionBuilder,
+          $$RecycleBinSettingsRowsTableUpdateCompanionBuilder,
+          (
+            RecycleBinSettingsRow,
+            BaseReferences<
+              _$AppDatabase,
+              $RecycleBinSettingsRowsTable,
+              RecycleBinSettingsRow
+            >,
+          ),
+          RecycleBinSettingsRow,
+          PrefetchHooks Function()
+        > {
+  $$RecycleBinSettingsRowsTableTableManager(
+    _$AppDatabase db,
+    $RecycleBinSettingsRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecycleBinSettingsRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RecycleBinSettingsRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RecycleBinSettingsRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => RecycleBinSettingsRowsCompanion(
+                id: id,
+                retentionDays: retentionDays,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                required DateTime updatedAt,
+              }) => RecycleBinSettingsRowsCompanion.insert(
+                id: id,
+                retentionDays: retentionDays,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RecycleBinSettingsRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecycleBinSettingsRowsTable,
+      RecycleBinSettingsRow,
+      $$RecycleBinSettingsRowsTableFilterComposer,
+      $$RecycleBinSettingsRowsTableOrderingComposer,
+      $$RecycleBinSettingsRowsTableAnnotationComposer,
+      $$RecycleBinSettingsRowsTableCreateCompanionBuilder,
+      $$RecycleBinSettingsRowsTableUpdateCompanionBuilder,
+      (
+        RecycleBinSettingsRow,
+        BaseReferences<
+          _$AppDatabase,
+          $RecycleBinSettingsRowsTable,
+          RecycleBinSettingsRow
+        >,
+      ),
+      RecycleBinSettingsRow,
+      PrefetchHooks Function()
+    >;
+typedef $$FileCleanupQueueEntriesTableCreateCompanionBuilder =
+    FileCleanupQueueEntriesCompanion Function({
+      required String relativePath,
+      required DateTime createdAt,
+      Value<int> attemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<int> rowid,
+    });
+typedef $$FileCleanupQueueEntriesTableUpdateCompanionBuilder =
+    FileCleanupQueueEntriesCompanion Function({
+      Value<String> relativePath,
+      Value<DateTime> createdAt,
+      Value<int> attemptCount,
+      Value<DateTime?> lastAttemptAt,
+      Value<int> rowid,
+    });
+
+class $$FileCleanupQueueEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $FileCleanupQueueEntriesTable> {
+  $$FileCleanupQueueEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FileCleanupQueueEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FileCleanupQueueEntriesTable> {
+  $$FileCleanupQueueEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FileCleanupQueueEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FileCleanupQueueEntriesTable> {
+  $$FileCleanupQueueEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+}
+
+class $$FileCleanupQueueEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FileCleanupQueueEntriesTable,
+          FileCleanupQueueEntry,
+          $$FileCleanupQueueEntriesTableFilterComposer,
+          $$FileCleanupQueueEntriesTableOrderingComposer,
+          $$FileCleanupQueueEntriesTableAnnotationComposer,
+          $$FileCleanupQueueEntriesTableCreateCompanionBuilder,
+          $$FileCleanupQueueEntriesTableUpdateCompanionBuilder,
+          (
+            FileCleanupQueueEntry,
+            BaseReferences<
+              _$AppDatabase,
+              $FileCleanupQueueEntriesTable,
+              FileCleanupQueueEntry
+            >,
+          ),
+          FileCleanupQueueEntry,
+          PrefetchHooks Function()
+        > {
+  $$FileCleanupQueueEntriesTableTableManager(
+    _$AppDatabase db,
+    $FileCleanupQueueEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FileCleanupQueueEntriesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$FileCleanupQueueEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$FileCleanupQueueEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> relativePath = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> attemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FileCleanupQueueEntriesCompanion(
+                relativePath: relativePath,
+                createdAt: createdAt,
+                attemptCount: attemptCount,
+                lastAttemptAt: lastAttemptAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String relativePath,
+                required DateTime createdAt,
+                Value<int> attemptCount = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FileCleanupQueueEntriesCompanion.insert(
+                relativePath: relativePath,
+                createdAt: createdAt,
+                attemptCount: attemptCount,
+                lastAttemptAt: lastAttemptAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FileCleanupQueueEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FileCleanupQueueEntriesTable,
+      FileCleanupQueueEntry,
+      $$FileCleanupQueueEntriesTableFilterComposer,
+      $$FileCleanupQueueEntriesTableOrderingComposer,
+      $$FileCleanupQueueEntriesTableAnnotationComposer,
+      $$FileCleanupQueueEntriesTableCreateCompanionBuilder,
+      $$FileCleanupQueueEntriesTableUpdateCompanionBuilder,
+      (
+        FileCleanupQueueEntry,
+        BaseReferences<
+          _$AppDatabase,
+          $FileCleanupQueueEntriesTable,
+          FileCleanupQueueEntry
+        >,
+      ),
+      FileCleanupQueueEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -14782,4 +15775,14 @@ class $AppDatabaseManager {
       $$PurchaseItemsTableTableManager(_db, _db.purchaseItems);
   $$ExchangeRatesTableTableManager get exchangeRates =>
       $$ExchangeRatesTableTableManager(_db, _db.exchangeRates);
+  $$RecycleBinSettingsRowsTableTableManager get recycleBinSettingsRows =>
+      $$RecycleBinSettingsRowsTableTableManager(
+        _db,
+        _db.recycleBinSettingsRows,
+      );
+  $$FileCleanupQueueEntriesTableTableManager get fileCleanupQueueEntries =>
+      $$FileCleanupQueueEntriesTableTableManager(
+        _db,
+        _db.fileCleanupQueueEntries,
+      );
 }

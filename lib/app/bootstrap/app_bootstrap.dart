@@ -14,6 +14,9 @@ import '../../features/cards/data/card_repository_impl.dart';
 import '../../features/cards/data/files/managed_image_store.dart';
 import '../../features/cards/data/local/card_database.dart';
 import '../../features/cards/domain/card_repository.dart';
+import '../../features/recycle_bin/data/recycle_bin_providers.dart';
+import '../../features/recycle_bin/data/recycle_bin_repository_impl.dart';
+import '../../features/recycle_bin/domain/recycle_bin_repository.dart';
 import '../app_router.dart';
 import '../app_theme.dart';
 import '../cardfolio_app.dart';
@@ -27,6 +30,7 @@ final class CardfolioDependencies {
     required this.database,
     required this.imageStore,
     required this.repository,
+    required this.recycleBinRepository,
   });
 
   static const String _dataDirectoryName = 'cardfolio';
@@ -36,6 +40,7 @@ final class CardfolioDependencies {
   final AppDatabase database;
   final ManagedImageStore imageStore;
   final CardRepository repository;
+  final RecycleBinRepository recycleBinRepository;
 
   /// 打开持久化依赖并完成启动恢复。
   ///
@@ -66,6 +71,14 @@ final class CardfolioDependencies {
         imageStore: imageStore,
         clock: const SystemClock(),
       );
+      final recycleBinRepository = RecycleBinRepositoryImpl(
+        database: database,
+        imageStore: imageStore,
+        clock: const SystemClock(),
+      );
+
+      // 先完成到期永久删除和中断文件清理，再按最新引用清理孤儿文件。
+      await recycleBinRepository.purgeExpired();
 
       // 先成功读取数据库引用，再执行清理。数据库打不开时绝不触碰现有图片。
       final referencedPaths = await repository.referencedImagePaths();
@@ -75,6 +88,7 @@ final class CardfolioDependencies {
         database: database,
         imageStore: imageStore,
         repository: repository,
+        recycleBinRepository: recycleBinRepository,
       );
     } on AppFailure {
       if (database != null) await _closeQuietly(database);
@@ -171,6 +185,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
           appDatabaseProvider.overrideWithValue(dependencies.database),
           managedImageStoreProvider.overrideWithValue(dependencies.imageStore),
           cardRepositoryProvider.overrideWithValue(dependencies.repository),
+          recycleBinRepositoryProvider.overrideWithValue(
+            dependencies.recycleBinRepository,
+          ),
         ],
         child: CardfolioApp(router: createAppRouter()),
       );

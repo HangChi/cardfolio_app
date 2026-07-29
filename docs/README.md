@@ -1,7 +1,7 @@
 # Cardfolio 文档中心
 
 状态：M1 本地卡片闭环实现中
-更新日期：2026-07-28
+更新日期：2026-07-29
 
 ## 从这里开始
 
@@ -38,7 +38,7 @@
 - [Feature 总索引](features/README.md)
 - [Feature 001 九件套](features/001-local-card-creation/spec.md)
 - [Feature 002 九件套](features/002-multi-image-management/spec.md)
-- Feature 003–010 各自包含目标、范围、需求追踪、数据影响、风险和 Definition of Ready。
+- Feature 003–007 已建立九件套并完成实现；Feature 008–010 保留开发门禁。
 
 ## 工程
 
@@ -81,4 +81,4 @@
 
 ## 当前边界
 
-Feature 001 已完成本地单卡闭环；Feature 002 已完成多图、用途、排序、封面、删除策略与 schema v2，待 Android/iOS 设备验收。相机、裁切增强和真实大图性能仍属于 Feature 009。
+Feature 001–007 已完成本地建卡、多图、套卡、整理、购买、统计与回收站自动化闭环，设备验收仍待执行。导入导出属于 Feature 008；相机、裁切增强和真实大图性能属于 Feature 009。

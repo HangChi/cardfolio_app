@@ -453,6 +453,46 @@ class ExchangeRates extends Table {
   };
 }
 
+class RecycleBinSettingsRows extends Table {
+  @override
+  String get tableName => 'recycle_bin_settings';
+
+  IntColumn get id => integer()();
+
+  IntColumn get retentionDays => integer().withDefault(const Constant(30))();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (id = 1)',
+    'CHECK (retention_days IN (7, 30, 90))',
+  ];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+@TableIndex(name: 'idx_file_cleanup_created_at', columns: {#createdAt})
+class FileCleanupQueueEntries extends Table {
+  @override
+  String get tableName => 'file_cleanup_queue';
+
+  TextColumn get relativePath => text()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  IntColumn get attemptCount => integer().withDefault(const Constant(0))();
+
+  DateTimeColumn get lastAttemptAt => dateTime().nullable()();
+
+  @override
+  List<String> get customConstraints => <String>['CHECK (attempt_count >= 0)'];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{relativePath};
+}
+
 /// 一次建卡写入涉及的全部行。三张表在同一事务内插入。
 class CardRowGraph {
   const CardRowGraph({
@@ -496,13 +536,15 @@ class RemovedImageRecord {
     Purchases,
     PurchaseItems,
     ExchangeRates,
+    RecycleBinSettingsRows,
+    FileCleanupQueueEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -512,6 +554,7 @@ class AppDatabase extends _$AppDatabase {
       await _createCardSetIndexes();
       await _createOrganizationIndexes();
       await _createPurchaseIndexes();
+      await _createRecycleBinIndexes();
     },
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
@@ -553,6 +596,11 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.purchaseItems);
         await m.createTable(schema.exchangeRates);
         await _createPurchaseIndexes();
+      },
+      from5To6: (m, schema) async {
+        await m.createTable(schema.recycleBinSettings);
+        await m.createTable(schema.fileCleanupQueue);
+        await _createRecycleBinIndexes();
       },
     ),
     beforeOpen: (details) async {
@@ -696,6 +744,13 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_exchange_rates_lookup '
       'ON exchange_rates(base_currency, quote_currency, rate_date);',
+    );
+  }
+
+  Future<void> _createRecycleBinIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_file_cleanup_created_at '
+      'ON file_cleanup_queue(created_at);',
     );
   }
 

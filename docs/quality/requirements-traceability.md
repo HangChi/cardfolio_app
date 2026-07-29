@@ -19,7 +19,7 @@
 | FR-HOME-001..002 | 006 | [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T02..T03、T05..T08：摘要口径、软删除、多币种、响应式查询和页面状态自动化通过；设备验收待执行 |
 | FR-STAT-001..002 | 006 | [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T01、T03..T07、T09..T10：六维聚合、成本趋势与共享查询下钻自动化通过；设备验收待执行 |
 | FR-DATA-001..002 | 008 | 导出/导入完整性与安全 |
-| FR-DATA-003 | 007 | 软删除、恢复、永久删除 |
+| FR-DATA-003 | 007 | [Feature 007 测试矩阵](../features/007-recycle-bin/test-matrix.md) T02..T10：软删除、恢复、永久删除、保留期和文件清理重试自动化通过；设备验收待执行 |
 | FR-SYNC-001..003 | 010 | 离线队列、幂等、冲突副本 |
 
 ## 2. 业务规则
@@ -30,7 +30,7 @@
 | BR-SET-001..005 | 003、006、007 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md) 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T03、T09：完成度、重复、删除与统计下钻口径自动化通过；恢复属于 Feature 007 |
 | BR-COST-001..006 | 005、006、008 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T05：购买事实、费用口径、分摊、原币种和调整自动化通过 |
 | BR-IMG-001..003 | 001、002、008、009 | 原图、派生图、引用与删除 |
-| BR-DEL-001..002 | 007 | 软删除、恢复、永久删除 |
+| BR-DEL-001..002 | 007 | [Feature 007 测试矩阵](../features/007-recycle-bin/test-matrix.md) T02..T07：默认查询排除、关联恢复、影响预览与依赖顺序自动化通过 |
 | BR-SYNC-001..004 | 010 | 本地优先、版本、幂等、冲突 |
 
 ## 3. 非功能与安全
@@ -55,7 +55,7 @@
 | AC-P0-004 | 002 | [Feature 002 测试矩阵](../features/002-multi-image-management/test-matrix.md)；设备验收待执行 |
 | AC-P0-005 | 003 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md) T07：4 个必需、3 个拥有、1 个重复仍为 3/4 |
 | AC-P0-006 | 005 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) T05：总价 500、分摊合计 500，累计只增加 500 |
-| AC-P0-007 | 007 | 删除/恢复前后数量与进度 |
+| AC-P0-007 | 007 | [Feature 007 测试矩阵](../features/007-recycle-bin/test-matrix.md) T02..T04：删除/恢复前后同一查询、数量与套卡进度口径自动化通过 |
 | AC-P0-008 | 008 | 全实体导出导入一致性报告 |
 | AC-V1-001..003 | 010 | 离线 20 条、双设备冲突、退出保留本地 |
 

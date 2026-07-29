@@ -7,6 +7,7 @@ import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
 import '../../../organization/data/organization_providers.dart';
 import '../../../organization/domain/organization_models.dart';
+import '../../../recycle_bin/data/recycle_bin_providers.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
 import '../widgets/card_image.dart';
@@ -23,7 +24,17 @@ class CardDetailScreen extends ConsumerWidget {
     final detail = ref.watch(cardDetailProvider(cardItemId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('卡片详情')),
+      appBar: AppBar(
+        title: const Text('卡片详情'),
+        actions: <Widget>[
+          IconButton(
+            key: const Key('delete-card'),
+            tooltip: '移入回收站',
+            onPressed: () => _confirmCardDeletion(context, ref),
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
+      ),
       body: detail.when(
         loading: () => const Center(
           child: CircularProgressIndicator(semanticsLabel: '正在加载卡片详情'),
@@ -35,6 +46,42 @@ class CardDetailScreen extends ConsumerWidget {
             card == null ? const _MissingCard() : _DetailContent(card: card),
       ),
     );
+  }
+
+  Future<void> _confirmCardDeletion(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('移入回收站？'),
+        content: const Text('卡片会从收藏和统计中隐藏，并可以在回收站恢复。'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('移入回收站'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(recycleBinRepositoryProvider).deleteCard(cardItemId);
+      if (!context.mounted) return;
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(libraryPath);
+      }
+    } on AppFailure catch (failure) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
+      }
+    }
   }
 }
 
