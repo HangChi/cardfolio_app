@@ -32,13 +32,6 @@ class ProfileScreen extends StatelessWidget {
           ),
           _entry(
             context,
-            icon: Icons.receipt_long_outlined,
-            title: '购买记录',
-            subtitle: '记录购买、分摊与退款，按原币种查看累计花费。',
-            path: purchasesPath,
-          ),
-          _entry(
-            context,
             icon: Icons.delete_outline,
             title: '回收站',
             subtitle: '恢复已删除卡片，或将其永久删除。',

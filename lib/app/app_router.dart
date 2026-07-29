@@ -19,8 +19,6 @@ import '../features/organization/presentation/card/card_organization_screen.dart
 import '../features/organization/presentation/management/organization_settings_screen.dart';
 import '../features/organization/presentation/series/series_detail_screen.dart';
 import '../features/organization/presentation/series/series_form_screen.dart';
-import '../features/purchases/presentation/purchase_form_screen.dart';
-import '../features/purchases/presentation/purchase_list_screen.dart';
 import '../features/recycle_bin/presentation/recycle_bin_screen.dart';
 import '../features/sync/presentation/profile_screen.dart';
 import 'navigation/app_shell.dart';
@@ -34,8 +32,6 @@ const String createCardPath = '/cards/new';
 const String batchCardEntryPath = '/cards/batch';
 const String createCardSetPath = '/sets/new';
 const String createSeriesPath = '/series/new';
-const String purchasesPath = '/purchases';
-const String createPurchasePath = '/purchases/new';
 const String recycleBinPath = '/recycle-bin';
 const String backupPath = '/backup';
 const String imageEditorPath = '/image-editor';
@@ -129,14 +125,6 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
         path: '/series/:id',
         builder: (context, state) =>
             SeriesDetailScreen(seriesId: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: purchasesPath,
-        builder: (context, state) => const PurchaseListScreen(),
-      ),
-      GoRoute(
-        path: createPurchasePath,
-        builder: (context, state) => const PurchaseFormScreen(),
       ),
       GoRoute(
         path: recycleBinPath,

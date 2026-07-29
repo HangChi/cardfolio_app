@@ -16,6 +16,12 @@ class HomeScreen extends ConsumerWidget {
     final dashboard = ref.watch(homeDashboardProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('首页')),
+      floatingActionButton: FloatingActionButton(
+        key: const Key('home-create-card'),
+        tooltip: '录入卡片',
+        onPressed: () => context.push(createCardPath),
+        child: const Icon(Icons.add),
+      ),
       body: dashboard.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => _DashboardError(
@@ -64,7 +70,7 @@ class _HomeContent extends StatelessWidget {
         const SizedBox(height: 24),
         _SectionTitle(title: '累计花费', icon: Icons.payments_outlined),
         if (data.costTotals.isEmpty)
-          const _EmptySection(message: '还没有购买记录。')
+          const _EmptySection(message: '还没有记录入手成本。')
         else
           Card(
             child: Column(
@@ -72,10 +78,12 @@ class _HomeContent extends StatelessWidget {
                 for (final total in data.costTotals)
                   ListTile(
                     title: Text(
-                      '${total.currency} '
-                      '${CurrencyAmount(minorUnits: total.minorUnits, currency: total.currency).formatted}',
+                      total.currency == 'CNY'
+                          ? '¥${CurrencyAmount(minorUnits: total.minorUnits, currency: total.currency).formatted}'
+                          : '${total.currency} '
+                                '${CurrencyAmount(minorUnits: total.minorUnits, currency: total.currency).formatted}',
                     ),
-                    subtitle: Text('${total.purchaseCount} 笔记录'),
+                    subtitle: Text('${total.purchaseCount} 笔成本记录'),
                   ),
               ],
             ),

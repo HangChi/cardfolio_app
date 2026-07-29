@@ -6,6 +6,30 @@ import '../../../cards/data/local/card_database.dart';
 import '../../domain/card_set_models.dart';
 
 extension CardSetDatabase on AppDatabase {
+  Stream<List<CardSetMembership>> watchCardSetMemberships(
+    String definitionId,
+  ) {
+    final query = select(cardSetMembers)
+      ..where(
+        (member) =>
+            member.definitionId.equals(definitionId) &
+            member.deletedAt.isNull(),
+      )
+      ..orderBy(<OrderingTerm Function(CardSetMembers)>[
+        (member) => OrderingTerm.asc(member.setId),
+      ]);
+    return query.watch().map(
+      (rows) => rows
+          .map(
+            (row) => CardSetMembership(
+              setId: row.setId,
+              memberId: row.id,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
   Stream<List<CardSetSummary>> watchCardSetSummaries() {
     return _watchCardSetAggregates(this).map(
       (aggregates) => aggregates

@@ -1,6 +1,10 @@
 import 'purchase_models.dart';
 
 abstract interface class PurchaseRepository {
+  Stream<CardEntryCost> watchCardEntryCost(String cardItemId);
+
+  Future<void> saveCardEntryCost(SaveCardEntryCostRequest request);
+
   Stream<List<PurchaseRecord>> watchPurchases();
 
   Stream<CostSummary> watchCostSummary(CostDisplayOptions options);

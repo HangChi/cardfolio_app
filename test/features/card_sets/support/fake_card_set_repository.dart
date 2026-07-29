@@ -26,6 +26,10 @@ final class FakeCardSetRepository implements CardSetRepository {
   final List<String?> covers = <String?>[];
 
   @override
+  Stream<List<CardSetMembership>> watchMemberships(String definitionId) =>
+      Stream<List<CardSetMembership>>.value(const <CardSetMembership>[]);
+
+  @override
   Stream<List<CardSetSummary>> watchSets() {
     final error = listError;
     return error == null

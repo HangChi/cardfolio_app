@@ -11,10 +11,27 @@ final class FakePurchaseRepository implements PurchaseRepository {
 
   List<PurchaseRecord> records;
   List<PurchaseTargetOption> targets;
+  CardEntryCost cardEntryCost = const CardEntryCost.empty();
+  final List<SaveCardEntryCostRequest> savedCardEntryCosts =
+      <SaveCardEntryCostRequest>[];
   final List<CreatePurchaseRequest> created = <CreatePurchaseRequest>[];
   final List<CreateAdjustmentRequest> adjustments = <CreateAdjustmentRequest>[];
   final List<ExchangeRateInput> rates = <ExchangeRateInput>[];
   Completer<String>? createCompleter;
+
+  @override
+  Stream<CardEntryCost> watchCardEntryCost(String cardItemId) =>
+      Stream<CardEntryCost>.value(cardEntryCost);
+
+  @override
+  Future<void> saveCardEntryCost(SaveCardEntryCostRequest request) async {
+    final normalized = request.normalized();
+    savedCardEntryCosts.add(normalized);
+    cardEntryCost = CardEntryCost(
+      amountMinor: normalized.amountMinor,
+      shippingMinor: normalized.shippingMinor,
+    );
+  }
 
   @override
   Future<String> createPurchase(CreatePurchaseRequest request) async {

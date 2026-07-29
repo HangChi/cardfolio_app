@@ -4,6 +4,93 @@ import '../../../cards/data/local/card_database.dart';
 import '../../domain/purchase_models.dart';
 
 extension PurchaseDatabase on AppDatabase {
+  Stream<CardEntryCost> watchCardEntryCost(String cardItemId) {
+    final query = select(purchases)
+      ..where((row) => row.id.equals(cardEntryCostPurchaseId(cardItemId)));
+    return query.watchSingleOrNull().map(
+      (row) => row == null
+          ? const CardEntryCost.empty()
+          : CardEntryCost(
+              amountMinor: row.amountMinor,
+              shippingMinor: row.shippingMinor,
+            ),
+    );
+  }
+
+  Future<void> saveCardEntryCost({
+    required SaveCardEntryCostRequest request,
+    required DateTime now,
+  }) {
+    final normalized = request.normalized();
+    final purchaseId = cardEntryCostPurchaseId(normalized.cardItemId);
+    return transaction(() async {
+      final existing = await (select(
+        purchases,
+      )..where((row) => row.id.equals(purchaseId))).getSingleOrNull();
+
+      if (normalized.isEmpty) {
+        await (delete(
+          purchaseItems,
+        )..where((row) => row.purchaseId.equals(purchaseId))).go();
+        await (delete(
+          purchases,
+        )..where((row) => row.id.equals(purchaseId))).go();
+        return;
+      }
+
+      final target = PurchaseTargetInput(
+        targetType: PurchaseTargetType.card,
+        targetId: normalized.cardItemId,
+      );
+      final targetName = await _activePurchaseTargetName(target);
+
+      if (existing == null) {
+        await into(purchases).insert(
+          PurchasesCompanion.insert(
+            id: purchaseId,
+            purchasedAt: now,
+            amountMinor: normalized.amountMinor,
+            currency: 'CNY',
+            shippingMinor: Value(normalized.shippingMinor),
+            feesMinor: const Value(0),
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      } else {
+        await (update(
+          purchases,
+        )..where((row) => row.id.equals(purchaseId))).write(
+          PurchasesCompanion(
+            amountMinor: Value(normalized.amountMinor),
+            currency: const Value('CNY'),
+            shippingMinor: Value(normalized.shippingMinor),
+            feesMinor: const Value(0),
+            channel: const Value<String?>(null),
+            seller: const Value<String?>(null),
+            notes: const Value<String?>(null),
+            adjustmentOfId: const Value<String?>(null),
+            version: Value(existing.version + 1),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+
+      await (delete(
+        purchaseItems,
+      )..where((row) => row.purchaseId.equals(purchaseId))).go();
+      await into(purchaseItems).insert(
+        PurchaseItemsCompanion.insert(
+          purchaseId: purchaseId,
+          targetType: PurchaseTargetType.card,
+          targetId: normalized.cardItemId,
+          targetName: targetName,
+          createdAt: now,
+        ),
+      );
+    });
+  }
+
   Future<void> createPurchase({
     required CreatePurchaseRequest request,
     required DateTime now,

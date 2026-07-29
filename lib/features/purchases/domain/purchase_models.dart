@@ -90,6 +90,60 @@ final class CurrencyAmount {
 }
 
 @immutable
+final class CardEntryCost {
+  const CardEntryCost({
+    required this.amountMinor,
+    required this.shippingMinor,
+  });
+
+  const CardEntryCost.empty() : amountMinor = 0, shippingMinor = 0;
+
+  final int amountMinor;
+  final int shippingMinor;
+
+  bool get isEmpty => amountMinor == 0 && shippingMinor == 0;
+}
+
+@immutable
+final class SaveCardEntryCostRequest {
+  const SaveCardEntryCostRequest({
+    required this.cardItemId,
+    required this.amountMinor,
+    required this.shippingMinor,
+    this.isNormalized = false,
+  });
+
+  final String cardItemId;
+  final int amountMinor;
+  final int shippingMinor;
+  final bool isNormalized;
+
+  bool get isEmpty => amountMinor == 0 && shippingMinor == 0;
+
+  SaveCardEntryCostRequest normalized() {
+    if (isNormalized) return this;
+    if (amountMinor < 0 || shippingMinor < 0) {
+      throw const PurchaseValidationFailure(
+        PurchaseField.amount,
+        '卡片金额和运费不能为负数。',
+      );
+    }
+    _validateStoredMinor(amountMinor, PurchaseField.amount);
+    _validateStoredMinor(shippingMinor, PurchaseField.amount);
+    _validateStoredMinor(amountMinor + shippingMinor, PurchaseField.amount);
+    return SaveCardEntryCostRequest(
+      cardItemId: _requiredId(cardItemId, PurchaseField.target),
+      amountMinor: amountMinor,
+      shippingMinor: shippingMinor,
+      isNormalized: true,
+    );
+  }
+}
+
+String cardEntryCostPurchaseId(String cardItemId) =>
+    'card-entry-cost:${cardItemId.trim()}';
+
+@immutable
 final class CostDisplayOptions {
   const CostDisplayOptions({
     this.includeShipping = true,

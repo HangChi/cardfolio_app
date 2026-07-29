@@ -304,6 +304,14 @@ final class CardSetSummary {
 }
 
 @immutable
+final class CardSetMembership {
+  const CardSetMembership({required this.setId, required this.memberId});
+
+  final String setId;
+  final String memberId;
+}
+
+@immutable
 final class CardSetDetail {
   const CardSetDetail({
     required this.id,

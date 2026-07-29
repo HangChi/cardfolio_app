@@ -5,8 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../card_sets/data/card_set_providers.dart';
+import '../../../card_sets/domain/card_set_models.dart';
 import '../../../organization/data/organization_providers.dart';
 import '../../../organization/domain/organization_models.dart';
+import '../../../purchases/data/purchase_providers.dart';
+import '../../../purchases/domain/purchase_models.dart';
 import '../../../recycle_bin/data/recycle_bin_providers.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
@@ -25,6 +29,15 @@ class CardDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: BackButton(
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(libraryPath);
+            }
+          },
+        ),
         title: const Text('卡片详情'),
         actions: <Widget>[
           IconButton(
@@ -463,23 +476,14 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         if (card.code case final code?) _DetailRow(label: '编号', value: code),
         if (card.notes case final notes?) _DetailRow(label: '备注', value: notes),
         _OrganizationSummary(cardItemId: card.cardItemId),
+        _CardCostSummary(cardItemId: card.cardItemId),
         SizedBox(height: tokens.spaceLg),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => context.push(editCardPath(card.cardItemId)),
-                child: const Text('编辑资料'),
-              ),
-            ),
-            SizedBox(width: tokens.spaceMd),
-            Expanded(
-              child: FilledButton(
-                onPressed: () => context.push(createPurchasePath),
-                child: const Text('记录购买'),
-              ),
-            ),
-          ],
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.tonal(
+            onPressed: () => context.push(editCardPath(card.cardItemId)),
+            child: const Text('编辑资料'),
+          ),
         ),
       ],
     );
@@ -523,6 +527,21 @@ class _OrganizationSummary extends ConsumerWidget {
               error: (error, stackTrace) => const Text('整理信息暂时无法加载'),
               data: (detail) {
                 if (detail == null) return const Text('卡片资料不存在');
+                final memberships = ref.watch(
+                  cardSetMembershipsProvider(detail.definitionId),
+                );
+                final cardSets =
+                    ref.watch(cardSetListProvider).value ??
+                    const <CardSetSummary>[];
+                final selectedSetIds =
+                    memberships.value
+                        ?.map((membership) => membership.setId)
+                        .toSet() ??
+                    const <String>{};
+                final selectedSetNames = cardSets
+                    .where((set) => selectedSetIds.contains(set.id))
+                    .map((set) => set.name)
+                    .toList(growable: false);
                 final labels = <String>[
                   ?detail.cardType,
                   if (detail.needsCompletion) '待完善',
@@ -544,6 +563,8 @@ class _OrganizationSummary extends ConsumerWidget {
                         ],
                       ),
                     ],
+                    if (selectedSetNames.isNotEmpty)
+                      Text('套卡：${selectedSetNames.join('、')}'),
                     if (detail.series.isNotEmpty)
                       Text(
                         '集卡册：${detail.series.map((item) => item.name).join('、')}',
@@ -554,9 +575,10 @@ class _OrganizationSummary extends ConsumerWidget {
                       ),
                     if (labels.isEmpty &&
                         detail.tags.isEmpty &&
+                        selectedSetNames.isEmpty &&
                         detail.series.isEmpty &&
                         detail.fieldValues.isEmpty)
-                      const Text('尚未添加标签、集卡册或自定义资料'),
+                      const Text('尚未添加标签、套卡、卡册或自定义资料'),
                   ],
                 );
               },
@@ -564,6 +586,56 @@ class _OrganizationSummary extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CardCostSummary extends ConsumerWidget {
+  const _CardCostSummary({required this.cardItemId});
+
+  final String cardItemId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cost = ref.watch(cardEntryCostProvider(cardItemId));
+    return cost.maybeWhen(
+      data: (value) {
+        if (value.isEmpty) return const SizedBox.shrink();
+        final amount = CurrencyAmount(
+          minorUnits: value.amountMinor,
+          currency: 'CNY',
+        ).formatted;
+        final shipping = CurrencyAmount(
+          minorUnits: value.shippingMinor,
+          currency: 'CNY',
+        ).formatted;
+        final total = CurrencyAmount(
+          minorUnits: value.amountMinor + value.shippingMinor,
+          currency: 'CNY',
+        ).formatted;
+        return Card(
+          child: Padding(
+            padding: EdgeInsets.all(context.tokens.spaceMd),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  '入手成本',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SizedBox(height: context.tokens.spaceSm),
+                Text('卡片 ¥$amount · 运费 ¥$shipping'),
+                SizedBox(height: context.tokens.spaceXs),
+                Text(
+                  '合计 ¥$total',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }

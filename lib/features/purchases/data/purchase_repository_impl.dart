@@ -15,6 +15,21 @@ final class PurchaseRepositoryImpl implements PurchaseRepository {
   final Clock clock;
 
   @override
+  Stream<CardEntryCost> watchCardEntryCost(String cardItemId) =>
+      _read(_db.watchCardEntryCost(cardItemId));
+
+  @override
+  Future<void> saveCardEntryCost(SaveCardEntryCostRequest request) {
+    final normalized = request.normalized();
+    return _write(
+      action: () =>
+          _db.saveCardEntryCost(request: normalized, now: clock.nowUtc()),
+      field: PurchaseField.amount,
+      failureMessage: '保存卡片金额失败，请重试。',
+    );
+  }
+
+  @override
   Stream<List<PurchaseRecord>> watchPurchases() =>
       _read(_db.watchPurchaseRecords());
 

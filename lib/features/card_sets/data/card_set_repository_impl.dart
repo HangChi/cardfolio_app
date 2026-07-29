@@ -18,6 +18,12 @@ final class CardSetRepositoryImpl implements CardSetRepository {
   Stream<List<CardSetSummary>> watchSets() => _db.watchCardSetSummaries();
 
   @override
+  Stream<List<CardSetMembership>> watchMemberships(String definitionId) =>
+      _db.watchCardSetMemberships(
+        _requiredId(definitionId, CardSetField.member),
+      );
+
+  @override
   Stream<CardSetDetail?> watchSet(String setId) =>
       _db.watchCardSetDetail(setId);
 

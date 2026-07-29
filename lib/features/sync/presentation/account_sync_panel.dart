@@ -356,6 +356,6 @@ String _entityLabel(String entityType) => switch (entityType) {
   'cardSets' => '套卡',
   'tags' => '标签',
   'seriesRecords' => '集卡册',
-  'purchases' => '购买记录',
+  'purchases' => '入手成本',
   _ => '收藏数据',
 };

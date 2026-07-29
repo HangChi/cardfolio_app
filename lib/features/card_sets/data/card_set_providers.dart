@@ -18,6 +18,13 @@ final StreamProvider<List<CardSetSummary>> cardSetListProvider =
       (ref) => ref.watch(cardSetRepositoryProvider).watchSets(),
     );
 
+final cardSetMembershipsProvider =
+    StreamProvider.family<List<CardSetMembership>, String>(
+      (ref, definitionId) => ref
+          .watch(cardSetRepositoryProvider)
+          .watchMemberships(definitionId),
+    );
+
 final cardSetDetailProvider = StreamProvider.family<CardSetDetail?, String>(
   (ref, setId) => ref.watch(cardSetRepositoryProvider).watchSet(setId),
 );

@@ -96,7 +96,7 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
-    expect(find.text('购买记录'), findsOneWidget);
+    expect(find.text('购买记录'), findsNothing);
     expect(find.textContaining('分摊与退款'), findsOneWidget);
     await _disposeApp(tester);
   });

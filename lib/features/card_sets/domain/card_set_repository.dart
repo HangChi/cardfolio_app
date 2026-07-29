@@ -3,6 +3,8 @@ import 'card_set_models.dart';
 abstract interface class CardSetRepository {
   Stream<List<CardSetSummary>> watchSets();
 
+  Stream<List<CardSetMembership>> watchMemberships(String definitionId);
+
   Stream<CardSetDetail?> watchSet(String setId);
 
   Stream<List<CardSetCandidate>> watchCandidates(String setId);

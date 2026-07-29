@@ -5,11 +5,16 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../card_sets/data/card_set_providers.dart';
+import '../../../card_sets/domain/card_set_models.dart';
 import '../../../organization/data/organization_providers.dart';
 import '../../../organization/domain/organization_models.dart';
+import '../../../purchases/data/purchase_providers.dart';
+import '../../../purchases/domain/purchase_models.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
 import '../widgets/card_image.dart';
+import '../widgets/card_entry_metadata_fields.dart';
 import '../widgets/optional_date_field.dart';
 
 class BatchCardEntryScreen extends ConsumerStatefulWidget {
@@ -22,7 +27,7 @@ class BatchCardEntryScreen extends ConsumerStatefulWidget {
 
 class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
   final _drafts = <_BatchCardDraft>[];
-  String? _albumId;
+  final _selectedAlbumIds = <String>{};
   bool _saving = false;
 
   @override
@@ -110,6 +115,8 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
     var savedCount = 0;
     try {
       for (final draft in _drafts.where((draft) => !draft.saved)) {
+        final amountMinor = parseOptionalCnyMinor(draft.amount.text);
+        final shippingMinor = parseOptionalCnyMinor(draft.shipping.text);
         final front = draft.frontPath;
         final back = draft.backPath;
         final primaryPath = front ?? back ?? '';
@@ -136,19 +143,29 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
         final cardItemId = await ref
             .read(cardRepositoryProvider)
             .createCard(request);
-        if (draft.tagIds.isNotEmpty || _albumId != null) {
-          await ref
-              .read(organizationRepositoryProvider)
-              .saveCardOrganization(
-                SaveCardOrganizationRequest(
-                  cardItemId: cardItemId,
-                  tagIds: draft.tagIds.toList(growable: false),
-                  seriesIds: _albumId == null
-                      ? const <String>[]
-                      : <String>[_albumId!],
-                ),
-              );
-        }
+        await ref
+            .read(organizationRepositoryProvider)
+            .saveCardOrganization(
+              SaveCardOrganizationRequest(
+                cardItemId: cardItemId,
+                tagIds: draft.tagIds.toList(growable: false),
+                seriesIds: _selectedAlbumIds.toList(growable: false),
+              ),
+            );
+        await saveCardSetSelections(
+          ref: ref,
+          definitionId: draft.ids.definitionId,
+          selectedSetIds: draft.setIds,
+        );
+        await ref
+            .read(purchaseRepositoryProvider)
+            .saveCardEntryCost(
+              SaveCardEntryCostRequest(
+                cardItemId: cardItemId,
+                amountMinor: amountMinor,
+                shippingMinor: shippingMinor,
+              ),
+            );
         if (!mounted) return;
         setState(() {
           draft.saved = true;
@@ -175,12 +192,25 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _createTag(_BatchCardDraft draft) async {
+    try {
+      final id = await createTagInline(context, ref);
+      if (id != null && mounted) {
+        setState(() => draft.tagIds.add(id));
+      }
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tags =
         ref.watch(organizationTagsProvider).value ?? const <TagSummary>[];
     final albums =
         ref.watch(organizationSeriesProvider).value ?? const <SeriesSummary>[];
+    final cardSets =
+        ref.watch(cardSetListProvider).value ?? const <CardSetSummary>[];
     final tokens = context.tokens;
 
     return Scaffold(
@@ -213,37 +243,46 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           SizedBox(height: tokens.spaceMd),
-          DropdownButtonFormField<String>(
-            initialValue: _albumId ?? '',
-            decoration: const InputDecoration(labelText: '集卡册（本批次共用，可选）'),
-            items: <DropdownMenuItem<String>>[
-              const DropdownMenuItem<String>(value: '', child: Text('暂不加入集卡册')),
-              for (final album in albums)
-                DropdownMenuItem<String>(
-                  value: album.id,
-                  child: Text(album.name),
-                ),
-            ],
-            onChanged: _saving
-                ? null
-                : (value) => setState(
-                    () => _albumId = value == null || value.isEmpty
-                        ? null
-                        : value,
-                  ),
+          Text(
+            '加入卡册（本批次共用，可多选）',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
+          SizedBox(height: tokens.spaceSm),
+          if (albums.isEmpty)
+            Text('暂无卡册', style: Theme.of(context).textTheme.bodySmall)
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <Widget>[
+                for (final album in albums)
+                  FilterChip(
+                    label: Text(album.name),
+                    selected: _selectedAlbumIds.contains(album.id),
+                    onSelected: _saving
+                        ? null
+                        : (selected) => setState(
+                            () => selected
+                                ? _selectedAlbumIds.add(album.id)
+                                : _selectedAlbumIds.remove(album.id),
+                          ),
+                  ),
+              ],
+            ),
           SizedBox(height: tokens.spaceLg),
           for (var index = 0; index < _drafts.length; index++) ...<Widget>[
             _BatchDraftCard(
               index: index,
               draft: _drafts[index],
               tags: tags,
+              cardSets: cardSets,
               enabled: !_saving,
               onRemove: () => _removeDraft(_drafts[index]),
               onChooseFront: () =>
                   _chooseImage(_drafts[index], CardImageKind.front),
               onChooseBack: () =>
                   _chooseImage(_drafts[index], CardImageKind.back),
+              onCreateTag: () => _createTag(_drafts[index]),
               onChanged: () => setState(() {}),
             ),
             SizedBox(height: tokens.spaceMd),
@@ -269,20 +308,24 @@ class _BatchDraftCard extends StatelessWidget {
     required this.index,
     required this.draft,
     required this.tags,
+    required this.cardSets,
     required this.enabled,
     required this.onRemove,
     required this.onChooseFront,
     required this.onChooseBack,
+    required this.onCreateTag,
     required this.onChanged,
   });
 
   final int index;
   final _BatchCardDraft draft;
   final List<TagSummary> tags;
+  final List<CardSetSummary> cardSets;
   final bool enabled;
   final VoidCallback onRemove;
   final VoidCallback onChooseFront;
   final VoidCallback onChooseBack;
+  final VoidCallback onCreateTag;
   final VoidCallback onChanged;
 
   @override
@@ -350,7 +393,21 @@ class _BatchDraftCard extends StatelessWidget {
               },
             ),
             SizedBox(height: tokens.spaceMd),
-            Text('卡片标签（可选）', style: Theme.of(context).textTheme.titleSmall),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    '卡片标签（可选）',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: enabled && !draft.saved ? onCreateTag : null,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('新建标签'),
+                ),
+              ],
+            ),
             SizedBox(height: tokens.spaceSm),
             if (tags.isEmpty)
               Text('暂无标签', style: Theme.of(context).textTheme.bodySmall)
@@ -374,6 +431,37 @@ class _BatchDraftCard extends StatelessWidget {
                     ),
                 ],
               ),
+            SizedBox(height: tokens.spaceMd),
+            Text('加入套卡（可选）', style: Theme.of(context).textTheme.titleSmall),
+            SizedBox(height: tokens.spaceSm),
+            if (cardSets.isEmpty)
+              Text('暂无套卡', style: Theme.of(context).textTheme.bodySmall)
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  for (final cardSet in cardSets)
+                    FilterChip(
+                      label: Text(cardSet.name),
+                      selected: draft.setIds.contains(cardSet.id),
+                      onSelected: enabled && !draft.saved
+                          ? (selected) {
+                              selected
+                                  ? draft.setIds.add(cardSet.id)
+                                  : draft.setIds.remove(cardSet.id);
+                              onChanged();
+                            }
+                          : null,
+                    ),
+                ],
+              ),
+            SizedBox(height: tokens.spaceMd),
+            CardEntryCostFields(
+              amountController: draft.amount,
+              shippingController: draft.shipping,
+              enabled: enabled && !draft.saved,
+            ),
           ],
         ),
       ),
@@ -437,14 +525,21 @@ final class _BatchCardDraft {
   final CardDraftIds ids;
   final String backImageId;
   final TextEditingController name = TextEditingController();
+  final TextEditingController amount = TextEditingController();
+  final TextEditingController shipping = TextEditingController();
   final Set<String> tagIds = <String>{};
+  final Set<String> setIds = <String>{};
   String? frontPath;
   String? backPath;
   DateTime? issuedAt;
   bool saved = false;
   String? savedCardItemId;
 
-  void dispose() => name.dispose();
+  void dispose() {
+    name.dispose();
+    amount.dispose();
+    shipping.dispose();
+  }
 }
 
 enum _ImageSourceChoice { gallery, camera }

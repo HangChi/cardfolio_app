@@ -5,11 +5,18 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../card_sets/data/card_set_providers.dart';
+import '../../../card_sets/domain/card_set_models.dart';
+import '../../../organization/data/organization_providers.dart';
+import '../../../organization/domain/organization_models.dart';
+import '../../../purchases/data/purchase_providers.dart';
+import '../../../purchases/domain/purchase_models.dart';
 import '../../domain/card_models.dart';
 import '../../domain/image_processing.dart';
 import 'create_card_controller.dart';
 import 'create_card_state.dart';
 import '../widgets/card_image.dart';
+import '../widgets/card_entry_metadata_fields.dart';
 import '../widgets/card_image_kind_label.dart';
 import '../widgets/optional_date_field.dart';
 
@@ -22,10 +29,83 @@ class CreateCardScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
+  final _amount = TextEditingController();
+  final _shipping = TextEditingController();
+  final _selectedTags = <String>{};
+  final _selectedSets = <String>{};
+  final _selectedAlbums = <String>{};
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _shipping.dispose();
+    super.dispose();
+  }
+
   Future<void> _save() async {
+    final int amountMinor;
+    final int shippingMinor;
+    try {
+      amountMinor = parseOptionalCnyMinor(_amount.text);
+      shippingMinor = parseOptionalCnyMinor(_shipping.text);
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
+      return;
+    }
+
     final id = await ref.read(createCardControllerProvider.notifier).save();
     if (!mounted || id == null) return;
-    context.go(cardDetailPath(id));
+    final draft = ref.read(createCardControllerProvider);
+    try {
+      await ref
+          .read(organizationRepositoryProvider)
+          .saveCardOrganization(
+            SaveCardOrganizationRequest(
+              cardItemId: id,
+              tagIds: _selectedTags.toList(growable: false),
+              seriesIds: _selectedAlbums.toList(growable: false),
+            ),
+          );
+      await saveCardSetSelections(
+        ref: ref,
+        definitionId: draft.ids!.definitionId,
+        selectedSetIds: _selectedSets,
+      );
+      await ref
+          .read(purchaseRepositoryProvider)
+          .saveCardEntryCost(
+            SaveCardEntryCostRequest(
+              cardItemId: id,
+              amountMinor: amountMinor,
+              shippingMinor: shippingMinor,
+            ),
+          );
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
+      return;
+    } catch (_) {
+      _showMessage('卡片已创建，整理信息暂未保存，请重试。');
+      return;
+    }
+    if (mounted) context.pushReplacement(cardDetailPath(id));
+  }
+
+  Future<void> _createTag() async {
+    try {
+      final id = await createTagInline(context, ref);
+      if (id != null && mounted) {
+        setState(() => _selectedTags.add(id));
+      }
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _close() {
@@ -73,21 +153,56 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
                 )
               : null,
         ),
-        body: _CreateCardForm(state: state),
+        body: _CreateCardForm(
+          state: state,
+          amountController: _amount,
+          shippingController: _shipping,
+          selectedTags: _selectedTags,
+          selectedSets: _selectedSets,
+          selectedAlbums: _selectedAlbums,
+          onCreateTag: _createTag,
+          onSelectionChanged: setState,
+          onSave: _save,
+        ),
       ),
     );
   }
 }
 
 class _CreateCardForm extends ConsumerWidget {
-  const _CreateCardForm({required this.state});
+  const _CreateCardForm({
+    required this.state,
+    required this.amountController,
+    required this.shippingController,
+    required this.selectedTags,
+    required this.selectedSets,
+    required this.selectedAlbums,
+    required this.onCreateTag,
+    required this.onSelectionChanged,
+    required this.onSave,
+  });
 
   final CreateCardState state;
+  final TextEditingController amountController;
+  final TextEditingController shippingController;
+  final Set<String> selectedTags;
+  final Set<String> selectedSets;
+  final Set<String> selectedAlbums;
+  final VoidCallback onCreateTag;
+  final void Function(VoidCallback callback) onSelectionChanged;
+  final Future<void> Function() onSave;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
     final controller = ref.read(createCardControllerProvider.notifier);
+    final tags =
+        ref.watch(organizationTagsProvider).value ?? const <TagSummary>[];
+    final cardSets =
+        ref.watch(cardSetListProvider).value ?? const <CardSetSummary>[];
+    final albums =
+        ref.watch(organizationSeriesProvider).value ??
+        const <SeriesSummary>[];
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -155,20 +270,49 @@ class _CreateCardForm extends ConsumerWidget {
             maxLines: 5,
             textInputAction: TextInputAction.newline,
           ),
+          SizedBox(height: tokens.spaceLg),
+          Text('整理归属', style: Theme.of(context).textTheme.titleLarge),
+          SizedBox(height: tokens.spaceMd),
+          CardEntryMetadataFields(
+            tags: tags,
+            cardSets: cardSets,
+            albums: albums,
+            selectedTagIds: selectedTags,
+            selectedSetIds: selectedSets,
+            selectedAlbumIds: selectedAlbums,
+            enabled: !state.isSaving,
+            onCreateTag: onCreateTag,
+            onTagSelected: (id, selected) => onSelectionChanged(
+              () => selected ? selectedTags.add(id) : selectedTags.remove(id),
+            ),
+            onSetSelected: (id, selected) => onSelectionChanged(
+              () => selected ? selectedSets.add(id) : selectedSets.remove(id),
+            ),
+            onAlbumSelected: (id, selected) => onSelectionChanged(
+              () =>
+                  selected ? selectedAlbums.add(id) : selectedAlbums.remove(id),
+            ),
+          ),
+          SizedBox(height: tokens.spaceLg),
+          Text('入手成本', style: Theme.of(context).textTheme.titleLarge),
+          SizedBox(height: tokens.spaceSm),
+          Text(
+            '只记录人民币；两项都留空时不计入累计花费。',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          SizedBox(height: tokens.spaceMd),
+          CardEntryCostFields(
+            amountController: amountController,
+            shippingController: shippingController,
+            enabled: !state.isSaving,
+          ),
           if (state.failure case final failure?) ...<Widget>[
             SizedBox(height: tokens.spaceMd),
             _SaveFailure(failure: failure),
           ],
           SizedBox(height: tokens.spaceLg),
           FilledButton(
-            onPressed: state.isSaving
-                ? null
-                : () async {
-                    final id = await controller.save();
-                    if (context.mounted && id != null) {
-                      context.go(cardDetailPath(id));
-                    }
-                  },
+            onPressed: state.isSaving ? null : onSave,
             child: Text(state.isSaving ? '正在保存…' : '保存卡片'),
           ),
         ],
