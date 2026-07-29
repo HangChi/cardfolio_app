@@ -38,7 +38,7 @@
 - [Feature 总索引](features/README.md)
 - [Feature 001 九件套](features/001-local-card-creation/spec.md)
 - [Feature 002 九件套](features/002-multi-image-management/spec.md)
-- Feature 003–007 已建立九件套并完成实现；Feature 008–010 保留开发门禁。
+- Feature 003–008 已建立九件套并完成实现；Feature 009–010 保留开发门禁。
 
 ## 工程
 
@@ -81,4 +81,4 @@
 
 ## 当前边界
 
-Feature 001–007 已完成本地建卡、多图、套卡、整理、购买、统计与回收站自动化闭环，设备验收仍待执行。导入导出属于 Feature 008；相机、裁切增强和真实大图性能属于 Feature 009。
+Feature 001–008 已完成本地建卡、多图、套卡、整理、购买、统计、回收站与可验证备份自动化闭环，设备验收仍待执行。相机、裁切增强和真实大图性能属于 Feature 009。

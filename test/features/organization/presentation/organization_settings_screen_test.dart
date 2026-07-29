@@ -75,6 +75,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('限定'), findsOneWidget);
 
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('add-custom-field')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('name-input')), '发行数量');

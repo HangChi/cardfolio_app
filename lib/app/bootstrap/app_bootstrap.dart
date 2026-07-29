@@ -9,6 +9,9 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/errors/app_failure.dart';
 import '../../core/time/clock.dart';
+import '../../features/backup/data/backup_providers.dart';
+import '../../features/backup/data/backup_repository_impl.dart';
+import '../../features/backup/domain/backup_repository.dart';
 import '../../features/cards/data/card_providers.dart';
 import '../../features/cards/data/card_repository_impl.dart';
 import '../../features/cards/data/files/managed_image_store.dart';
@@ -31,16 +34,19 @@ final class CardfolioDependencies {
     required this.imageStore,
     required this.repository,
     required this.recycleBinRepository,
+    required this.backupRepository,
   });
 
   static const String _dataDirectoryName = 'cardfolio';
   static const String _databaseFileName = 'cardfolio.sqlite';
   static const String _imageDirectoryName = 'images';
+  static const String _backupWorkDirectoryName = 'backup-work';
 
   final AppDatabase database;
   final ManagedImageStore imageStore;
   final CardRepository repository;
   final RecycleBinRepository recycleBinRepository;
+  final BackupRepository backupRepository;
 
   /// 打开持久化依赖并完成启动恢复。
   ///
@@ -58,7 +64,11 @@ final class CardfolioDependencies {
         p.join(platformSupport.path, _dataDirectoryName),
       );
       final imageRoot = Directory(p.join(dataRoot.path, _imageDirectoryName));
+      final backupWork = Directory(
+        p.join(dataRoot.path, _backupWorkDirectoryName),
+      );
       await imageRoot.create(recursive: true);
+      await _resetBackupWorkDirectory(backupWork);
 
       database = AppDatabase(
         NativeDatabase.createInBackground(
@@ -76,6 +86,12 @@ final class CardfolioDependencies {
         imageStore: imageStore,
         clock: const SystemClock(),
       );
+      final backupRepository = BackupRepositoryImpl(
+        database: database,
+        imageStore: imageStore,
+        workingDirectory: backupWork,
+        clock: const SystemClock(),
+      );
 
       // 先完成到期永久删除和中断文件清理，再按最新引用清理孤儿文件。
       await recycleBinRepository.purgeExpired();
@@ -89,6 +105,7 @@ final class CardfolioDependencies {
         imageStore: imageStore,
         repository: repository,
         recycleBinRepository: recycleBinRepository,
+        backupRepository: backupRepository,
       );
     } on AppFailure {
       if (database != null) await _closeQuietly(database);
@@ -106,6 +123,15 @@ final class CardfolioDependencies {
       await database.close();
     } on Object {
       // 初始化已失败，关闭异常不能覆盖原始失败。
+    }
+  }
+
+  static Future<void> _resetBackupWorkDirectory(Directory directory) async {
+    try {
+      if (directory.existsSync()) await directory.delete(recursive: true);
+      await directory.create(recursive: true);
+    } on FileSystemException catch (error) {
+      throw BackupStorageFailure('无法准备备份临时空间，请检查存储空间。', error);
     }
   }
 }
@@ -187,6 +213,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
           cardRepositoryProvider.overrideWithValue(dependencies.repository),
           recycleBinRepositoryProvider.overrideWithValue(
             dependencies.recycleBinRepository,
+          ),
+          backupRepositoryProvider.overrideWithValue(
+            dependencies.backupRepository,
           ),
         ],
         child: CardfolioApp(router: createAppRouter()),

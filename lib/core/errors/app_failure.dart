@@ -82,6 +82,26 @@ final class RecycleBinValidationFailure extends AppFailure {
   final RecycleBinField field;
 }
 
+/// 备份结构、内容、关系、目标状态或合并冲突不满足安全导入约束。
+final class BackupValidationFailure extends AppFailure {
+  const BackupValidationFailure(super.userMessage, [super.cause]);
+}
+
+/// 备份逻辑格式版本不在当前应用支持范围内。
+final class BackupCompatibilityFailure extends AppFailure {
+  const BackupCompatibilityFailure(super.userMessage, [super.cause]);
+}
+
+/// 备份读取、临时文件、目标写入或图片提交失败。
+final class BackupStorageFailure extends AppFailure {
+  const BackupStorageFailure(super.userMessage, [super.cause]);
+}
+
+/// 用户在可安全取消的阶段主动停止备份操作。
+final class BackupCancelledFailure extends AppFailure {
+  const BackupCancelledFailure([super.userMessage = '操作已取消。']);
+}
+
 /// 相册选择器不可用、权限被拒绝或返回了无法使用的结果。
 final class GalleryAccessFailure extends AppFailure {
   const GalleryAccessFailure([

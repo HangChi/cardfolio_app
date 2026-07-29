@@ -1,5 +1,6 @@
 import 'package:cardfolio_app/app/app_router.dart';
 import 'package:cardfolio_app/app/cardfolio_app.dart';
+import 'package:cardfolio_app/features/backup/data/backup_providers.dart';
 import 'package:cardfolio_app/features/cards/data/card_providers.dart';
 import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../features/recycle_bin/support/fake_recycle_bin_repository.dart';
+import '../features/backup/support/fake_backup_repository.dart';
 
 class _EmptyCardRepository implements CardRepository {
   @override
@@ -86,6 +88,8 @@ void main() {
           recycleBinRepositoryProvider.overrideWithValue(
             FakeRecycleBinRepository(),
           ),
+          backupRepositoryProvider.overrideWithValue(FakeBackupRepository()),
+          backupFilePickerProvider.overrideWithValue(FakeBackupFilePicker()),
         ],
         child: CardfolioApp(
           router: createAppRouter(
@@ -157,5 +161,19 @@ void main() {
 
     expect(find.text('回收站'), findsOneWidget);
     expect(find.text('恢复已删除卡片，或将其永久删除。'), findsOneWidget);
+  });
+
+  testWidgets('backup route renders the implemented page', (tester) async {
+    await pumpShell(tester, initialLocation: backupPath);
+
+    expect(find.text('导入与导出'), findsOneWidget);
+    expect(find.text('导出完整备份'), findsOneWidget);
+  });
+
+  testWidgets('profile exposes the backup entry', (tester) async {
+    await pumpShell(tester, initialLocation: profilePath);
+
+    expect(find.text('导入与导出'), findsOneWidget);
+    expect(find.text('备份、恢复或合并你的全部收藏数据。'), findsOneWidget);
   });
 }

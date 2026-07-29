@@ -47,6 +47,16 @@ class OrganizationSettingsScreen extends ConsumerWidget {
               onTap: () => context.push(recycleBinPath),
             ),
           ),
+          SizedBox(height: tokens.spaceMd),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.import_export_outlined),
+              title: const Text('导入与导出'),
+              subtitle: const Text('备份、恢复或合并你的全部收藏数据。'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(backupPath),
+            ),
+          ),
           SizedBox(height: tokens.spaceXl),
           _SectionHeader(
             title: '标签',

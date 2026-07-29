@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/backup/presentation/backup_screen.dart';
 import '../features/card_sets/presentation/detail/card_set_detail_screen.dart';
 import '../features/card_sets/presentation/form/card_set_form_screen.dart';
 import '../features/cards/presentation/capture/capture_entry_screen.dart';
@@ -29,6 +30,7 @@ const String createSeriesPath = '/series/new';
 const String purchasesPath = '/purchases';
 const String createPurchasePath = '/purchases/new';
 const String recycleBinPath = '/recycle-bin';
+const String backupPath = '/backup';
 
 String cardDetailPath(String id) => '/cards/$id';
 String cardOrganizationPath(String id) => '/cards/$id/organization';
@@ -109,6 +111,10 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
       GoRoute(
         path: recycleBinPath,
         builder: (context, state) => const RecycleBinScreen(),
+      ),
+      GoRoute(
+        path: backupPath,
+        builder: (context, state) => const BackupScreen(),
       ),
     ],
   );
