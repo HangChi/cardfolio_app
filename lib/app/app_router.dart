@@ -6,10 +6,12 @@ import '../features/backup/presentation/backup_screen.dart';
 import '../features/card_sets/presentation/detail/card_set_detail_screen.dart';
 import '../features/card_sets/presentation/form/card_set_form_screen.dart';
 import '../features/cards/presentation/capture/capture_entry_screen.dart';
+import '../features/cards/presentation/batch/batch_card_entry_screen.dart';
 import '../features/cards/data/card_providers.dart';
 import '../features/cards/presentation/create/create_card_screen.dart';
 import '../features/cards/presentation/detail/card_detail_screen.dart';
 import '../features/cards/presentation/edit/image_editor_screen.dart';
+import '../features/cards/presentation/edit/edit_card_screen.dart';
 import '../features/cards/presentation/library/card_library_screen.dart';
 import '../features/dashboard/presentation/home_screen.dart';
 import '../features/dashboard/presentation/statistics_screen.dart';
@@ -29,6 +31,7 @@ const String capturePath = '/capture';
 const String statsPath = '/stats';
 const String profilePath = '/profile';
 const String createCardPath = '/cards/new';
+const String batchCardEntryPath = '/cards/batch';
 const String createCardSetPath = '/sets/new';
 const String createSeriesPath = '/series/new';
 const String purchasesPath = '/purchases';
@@ -50,6 +53,7 @@ final class ImageEditorRouteArgs {
 }
 
 String cardDetailPath(String id) => '/cards/$id';
+String editCardPath(String id) => '/cards/$id/edit';
 String cardOrganizationPath(String id) => '/cards/$id/organization';
 String cardSetDetailPath(String id) => '/sets/$id';
 String editCardSetPath(String id) => '/sets/$id/edit';
@@ -78,6 +82,15 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
       GoRoute(
         path: createCardPath,
         builder: (context, state) => const CreateCardScreen(),
+      ),
+      GoRoute(
+        path: batchCardEntryPath,
+        builder: (context, state) => const BatchCardEntryScreen(),
+      ),
+      GoRoute(
+        path: '/cards/:id/edit',
+        builder: (context, state) =>
+            EditCardScreen(cardItemId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/cards/:id/organization',

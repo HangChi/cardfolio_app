@@ -97,6 +97,9 @@ class FakeCardRepository implements CardRepository {
   }
 
   @override
+  Future<void> updateCard(UpdateCardRequest request) async {}
+
+  @override
   Future<void> addImages(AddCardImagesRequest request) async {}
 
   @override
@@ -328,7 +331,7 @@ void main() {
         ]);
         expect(state().images.map((image) => image.kind), <CardImageKind>[
           CardImageKind.front,
-          CardImageKind.other,
+          CardImageKind.back,
           CardImageKind.other,
         ]);
         expect(ids.issuedCount, 5);
@@ -431,22 +434,20 @@ void main() {
       controller().updateName(name);
     }
 
-    test('a blank name shows 名称不能为空 and skips the repository', () async {
+    test('a blank name saves as 未命名卡片', () async {
       container = buildContainer();
       await pickAndName('   ');
 
-      expect(await controller().save(), isNull);
-      expect(state().fieldErrors[CardField.name], '名称不能为空');
-      expect(state().phase, CreateCardPhase.editing);
-      expect(repository.createCalls, 0);
+      expect(await controller().save(), isNotNull);
+      expect(repository.requests.single.name, '未命名卡片');
     });
 
-    test('saving without an image is rejected', () async {
+    test('saving without an image creates an empty card', () async {
       container = buildContainer();
-      controller().updateName('樱花纪念卡');
 
-      expect(await controller().save(), isNull);
-      expect(repository.createCalls, 0);
+      expect(await controller().save(), isNotNull);
+      expect(repository.requests.single.images, isEmpty);
+      expect(repository.requests.single.name, '未命名卡片');
     });
 
     test('a successful save returns the item id and clears failures', () async {
@@ -586,13 +587,14 @@ void main() {
 
     test('editing a field clears that field error', () async {
       container = buildContainer();
-      await pickAndName('   ');
+      await pickAndName('');
+      controller().updateIssuedAt('invalid');
       await controller().save();
-      expect(state().fieldErrors[CardField.name], isNotNull);
+      expect(state().fieldErrors[CardField.issuedAt], isNotNull);
 
-      controller().updateName('樱花纪念卡');
+      controller().updateIssuedAt('2026-07-29');
 
-      expect(state().fieldErrors[CardField.name], isNull);
+      expect(state().fieldErrors[CardField.issuedAt], isNull);
     });
   });
 }

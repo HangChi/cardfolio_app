@@ -129,6 +129,9 @@ class _FakeCardRepository implements CardRepository {
   }
 
   @override
+  Future<void> updateCard(UpdateCardRequest request) async {}
+
+  @override
   Future<void> addImages(AddCardImagesRequest request) async {}
 
   @override
@@ -277,6 +280,12 @@ class CardFlowHarness {
             ),
           ),
         ),
+        organizationTagsProvider.overrideWith(
+          (ref) => Stream<List<TagSummary>>.value(const <TagSummary>[]),
+        ),
+        organizationSeriesProvider.overrideWith(
+          (ref) => Stream<List<SeriesSummary>>.value(const <SeriesSummary>[]),
+        ),
       ],
     );
 
@@ -316,9 +325,9 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester, initialLocation: capturePath);
 
-    expect(find.text('后续开放'), findsOneWidget);
     expect(find.text('拍摄单张卡'), findsOneWidget);
     expect(find.text('连续拍摄'), findsOneWidget);
+    expect(find.text('批量录入卡片'), findsOneWidget);
   });
 
   testWidgets('single capture opens the existing card draft', (tester) async {
@@ -334,7 +343,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('新建卡片'), findsOneWidget);
-    expect(find.text('1 张图片'), findsOneWidget);
+    expect(find.text('正反面与其他图片（1 张，可选）'), findsOneWidget);
   });
 
   testWidgets('continuous capture keeps confirmed images and stops on cancel', (
@@ -354,10 +363,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('新建卡片'), findsOneWidget);
-    expect(find.text('2 张图片'), findsOneWidget);
+    expect(find.text('正反面与其他图片（2 张，可选）'), findsOneWidget);
   });
 
-  testWidgets('blank card name shows 名称不能为空', (tester) async {
+  testWidgets('blank card name saves as 未命名卡片', (tester) async {
     final harness = CardFlowHarness.empty();
     addTearDown(harness.dispose);
     await harness.pump(tester, initialLocation: capturePath);
@@ -365,10 +374,24 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('保存'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('名称不能为空'), findsOneWidget);
-    expect(harness.createCalls, 0);
+    expect(find.text('未命名卡片'), findsOneWidget);
+    expect(harness.createCalls, 1);
+  });
+
+  testWidgets('batch entry starts with an empty optional card draft', (
+    tester,
+  ) async {
+    final harness = CardFlowHarness.empty();
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: batchCardEntryPath);
+
+    expect(find.text('批量录入卡片'), findsOneWidget);
+    expect(find.text('正面（可选）'), findsOneWidget);
+    expect(find.text('背面（可选）'), findsOneWidget);
+    expect(find.text('名称（可选）'), findsOneWidget);
+    expect(find.text('集卡册（本批次共用，可选）'), findsOneWidget);
   });
 
   testWidgets('saving disables repeated submission', (tester) async {

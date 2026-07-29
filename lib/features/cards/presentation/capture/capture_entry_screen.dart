@@ -108,10 +108,12 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
             onTap: () => _capture(context, continuous: true),
           ),
           SizedBox(height: tokens.spaceMd),
-          const _CaptureOption(
+          _CaptureOption(
             icon: Icons.grid_on_outlined,
-            title: '创建套卡并拍摄',
-            subtitle: '先建套卡，再连续录入',
+            title: '批量录入卡片',
+            subtitle: '按集卡册一次录入多张卡片的正反面',
+            enabled: true,
+            onTap: () => context.push(batchCardEntryPath),
           ),
           SizedBox(height: tokens.spaceMd),
           _CaptureOption(

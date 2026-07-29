@@ -934,6 +934,56 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  /// 更新卡片定义与藏品数量，不影响图片、标签和集卡册归属。
+  Future<void> updateCardBase({
+    required UpdateCardRequest request,
+    required DateTime updatedAt,
+  }) {
+    return transaction(() async {
+      final item =
+          await (select(cardItems)..where(
+                (row) =>
+                    row.id.equals(request.cardItemId) & row.deletedAt.isNull(),
+              ))
+              .getSingleOrNull();
+      if (item == null) throw StateError('卡片不存在。');
+
+      final definition = await (select(
+        cardDefinitions,
+      )..where((row) => row.id.equals(item.definitionId))).getSingleOrNull();
+      if (definition == null) throw StateError('卡片资料不存在。');
+
+      final definitionChanged =
+          await (update(
+            cardDefinitions,
+          )..where((row) => row.id.equals(definition.id))).write(
+            CardDefinitionsCompanion(
+              name: Value(request.name),
+              city: Value<String?>(request.city),
+              issuer: Value<String?>(request.issuer),
+              issuedAt: Value<String?>(request.issuedAt?.toIsoString()),
+              code: Value<String?>(request.code),
+              notes: Value<String?>(request.notes),
+              updatedAt: Value(updatedAt),
+              version: Value(definition.version + 1),
+            ),
+          );
+      final itemChanged =
+          await (update(
+            cardItems,
+          )..where((row) => row.id.equals(request.cardItemId))).write(
+            CardItemsCompanion(
+              quantity: Value(request.quantity),
+              updatedAt: Value(updatedAt),
+              version: Value(item.version + 1),
+            ),
+          );
+      if (definitionChanged != 1 || itemChanged != 1) {
+        throw StateError('卡片不存在。');
+      }
+    });
+  }
+
   /// 观察未删除卡片摘要，按创建时间倒序，ID 作为稳定兜底排序。
   Stream<List<CardSummary>> watchCardSummaries() {
     final cover = alias(cardImages, 'cover');
@@ -1052,7 +1102,7 @@ class AppDatabase extends _$AppDatabase {
       final active = await _activeImages(cardItemId);
       if (images.isEmpty ||
           active.length + images.length > CreateCardRequest.maxImages) {
-        throw StateError('每张卡片必须保存 1 到 20 张图片。');
+        throw StateError('每次请选择 1 到 20 张图片。');
       }
       for (final image in images) {
         await into(cardImages).insert(image);
@@ -1130,9 +1180,6 @@ class AppDatabase extends _$AppDatabase {
   }) {
     return transaction(() async {
       final active = await _activeImages(cardItemId);
-      if (active.length <= 1) {
-        throw StateError('每张卡片至少保留一张图片。');
-      }
       final target = active.cast<CardImage?>().firstWhere(
         (image) => image!.id == imageId,
         orElse: () => null,

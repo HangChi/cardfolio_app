@@ -468,15 +468,15 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           children: <Widget>[
             Expanded(
               child: OutlinedButton(
-                onPressed: null,
-                child: const Text('编辑资料 · 后续开放'),
+                onPressed: () => context.push(editCardPath(card.cardItemId)),
+                child: const Text('编辑资料'),
               ),
             ),
             SizedBox(width: tokens.spaceMd),
             Expanded(
               child: FilledButton(
-                onPressed: null,
-                child: const Text('记录购买 · 后续开放'),
+                onPressed: () => context.push(createPurchasePath),
+                child: const Text('记录购买'),
               ),
             ),
           ],
@@ -546,7 +546,7 @@ class _OrganizationSummary extends ConsumerWidget {
                     ],
                     if (detail.series.isNotEmpty)
                       Text(
-                        '系列：${detail.series.map((item) => item.name).join('、')}',
+                        '集卡册：${detail.series.map((item) => item.name).join('、')}',
                       ),
                     for (final field in detail.fieldValues)
                       Text(
@@ -556,7 +556,7 @@ class _OrganizationSummary extends ConsumerWidget {
                         detail.tags.isEmpty &&
                         detail.series.isEmpty &&
                         detail.fieldValues.isEmpty)
-                      const Text('尚未添加标签、系列或自定义资料'),
+                      const Text('尚未添加标签、集卡册或自定义资料'),
                   ],
                 );
               },

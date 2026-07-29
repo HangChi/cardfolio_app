@@ -284,13 +284,13 @@ class _Form extends StatelessWidget {
                 ),
         ),
         SizedBox(height: tokens.spaceLg),
-        const _GroupTitle(title: '系列', description: '一张卡可以加入多个系列。'),
+        const _GroupTitle(title: '集卡册', description: '一张卡可以加入多个集卡册。'),
         series.when(
           loading: () =>
-              const LinearProgressIndicator(semanticsLabel: '正在加载系列'),
-          error: (error, stackTrace) => const Text('系列暂时无法加载'),
+              const LinearProgressIndicator(semanticsLabel: '正在加载集卡册'),
+          error: (error, stackTrace) => const Text('集卡册暂时无法加载'),
           data: (items) => items.isEmpty
-              ? const Text('还没有系列，可从收藏页的“系列”新建。')
+              ? const Text('还没有集卡册，可从收藏页的“集卡册”新建。')
               : Wrap(
                   spacing: tokens.spaceSm,
                   runSpacing: tokens.spaceSm,

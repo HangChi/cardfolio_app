@@ -398,18 +398,18 @@ void main() {
       );
     });
 
-    test('refuses to remove the last active image', () async {
+    test('allows removal of the last active image', () async {
       await db.insertCardGraph(exampleGraph());
 
-      await expectLater(
-        db.removeImage(
-          cardItemId: 'item-1',
-          imageId: 'image-1',
-          keepOriginal: true,
-          deletedAt: createdAt,
-        ),
-        throwsA(isA<StateError>()),
+      await db.removeImage(
+        cardItemId: 'item-1',
+        imageId: 'image-1',
+        keepOriginal: true,
+        deletedAt: createdAt,
       );
+
+      expect((await db.watchCardDetail('item-1').first)!.images, isEmpty);
+      expect(await db.referencedImagePaths(), contains('cards/image-1.jpg'));
     });
   });
 

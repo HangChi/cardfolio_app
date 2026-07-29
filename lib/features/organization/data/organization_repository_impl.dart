@@ -134,7 +134,7 @@ final class OrganizationRepositoryImpl implements OrganizationRepository {
       action: () =>
           _db.saveOrganizationSeries(request: normalized, now: clock.nowUtc()),
       field: OrganizationField.series,
-      failureMessage: '保存系列失败，请重试。',
+      failureMessage: '保存集卡册失败，请重试。',
     );
     return normalized.id;
   }
@@ -147,7 +147,7 @@ final class OrganizationRepositoryImpl implements OrganizationRepository {
         now: clock.nowUtc(),
       ),
       field: OrganizationField.series,
-      failureMessage: '删除系列失败，请重试。',
+      failureMessage: '删除集卡册失败，请重试。',
     );
   }
 

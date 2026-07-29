@@ -91,7 +91,7 @@ final class CreateCardState {
 
   bool get isSaving => phase == CreateCardPhase.saving;
 
-  bool get hasImage => images.isNotEmpty && ids != null;
+  bool get hasImage => images.isNotEmpty;
 
   CreateCardState copyWith({
     CreateCardPhase? phase,

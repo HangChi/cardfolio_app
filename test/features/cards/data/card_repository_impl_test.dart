@@ -260,15 +260,22 @@ void main() {
       expect(detail.city, isNull);
     });
 
-    test('rejects a blank name without touching disk or database', () async {
-      await expectLater(
-        repository.createCard(validRequest(name: '   ')),
-        throwsA(isA<ValidationFailure>()),
+    test('persists an untitled card without any images', () async {
+      await repository.createCard(
+        const CreateCardRequest(
+          ids: CardDraftIds(
+            definitionId: 'definition-empty',
+            cardItemId: 'item-empty',
+            imageId: 'image-empty',
+          ),
+          sourceImagePath: '',
+          name: '',
+        ),
       );
 
-      expect(await db.countItems(), 0);
-      final originals = Directory(p.join(root.path, 'originals'));
-      expect(originals.existsSync(), isFalse);
+      final detail = await repository.watchCard('item-empty').first;
+      expect(detail?.name, '未命名卡片');
+      expect(detail?.images, isEmpty);
     });
 
     test('does not write to the database when image import fails', () async {
@@ -337,6 +344,35 @@ void main() {
       await File(sourcePath).delete();
 
       expect(await repository.createCard(validRequest()), 'item-1');
+    });
+  });
+
+  group('updateCard', () {
+    test('updates base fields and quantity without changing images', () async {
+      await repository.createCard(validRequest());
+
+      await repository.updateCard(
+        UpdateCardRequest(
+          cardItemId: 'item-1',
+          name: ' 更新后的卡片 ',
+          city: ' 上海 ',
+          issuer: '',
+          issuedAt: PartialDate.tryParse('2026-07-29'),
+          code: ' B-02 ',
+          notes: ' 已整理 ',
+          quantity: 3,
+        ),
+      );
+
+      final detail = await repository.watchCard('item-1').first;
+      expect(detail?.name, '更新后的卡片');
+      expect(detail?.city, '上海');
+      expect(detail?.issuer, isNull);
+      expect(detail?.issuedAt, PartialDate.tryParse('2026-07-29'));
+      expect(detail?.code, 'B-02');
+      expect(detail?.notes, '已整理');
+      expect(detail?.quantity, 3);
+      expect(detail?.images, hasLength(1));
     });
   });
 
@@ -490,16 +526,18 @@ void main() {
       },
     );
 
-    test('refuses to delete the last image', () async {
-      await expectLater(
-        repository.deleteImage(
+    test(
+      'allows the last image to be removed for an optional-image card',
+      () async {
+        await repository.deleteImage(
           cardItemId: 'item-1',
           imageId: 'image-1',
           keepOriginal: true,
-        ),
-        throwsA(isA<ValidationFailure>()),
-      );
-    });
+        );
+
+        expect((await repository.watchCard('item-1').first)!.images, isEmpty);
+      },
+    );
   });
 
   group('queries', () {

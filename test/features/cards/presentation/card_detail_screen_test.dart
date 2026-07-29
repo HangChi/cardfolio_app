@@ -68,6 +68,9 @@ class FakeDetailRepository implements CardRepository {
       request.ids.cardItemId;
 
   @override
+  Future<void> updateCard(UpdateCardRequest request) async {}
+
+  @override
   Future<void> deleteImage({
     required String cardItemId,
     required String imageId,

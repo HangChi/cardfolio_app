@@ -3,6 +3,8 @@ import 'package:meta/meta.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/id/id_generator.dart';
 
+const String untitledCardName = '未命名卡片';
+
 /// 发行时间的精度。收藏者常常只记得年份或年月。
 enum DatePrecision { year, yearMonth, day }
 
@@ -219,15 +221,19 @@ final class CreateCardRequest {
   /// 标记该实例是否已通过 [normalized]，使规范化幂等。
   final bool isNormalized;
 
-  List<PendingCardImage> get images => <PendingCardImage>[
-    PendingCardImage(
-      id: ids.imageId,
-      sourcePath: sourceImagePath,
-      derivedSourcePath: derivedSourceImagePath,
-      kind: primaryImageKind,
-    ),
-    ...additionalImages,
-  ];
+  List<PendingCardImage> get images {
+    final primaryPath = sourceImagePath.trim();
+    return <PendingCardImage>[
+      if (primaryPath.isNotEmpty)
+        PendingCardImage(
+          id: ids.imageId,
+          sourcePath: primaryPath,
+          derivedSourcePath: derivedSourceImagePath,
+          kind: primaryImageKind,
+        ),
+      ...additionalImages,
+    ];
+  }
 
   /// 去空白、空串转 null 并校验业务约束。
   ///
@@ -235,6 +241,7 @@ final class CreateCardRequest {
   CreateCardRequest normalized() {
     if (isNormalized) return this;
 
+    final hasPrimaryImage = sourceImagePath.trim().isNotEmpty;
     final normalizedImages = images
         .map((image) => image.normalized())
         .toList(growable: false);
@@ -246,10 +253,7 @@ final class CreateCardRequest {
       throw const ValidationFailure(CardField.image, '图片标识重复，请重新选择。');
     }
 
-    final trimmedName = name.trim();
-    if (trimmedName.isEmpty) {
-      throw const ValidationFailure(CardField.name, '名称不能为空');
-    }
+    final trimmedName = name.trim().isEmpty ? untitledCardName : name.trim();
     if (trimmedName.length > maxNameLength) {
       throw const ValidationFailure(CardField.name, '名称最多 $maxNameLength 个字符。');
     }
@@ -260,11 +264,17 @@ final class CreateCardRequest {
 
     return CreateCardRequest(
       ids: ids,
-      sourceImagePath: normalizedImages.first.sourcePath,
-      derivedSourceImagePath: normalizedImages.first.derivedSourcePath,
-      primaryImageKind: normalizedImages.first.kind,
+      sourceImagePath: !hasPrimaryImage
+          ? ''
+          : normalizedImages.first.sourcePath,
+      derivedSourceImagePath: !hasPrimaryImage
+          ? null
+          : normalizedImages.first.derivedSourcePath,
+      primaryImageKind: !hasPrimaryImage
+          ? primaryImageKind
+          : normalizedImages.first.kind,
       additionalImages: List<PendingCardImage>.unmodifiable(
-        normalizedImages.skip(1),
+        hasPrimaryImage ? normalizedImages.skip(1) : normalizedImages,
       ),
       name: trimmedName,
       city: _optional(city, CardField.city, maxShortTextLength),
@@ -329,6 +339,79 @@ final class CreateCardRequest {
       if (left[index] != right[index]) return false;
     }
     return true;
+  }
+}
+
+/// 更新既有卡片的基础资料。所有资料字段均可留空并在之后再次编辑。
+@immutable
+final class UpdateCardRequest {
+  const UpdateCardRequest({
+    required this.cardItemId,
+    required this.name,
+    this.city,
+    this.issuer,
+    this.issuedAt,
+    this.code,
+    this.notes,
+    this.quantity = 1,
+    this.isNormalized = false,
+  });
+
+  final String cardItemId;
+  final String name;
+  final String? city;
+  final String? issuer;
+  final PartialDate? issuedAt;
+  final String? code;
+  final String? notes;
+  final int quantity;
+  final bool isNormalized;
+
+  UpdateCardRequest normalized() {
+    if (isNormalized) return this;
+
+    final normalizedCardItemId = cardItemId.trim();
+    if (normalizedCardItemId.isEmpty) {
+      throw const ValidationFailure(CardField.name, '卡片不存在，请返回收藏后重试。');
+    }
+    final normalizedName = name.trim().isEmpty ? untitledCardName : name.trim();
+    if (normalizedName.length > CreateCardRequest.maxNameLength) {
+      throw const ValidationFailure(
+        CardField.name,
+        '名称最多 ${CreateCardRequest.maxNameLength} 个字符。',
+      );
+    }
+    if (quantity <= 0) {
+      throw const ValidationFailure(CardField.quantity, '数量必须大于 0。');
+    }
+
+    return UpdateCardRequest(
+      cardItemId: normalizedCardItemId,
+      name: normalizedName,
+      city: CreateCardRequest._optional(
+        city,
+        CardField.city,
+        CreateCardRequest.maxShortTextLength,
+      ),
+      issuer: CreateCardRequest._optional(
+        issuer,
+        CardField.issuer,
+        CreateCardRequest.maxShortTextLength,
+      ),
+      issuedAt: issuedAt,
+      code: CreateCardRequest._optional(
+        code,
+        CardField.code,
+        CreateCardRequest.maxShortTextLength,
+      ),
+      notes: CreateCardRequest._optional(
+        notes,
+        CardField.notes,
+        CreateCardRequest.maxNotesLength,
+      ),
+      quantity: quantity,
+      isNormalized: true,
+    );
   }
 }
 

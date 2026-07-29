@@ -70,6 +70,18 @@ class CardRepositoryImpl implements CardRepository {
   }
 
   @override
+  Future<void> updateCard(UpdateCardRequest request) async {
+    final normalized = request.normalized();
+    try {
+      await _db.updateCardBase(request: normalized, updatedAt: clock.nowUtc());
+    } on StateError catch (error) {
+      throw ValidationFailure(CardField.name, error.message);
+    } catch (error) {
+      throw PersistenceFailure('更新卡片资料失败，请重试。', error);
+    }
+  }
+
+  @override
   Future<void> addImages(AddCardImagesRequest request) async {
     final normalized = request.normalized();
     final current = await _detail(normalized.cardItemId);

@@ -76,8 +76,8 @@ void main() {
   ) async {
     await tester.pumpWidget(app(const SeriesCollectionView()));
     await tester.pumpAndSettle();
-    expect(find.text('还没有系列'), findsOneWidget);
-    expect(find.text('新建系列'), findsOneWidget);
+    expect(find.text('还没有集卡册'), findsOneWidget);
+    expect(find.text('新建集卡册'), findsOneWidget);
 
     await db.saveOrganizationSeries(
       request: const SaveSeriesRequest(
@@ -142,7 +142,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('东京系列'), findsOneWidget);
-    expect(find.text('系列用于宽泛归类，不计算完成度。'), findsOneWidget);
+    expect(find.text('集卡册用于收纳卡片和套卡，不计算完成度。'), findsOneWidget);
     expect(find.text('卡片 · 1'), findsOneWidget);
     expect(find.text('套卡 · 1'), findsOneWidget);
     expect(find.text('樱花卡'), findsOneWidget);

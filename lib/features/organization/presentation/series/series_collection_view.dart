@@ -37,7 +37,7 @@ class SeriesCollectionView extends ConsumerWidget {
                     child: FilledButton.tonalIcon(
                       onPressed: () => context.push(createSeriesPath),
                       icon: const Icon(Icons.add),
-                      label: const Text('新建系列'),
+                      label: const Text('新建集卡册'),
                     ),
                   );
                 }
@@ -84,14 +84,14 @@ class _EmptySeries extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
             SizedBox(height: context.tokens.spaceMd),
-            Text('还没有系列', style: Theme.of(context).textTheme.titleLarge),
+            Text('还没有集卡册', style: Theme.of(context).textTheme.titleLarge),
             SizedBox(height: context.tokens.spaceXs),
-            const Text('系列可以同时归类卡片和套卡，但不计算完成度。'),
+            const Text('集卡册可以同时收纳卡片和套卡，但不计算完成度。'),
             SizedBox(height: context.tokens.spaceLg),
             FilledButton.icon(
               onPressed: () => context.push(createSeriesPath),
               icon: const Icon(Icons.add),
-              label: const Text('新建系列'),
+              label: const Text('新建集卡册'),
             ),
           ],
         ),
@@ -111,7 +111,7 @@ class _SeriesError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Text('系列暂时无法加载'),
+          const Text('集卡册暂时无法加载'),
           TextButton(onPressed: onRetry, child: const Text('重试')),
         ],
       ),

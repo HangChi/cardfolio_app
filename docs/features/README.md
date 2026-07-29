@@ -12,6 +12,7 @@
 | 008 | [导出、导入与迁移](008-import-export-and-migration/README.md) | 001–007 | 实现完成，自动化通过，待设备验收 |
 | 009 | [相机与图片处理](009-camera-and-image-processing/README.md) | 002 | 实现完成，自动化通过，待设备验收 |
 | 010 | [账号与本地优先同步](010-account-and-local-first-sync/README.md) | 001–008 | 客户端与服务端基线完成，自动化通过，待部署/双设备验收 |
+| 增强 | [卡片编辑、集卡册与批量录入](../superpowers/specs/2026-07-29-card-editing-album-batch-entry-design.md) | 001、002、004、009 | 实现完成，待设备验收 |
 
 新 Feature 进入开发前，先满足对应目录的 Definition of Ready，再建立规格、验收、
 契约、数据、UX、错误、测试矩阵、计划和任务九件套。

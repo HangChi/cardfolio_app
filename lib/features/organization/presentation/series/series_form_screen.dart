@@ -43,7 +43,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
     detail.whenData(_initialize);
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.seriesId == null ? '新建系列' : '编辑系列')),
+      appBar: AppBar(title: Text(widget.seriesId == null ? '新建集卡册' : '编辑集卡册')),
       body: detail.isLoading
           ? const Center(child: CircularProgressIndicator())
           : detail.hasError
@@ -64,7 +64,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                   controller: _nameController,
                   maxLength: 100,
                   decoration: const InputDecoration(
-                    labelText: '系列名称',
+                    labelText: '集卡册名称',
                     hintText: '例如：城市交通、世界博览会',
                   ),
                 ),
@@ -114,7 +114,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                 SizedBox(height: context.tokens.spaceLg),
                 const _SectionTitle(
                   title: '套卡',
-                  description: '系列只负责归类，不改变套卡的完成度。',
+                  description: '集卡册可收纳卡片和套卡，不改变套卡的完成度。',
                 ),
                 sets.when(
                   loading: () =>
@@ -150,7 +150,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.save_outlined),
-                  label: Text(_saving ? '正在保存' : '保存系列'),
+                  label: Text(_saving ? '正在保存' : '保存集卡册'),
                 ),
               ],
             ),
@@ -246,7 +246,7 @@ class _LoadError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Text('系列资料暂时无法加载'),
+          const Text('集卡册资料暂时无法加载'),
           TextButton(onPressed: onRetry, child: const Text('重试')),
         ],
       ),

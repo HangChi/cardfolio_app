@@ -25,7 +25,7 @@ void main() {
     expect(find.byKey(const Key('card-name-field')), findsOneWidget);
     expect(find.text('城市'), findsOneWidget);
     expect(find.text('发行机构'), findsOneWidget);
-    expect(find.text('发行时间'), findsOneWidget);
+    expect(find.text('发行日期（可选）'), findsOneWidget);
     expect(find.text('编号'), findsOneWidget);
     expect(find.text('备注'), findsOneWidget);
   });
@@ -41,15 +41,7 @@ void main() {
 
     final harness = CardFlowHarness.empty();
     addTearDown(harness.dispose);
-    await harness.pump(tester, initialLocation: capturePath);
-
-    await tester.scrollUntilVisible(
-      find.text('从相册导入'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('从相册导入'));
-    await tester.pumpAndSettle();
+    await harness.pump(tester, initialLocation: createCardPath);
 
     expect(find.byKey(const Key('card-name-field')), findsOneWidget);
     expect(find.text('保存'), findsOneWidget);
@@ -77,10 +69,11 @@ void main() {
     await tester.tap(find.text('从相册导入'));
     await tester.pumpAndSettle();
 
-    expect(find.text('3 张图片'), findsOneWidget);
+    expect(find.text('正反面与其他图片（3 张，可选）'), findsOneWidget);
     expect(find.text('封面'), findsOneWidget);
     expect(find.text('正面'), findsOneWidget);
-    expect(find.text('其他'), findsNWidgets(2));
+    expect(find.text('背面'), findsOneWidget);
+    expect(find.text('其他'), findsOneWidget);
     expect(find.text('添加图片'), findsOneWidget);
   });
 }

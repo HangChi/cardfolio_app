@@ -206,7 +206,7 @@ extension OrganizationDatabase on AppDatabase {
           ),
         );
       } else {
-        if (existing.deletedAt != null) throw StateError('系列不存在。');
+        if (existing.deletedAt != null) throw StateError('集卡册不存在。');
         await (update(
           seriesRecords,
         )..where((series) => series.id.equals(request.id))).write(
@@ -252,7 +252,7 @@ extension OrganizationDatabase on AppDatabase {
     required DateTime now,
   }) async {
     final series = await _activeSeries(this, seriesId);
-    if (series == null) throw StateError('系列不存在。');
+    if (series == null) throw StateError('集卡册不存在。');
     await (update(
       seriesRecords,
     )..where((entry) => entry.id.equals(seriesId))).write(
@@ -419,7 +419,7 @@ Future<void> _requireActiveSeries(AppDatabase db, List<String> ids) async {
   final rows = await (db.select(
     db.seriesRecords,
   )..where((series) => series.id.isIn(ids) & series.deletedAt.isNull())).get();
-  if (rows.length != ids.length) throw StateError('系列不存在。');
+  if (rows.length != ids.length) throw StateError('集卡册不存在。');
 }
 
 Future<Map<String, OrganizationFieldDefinition>> _requireActiveFields(

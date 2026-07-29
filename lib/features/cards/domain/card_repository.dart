@@ -16,6 +16,9 @@ abstract interface class CardRepository {
   /// 以 `request.ids.cardItemId` 为幂等键：重复提交返回既有 ID，不产生第二组数据。
   Future<String> createCard(CreateCardRequest request);
 
+  /// 更新卡片基础资料；图片、标签和集卡册归属由各自的接口维护。
+  Future<void> updateCard(UpdateCardRequest request);
+
   /// 向既有藏品追加一批图片。
   Future<void> addImages(AddCardImagesRequest request);
 

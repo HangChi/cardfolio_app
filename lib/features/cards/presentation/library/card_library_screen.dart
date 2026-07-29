@@ -14,7 +14,7 @@ import '../../../purchases/domain/purchase_models.dart';
 import '../create/create_card_controller.dart';
 import '../widgets/card_image.dart';
 
-/// 卡片、套卡与系列的统一收藏入口。
+/// 卡片、套卡与集卡册的统一收藏入口。
 class CardLibraryScreen extends ConsumerStatefulWidget {
   const CardLibraryScreen({super.key});
 
@@ -207,7 +207,7 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
                 tabs: <Widget>[
                   Tab(text: '卡片'),
                   Tab(text: '套卡'),
-                  Tab(text: '系列'),
+                  Tab(text: '集卡册'),
                 ],
               ),
             ),
@@ -558,7 +558,7 @@ class _EmptyLibrary extends StatelessWidget {
             ),
             SizedBox(height: tokens.spaceSm),
             Text(
-              '选择一张卡片图片，补充名称后即可保存在本地。',
+              '图片和资料都可暂不填写，保存后仍可继续编辑。',
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -569,6 +569,18 @@ class _EmptyLibrary extends StatelessWidget {
               onPressed: onImport,
               icon: const Icon(Icons.file_upload_outlined),
               label: const Text('从相册导入'),
+            ),
+            SizedBox(height: tokens.spaceSm),
+            OutlinedButton.icon(
+              onPressed: () => context.push(createCardPath),
+              icon: const Icon(Icons.note_add_outlined),
+              label: const Text('新建空白卡片'),
+            ),
+            SizedBox(height: tokens.spaceSm),
+            TextButton.icon(
+              onPressed: () => context.push(batchCardEntryPath),
+              icon: const Icon(Icons.playlist_add_outlined),
+              label: const Text('批量录入'),
             ),
           ],
         ),

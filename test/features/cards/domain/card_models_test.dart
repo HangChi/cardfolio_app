@@ -18,6 +18,7 @@ class SequenceIdGenerator implements IdGenerator {
 
 CreateCardRequest request({
   required String name,
+  String sourceImagePath = '/tmp/source.jpg',
   String? city,
   String? issuer,
   String? code,
@@ -32,7 +33,7 @@ CreateCardRequest request({
       cardItemId: 'item-1',
       imageId: 'image-1',
     ),
-    sourceImagePath: '/tmp/source.jpg',
+    sourceImagePath: sourceImagePath,
     additionalImages: additionalImages,
     name: name,
     city: city,
@@ -228,17 +229,10 @@ void main() {
       expect(normalized.notes, isNull);
     });
 
-    test('rejects a blank name with a field-scoped validation failure', () {
-      Object? thrown;
-      try {
-        request(name: '  ').normalized();
-      } catch (error) {
-        thrown = error;
-      }
+    test('normalizes a blank name to the untitled display name', () {
+      final normalized = request(name: '  ').normalized();
 
-      expect(thrown, isA<ValidationFailure>());
-      expect((thrown! as ValidationFailure).field, CardField.name);
-      expect((thrown as ValidationFailure).userMessage, '名称不能为空');
+      expect(normalized.name, '未命名卡片');
     });
 
     test('rejects a non-positive quantity', () {
@@ -263,18 +257,11 @@ void main() {
       );
     });
 
-    test('rejects a blank source image path', () {
-      final blankSource = CreateCardRequest(
-        ids: const CardDraftIds(
-          definitionId: 'definition-1',
-          cardItemId: 'item-1',
-          imageId: 'image-1',
-        ),
-        sourceImagePath: '   ',
-        name: '樱花纪念卡',
-      );
+    test('allows a card without front or back images', () {
+      final normalized = request(name: '', sourceImagePath: '   ').normalized();
 
-      expect(blankSource.normalized, throwsA(isA<ValidationFailure>()));
+      expect(normalized.images, isEmpty);
+      expect(normalized.name, '未命名卡片');
     });
 
     test('is idempotent', () {
@@ -308,6 +295,22 @@ void main() {
       expect(request.cardItemId, 'item-1');
       expect(request.images.single.sourcePath, '/tmp/back.jpg');
       expect(request.images.single.kind, CardImageKind.back);
+    });
+  });
+
+  group('UpdateCardRequest.normalized', () {
+    test('normalizes optional fields and keeps a positive quantity', () {
+      final normalized = UpdateCardRequest(
+        cardItemId: ' item-1 ',
+        name: ' ',
+        city: ' 上海 ',
+        quantity: 2,
+      ).normalized();
+
+      expect(normalized.cardItemId, 'item-1');
+      expect(normalized.name, '未命名卡片');
+      expect(normalized.city, '上海');
+      expect(normalized.quantity, 2);
     });
   });
 }

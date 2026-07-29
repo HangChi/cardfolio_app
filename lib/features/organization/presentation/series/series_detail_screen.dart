@@ -20,7 +20,7 @@ class SeriesDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stackTrace) => Scaffold(
-        appBar: AppBar(title: const Text('系列')),
+        appBar: AppBar(title: const Text('集卡册')),
         body: Center(
           child: TextButton(
             onPressed: () => ref.invalidate(seriesDetailProvider(seriesId)),
@@ -30,8 +30,8 @@ class SeriesDetailScreen extends ConsumerWidget {
       ),
       data: (series) => series == null
           ? Scaffold(
-              appBar: AppBar(title: const Text('系列')),
-              body: const Center(child: Text('这个系列不存在或已被删除')),
+              appBar: AppBar(title: const Text('集卡册')),
+              body: const Center(child: Text('这个集卡册不存在或已被删除')),
             )
           : _SeriesDetailBody(series: series),
     );
@@ -50,7 +50,7 @@ class _SeriesDetailBody extends ConsumerWidget {
         title: Text(series.name),
         actions: <Widget>[
           IconButton(
-            tooltip: '编辑系列',
+            tooltip: '编辑集卡册',
             onPressed: () => context.push(editSeriesPath(series.id)),
             icon: const Icon(Icons.edit_outlined),
           ),
@@ -59,7 +59,7 @@ class _SeriesDetailBody extends ConsumerWidget {
               if (value == 'delete') _delete(context, ref);
             },
             itemBuilder: (context) => const <PopupMenuEntry<String>>[
-              PopupMenuItem(value: 'delete', child: Text('删除系列')),
+              PopupMenuItem(value: 'delete', child: Text('删除集卡册')),
             ],
           ),
         ],
@@ -83,7 +83,7 @@ class _SeriesDetailBody extends ConsumerWidget {
             color: AppColors.primary.withValues(alpha: 0.08),
             child: const ListTile(
               leading: Icon(Icons.info_outline),
-              title: Text('系列用于宽泛归类，不计算完成度。'),
+              title: Text('集卡册用于收纳卡片和套卡，不计算完成度。'),
             ),
           ),
           SizedBox(height: context.tokens.spaceLg),
@@ -106,7 +106,7 @@ class _SeriesDetailBody extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('删除“${series.name}”？'),
-        content: const Text('只会删除系列归类，不会删除卡片或套卡。'),
+        content: const Text('只会删除集卡册归类，不会删除卡片或套卡。'),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -114,7 +114,7 @@ class _SeriesDetailBody extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除系列'),
+            child: const Text('删除集卡册'),
           ),
         ],
       ),

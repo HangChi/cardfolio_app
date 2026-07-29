@@ -11,8 +11,9 @@ import 'create_card_controller.dart';
 import 'create_card_state.dart';
 import '../widgets/card_image.dart';
 import '../widgets/card_image_kind_label.dart';
+import '../widgets/optional_date_field.dart';
 
-/// 单图建卡表单。
+/// 新建卡片表单。资料和图片都可留空，之后可在详情页继续补充。
 class CreateCardScreen extends ConsumerStatefulWidget {
   const CreateCardScreen({super.key});
 
@@ -72,17 +73,7 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
                 )
               : null,
         ),
-        body: state.hasImage
-            ? _CreateCardForm(state: state)
-            : _MissingSelection(
-                onChoose: () async {
-                  final picked = await ref
-                      .read(createCardControllerProvider.notifier)
-                      .pickImage();
-                  if (!mounted || !picked) return;
-                  setState(() {});
-                },
-              ),
+        body: _CreateCardForm(state: state),
       ),
     );
   }
@@ -114,7 +105,7 @@ class _CreateCardForm extends ConsumerWidget {
           SizedBox(height: tokens.spaceMd),
           _CardTextField(
             key: const Key('card-name-field'),
-            label: '名称 *',
+            label: '名称（可选）',
             initialValue: state.name,
             errorText: state.fieldErrors[CardField.name],
             onChanged: controller.updateName,
@@ -137,14 +128,14 @@ class _CreateCardForm extends ConsumerWidget {
             textInputAction: TextInputAction.next,
           ),
           SizedBox(height: tokens.spaceMd),
-          _CardTextField(
-            label: '发行时间',
-            hintText: '例如 2025、2025-03 或 2025-03-15',
-            initialValue: state.issuedAtText,
+          OptionalDateField(
+            label: '发行日期（可选）',
+            value: _dateFromPartialText(state.issuedAtText),
             errorText: state.fieldErrors[CardField.issuedAt],
-            onChanged: controller.updateIssuedAt,
-            keyboardType: TextInputType.datetime,
-            textInputAction: TextInputAction.next,
+            enabled: !state.isSaving,
+            onChanged: (date) => controller.updateIssuedAt(
+              date == null ? '' : formatOptionalDate(date),
+            ),
           ),
           SizedBox(height: tokens.spaceMd),
           _CardTextField(
@@ -202,7 +193,7 @@ class _DraftImagesEditor extends ConsumerWidget {
           children: <Widget>[
             Expanded(
               child: Text(
-                '${state.images.length} 张图片',
+                '正反面与其他图片（${state.images.length} 张，可选）',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -211,6 +202,8 @@ class _DraftImagesEditor extends ConsumerWidget {
                   state.isSaving ||
                       state.images.length >= CreateCardRequest.maxImages
                   ? null
+                  : state.images.isEmpty
+                  ? controller.pickImage
                   : controller.addImages,
               icon: const Icon(Icons.add_photo_alternate_outlined),
               label: const Text('添加图片'),
@@ -218,129 +211,139 @@ class _DraftImagesEditor extends ConsumerWidget {
           ],
         ),
         SizedBox(height: tokens.spaceSm),
-        SizedBox(
-          height: 246,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: state.images.length,
-            separatorBuilder: (context, index) =>
-                SizedBox(width: tokens.spaceMd),
-            itemBuilder: (context, index) {
-              final image = state.images[index];
-              return Semantics(
-                label:
-                    '第 ${index + 1} 张，${image.kind.label}'
-                    '${index == 0 ? '，封面' : ''}',
-                child: SizedBox(
-                  width: 184,
-                  child: Card(
-                    clipBehavior: Clip.antiAlias,
-                    child: Padding(
-                      padding: EdgeInsets.all(tokens.spaceSm),
-                      child: Column(
-                        children: <Widget>[
-                          Expanded(
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: <Widget>[
-                                CardImage.local(
-                                  path: image.displayPath,
-                                  semanticLabel: '待保存卡片第 ${index + 1} 张',
-                                  borderRadius: BorderRadius.circular(
-                                    tokens.radiusMd,
-                                  ),
-                                ),
-                                if (index == 0)
-                                  Positioned(
-                                    top: tokens.spaceSm,
-                                    left: tokens.spaceSm,
-                                    child: const Chip(
-                                      avatar: Icon(Icons.star, size: 16),
-                                      label: Text('封面'),
-                                      visualDensity: VisualDensity.compact,
+        if (state.images.isEmpty)
+          OutlinedButton.icon(
+            onPressed: state.isSaving ? null : controller.pickImage,
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            label: const Text('添加正面或背面'),
+          )
+        else
+          SizedBox(
+            height: 246,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: state.images.length,
+              separatorBuilder: (context, index) =>
+                  SizedBox(width: tokens.spaceMd),
+              itemBuilder: (context, index) {
+                final image = state.images[index];
+                return Semantics(
+                  label:
+                      '第 ${index + 1} 张，${image.kind.label}'
+                      '${index == 0 ? '，封面' : ''}',
+                  child: SizedBox(
+                    width: 184,
+                    child: Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: EdgeInsets.all(tokens.spaceSm),
+                        child: Column(
+                          children: <Widget>[
+                            Expanded(
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: <Widget>[
+                                  CardImage.local(
+                                    path: image.displayPath,
+                                    semanticLabel: '待保存卡片第 ${index + 1} 张',
+                                    borderRadius: BorderRadius.circular(
+                                      tokens.radiusMd,
                                     ),
                                   ),
-                              ],
+                                  if (index == 0)
+                                    Positioned(
+                                      top: tokens.spaceSm,
+                                      left: tokens.spaceSm,
+                                      child: const Chip(
+                                        avatar: Icon(Icons.star, size: 16),
+                                        label: Text('封面'),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                          SizedBox(height: tokens.spaceSm),
-                          Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<CardImageKind>(
-                                    value: image.kind,
-                                    isExpanded: true,
-                                    onChanged: state.isSaving
-                                        ? null
-                                        : (kind) {
-                                            if (kind != null) {
-                                              controller.updateImageKind(
-                                                image.id,
-                                                kind,
-                                              );
-                                            }
-                                          },
-                                    items: <DropdownMenuItem<CardImageKind>>[
-                                      for (final kind in CardImageKind.values)
-                                        DropdownMenuItem<CardImageKind>(
-                                          value: kind,
-                                          child: Text(kind.label),
-                                        ),
-                                    ],
+                            SizedBox(height: tokens.spaceSm),
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<CardImageKind>(
+                                      value: image.kind,
+                                      isExpanded: true,
+                                      onChanged: state.isSaving
+                                          ? null
+                                          : (kind) {
+                                              if (kind != null) {
+                                                controller.updateImageKind(
+                                                  image.id,
+                                                  kind,
+                                                );
+                                              }
+                                            },
+                                      items: <DropdownMenuItem<CardImageKind>>[
+                                        for (final kind in CardImageKind.values)
+                                          DropdownMenuItem<CardImageKind>(
+                                            value: kind,
+                                            child: Text(kind.label),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                              IconButton(
-                                onPressed: state.isSaving
-                                    ? null
-                                    : () async {
-                                        final result = await context
-                                            .push<ProcessedImage>(
-                                              imageEditorPath,
-                                              extra: ImageEditorRouteArgs(
-                                                sourcePath:
-                                                    image.selection.path,
-                                                outputId: image.id,
-                                              ),
+                                IconButton(
+                                  onPressed: state.isSaving
+                                      ? null
+                                      : () async {
+                                          final result = await context
+                                              .push<ProcessedImage>(
+                                                imageEditorPath,
+                                                extra: ImageEditorRouteArgs(
+                                                  sourcePath:
+                                                      image.selection.path,
+                                                  outputId: image.id,
+                                                ),
+                                              );
+                                          if (result != null) {
+                                            controller.applyProcessedImage(
+                                              image.id,
+                                              result.path,
                                             );
-                                        if (result != null) {
-                                          controller.applyProcessedImage(
-                                            image.id,
-                                            result.path,
-                                          );
-                                        }
-                                      },
-                                tooltip: '裁切与增强',
-                                icon: const Icon(Icons.auto_fix_high_outlined),
-                              ),
-                              IconButton(
-                                onPressed: state.isSaving || index == 0
-                                    ? null
-                                    : () => controller.moveImage(image.id, -1),
-                                tooltip: '前移',
-                                icon: const Icon(Icons.arrow_back),
-                              ),
-                              IconButton(
-                                onPressed:
-                                    state.isSaving ||
-                                        index == state.images.length - 1
-                                    ? null
-                                    : () => controller.moveImage(image.id, 1),
-                                tooltip: '后移',
-                                icon: const Icon(Icons.arrow_forward),
-                              ),
-                            ],
-                          ),
-                        ],
+                                          }
+                                        },
+                                  tooltip: '裁切与增强',
+                                  icon: const Icon(
+                                    Icons.auto_fix_high_outlined,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: state.isSaving || index == 0
+                                      ? null
+                                      : () =>
+                                            controller.moveImage(image.id, -1),
+                                  tooltip: '前移',
+                                  icon: const Icon(Icons.arrow_back),
+                                ),
+                                IconButton(
+                                  onPressed:
+                                      state.isSaving ||
+                                          index == state.images.length - 1
+                                      ? null
+                                      : () => controller.moveImage(image.id, 1),
+                                  tooltip: '后移',
+                                  icon: const Icon(Icons.arrow_forward),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
@@ -352,8 +355,6 @@ class _CardTextField extends StatelessWidget {
     required this.initialValue,
     required this.onChanged,
     this.errorText,
-    this.hintText,
-    this.keyboardType,
     this.textInputAction,
     this.minLines,
     this.maxLines = 1,
@@ -364,8 +365,6 @@ class _CardTextField extends StatelessWidget {
   final String initialValue;
   final ValueChanged<String> onChanged;
   final String? errorText;
-  final String? hintText;
-  final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final int? minLines;
   final int maxLines;
@@ -376,15 +375,10 @@ class _CardTextField extends StatelessWidget {
       initialValue: initialValue,
       onChanged: onChanged,
       enabled: true,
-      keyboardType: keyboardType,
       textInputAction: textInputAction,
       minLines: minLines,
       maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hintText,
-        errorText: errorText,
-      ),
+      decoration: InputDecoration(labelText: label, errorText: errorText),
     );
   }
 }
@@ -413,31 +407,8 @@ class _SaveFailure extends StatelessWidget {
   }
 }
 
-class _MissingSelection extends ConsumerWidget {
-  const _MissingSelection({required this.onChoose});
-
-  final VoidCallback onChoose;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(context.tokens.spaceLg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Icon(
-              Icons.add_photo_alternate_outlined,
-              size: 48,
-              color: AppColors.textSecondary,
-            ),
-            SizedBox(height: context.tokens.spaceMd),
-            const Text('请先选择一张卡片图片'),
-            SizedBox(height: context.tokens.spaceMd),
-            FilledButton(onPressed: onChoose, child: const Text('选择图片')),
-          ],
-        ),
-      ),
-    );
-  }
+DateTime? _dateFromPartialText(String text) {
+  final value = PartialDate.tryParse(text);
+  if (value == null) return null;
+  return DateTime(value.year, value.month ?? 1, value.day ?? 1);
 }

@@ -141,9 +141,11 @@ class CreateCardController extends Notifier<CreateCardState> {
           selection: accepted[index],
           kind:
               existingAtIndex?.kind ??
-              (existing.isEmpty && index == 0
-                  ? CardImageKind.front
-                  : CardImageKind.other),
+              switch (existing.length + index) {
+                0 => CardImageKind.front,
+                1 => CardImageKind.back,
+                _ => CardImageKind.other,
+              },
         ),
       );
     }
@@ -236,15 +238,9 @@ class CreateCardController extends Notifier<CreateCardState> {
     if (state.isSaving) return null;
 
     final images = state.images;
-    final ids = state.ids;
-    if (images.isEmpty || ids == null) {
-      state = state.copyWith(
-        fieldErrors: <CardField, String>{
-          ...state.fieldErrors,
-          CardField.image: '请先选择一张卡片图片。',
-        },
-      );
-      return null;
+    final ids = state.ids ?? CardDraftIds.create(ref.read(idGeneratorProvider));
+    if (state.ids == null) {
+      state = state.copyWith(ids: ids);
     }
 
     // 部分日期需要在构造请求前解析，无法解析属于字段级错误。
@@ -266,9 +262,13 @@ class CreateCardController extends Notifier<CreateCardState> {
     try {
       request = CreateCardRequest(
         ids: ids,
-        sourceImagePath: images.first.selection.path,
-        derivedSourceImagePath: images.first.derivedSourcePath,
-        primaryImageKind: images.first.kind,
+        sourceImagePath: images.isEmpty ? '' : images.first.selection.path,
+        derivedSourceImagePath: images.isEmpty
+            ? null
+            : images.first.derivedSourcePath,
+        primaryImageKind: images.isEmpty
+            ? CardImageKind.front
+            : images.first.kind,
         additionalImages: <PendingCardImage>[
           for (final image in images.skip(1))
             PendingCardImage(

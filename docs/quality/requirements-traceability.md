@@ -9,9 +9,9 @@
 | FR-IMG-001 | 001、002 | 相册取消/成功；多选 |
 | FR-IMG-002..005 | 009 | [Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md)：相机接口、连续草稿、边缘/四角、透视增强、模板与 Widget 自动化；设备验收待执行 |
 | FR-IMG-006..007 | 002、009 | 多图顺序/封面及 [Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md) 的原图/派生图关联与补偿 |
-| FR-CARD-001..005 | 001、004、007 | 创建、编辑模型、查询、删除 |
+| FR-CARD-001..005 | 001、004、007、卡片编辑增强 | 创建、可选字段编辑、正反面、查询、删除；见[卡片编辑与批量录入设计](../superpowers/specs/2026-07-29-card-editing-album-batch-entry-design.md) |
 | FR-SET-001..003 | 003 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md)：关系、完成度与 Widget 自动化通过；设备验收待执行 |
-| FR-SER-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T06：卡片/套卡多对多关联与系列页面自动化通过；设备验收待执行 |
+| FR-SER-001 | 004、集卡册语义增强 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T06：卡片/套卡多对多关联；用户界面以“集卡册”呈现且不提供标签；设备验收待执行 |
 | FR-TAG-001..002 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T03..T05、T10：标签管理、合并、影响预览与组合筛选自动化通过 |
 | FR-CF-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T07..T08：三类字段、原子保存、删除影响和值保留自动化通过 |
 | FR-PUR-001..004 | 005 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) T01..T11：精确金额、分摊、退款、多币种、删除审计与成本排序自动化通过；设备验收待执行 |

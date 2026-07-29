@@ -27,7 +27,7 @@ class ProfileScreen extends StatelessWidget {
             context,
             icon: Icons.tune,
             title: '整理管理',
-            subtitle: '管理标签、系列和自定义字段。',
+            subtitle: '管理标签、集卡册和自定义字段。',
             path: organizationSettingsPath,
           ),
           _entry(
