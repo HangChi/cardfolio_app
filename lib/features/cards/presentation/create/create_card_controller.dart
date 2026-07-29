@@ -177,6 +177,28 @@ class CreateCardController extends Notifier<CreateCardState> {
 
   void updateNotes(String value) => _updateField(CardField.notes, notes: value);
 
+  void prefill({
+    String? name,
+    String? city,
+    String? issuer,
+    PartialDate? issuedAt,
+    String? code,
+    String? notes,
+  }) {
+    if (state.isSaving) return;
+    state = state.copyWith(
+      phase: state.hasImage ? CreateCardPhase.editing : CreateCardPhase.idle,
+      name: name ?? state.name,
+      city: city ?? state.city,
+      issuer: issuer ?? state.issuer,
+      issuedAtText: issuedAt?.toIsoString() ?? state.issuedAtText,
+      code: code ?? state.code,
+      notes: notes ?? state.notes,
+      fieldErrors: const <CardField, String>{},
+      clearFailure: true,
+    );
+  }
+
   void updateImageKind(String imageId, CardImageKind kind) {
     if (state.isSaving) return;
     state = state.copyWith(

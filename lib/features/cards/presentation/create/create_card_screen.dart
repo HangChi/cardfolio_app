@@ -12,17 +12,24 @@ import '../../../organization/domain/organization_models.dart';
 import '../../../purchases/data/purchase_providers.dart';
 import '../../../purchases/domain/purchase_models.dart';
 import '../../domain/card_models.dart';
+import '../../domain/card_autofill.dart';
+import '../../domain/reserved_card_metadata.dart';
+import '../../data/card_providers.dart';
 import '../../domain/image_processing.dart';
 import 'create_card_controller.dart';
 import 'create_card_state.dart';
 import '../widgets/card_image.dart';
 import '../widgets/card_entry_metadata_fields.dart';
+import '../widgets/card_autofill_button.dart';
 import '../widgets/card_image_kind_label.dart';
 import '../widgets/optional_date_field.dart';
+import '../widgets/reserved_card_metadata_fields.dart';
 
 /// 新建卡片表单。资料和图片都可留空，之后可在详情页继续补充。
 class CreateCardScreen extends ConsumerStatefulWidget {
-  const CreateCardScreen({super.key});
+  const CreateCardScreen({this.copyFromCardItemId, super.key});
+
+  final String? copyFromCardItemId;
 
   @override
   ConsumerState<CreateCardScreen> createState() => _CreateCardScreenState();
@@ -31,25 +38,130 @@ class CreateCardScreen extends ConsumerStatefulWidget {
 class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
   final _amount = TextEditingController();
   final _shipping = TextEditingController();
+  final _condition = TextEditingController();
+  final _itemNotes = TextEditingController();
+  final _issueQuantity = TextEditingController();
+  final _issuePrice = TextEditingController();
+  final _cardType = TextEditingController();
   final _selectedTags = <String>{};
   final _selectedSets = <String>{};
   final _selectedAlbums = <String>{};
+  DateTime? _acquiredAt;
+  bool _needsCompletion = false;
+  bool _copyLoaded = false;
+  int _formRevision = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.copyFromCardItemId != null) {
+      Future<void>.microtask(_loadCopy);
+    }
+  }
 
   @override
   void dispose() {
     _amount.dispose();
     _shipping.dispose();
+    _condition.dispose();
+    _itemNotes.dispose();
+    _issueQuantity.dispose();
+    _issuePrice.dispose();
+    _cardType.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCopy() async {
+    if (_copyLoaded) return;
+    _copyLoaded = true;
+    final sourceId = widget.copyFromCardItemId!;
+    try {
+      final card = await ref
+          .read(cardRepositoryProvider)
+          .watchCard(sourceId)
+          .first;
+      final organization = await ref
+          .read(organizationRepositoryProvider)
+          .watchCardOrganization(sourceId)
+          .first;
+      if (card == null || organization == null || !mounted) return;
+      final memberships = await ref
+          .read(cardSetRepositoryProvider)
+          .watchMemberships(organization.definitionId)
+          .first;
+      ref
+          .read(createCardControllerProvider.notifier)
+          .prefill(
+            name: card.name == untitledCardName ? null : '${card.name} 副本',
+            city: card.city,
+            issuer: card.issuer,
+            issuedAt: card.issuedAt,
+            code: card.code,
+            notes: card.notes,
+          );
+      final metadata = ReservedCardMetadata.fromDetails(
+        organization.fieldValues,
+      );
+      setState(() {
+        _formRevision++;
+        _cardType.text = organization.cardType ?? '';
+        _acquiredAt = organization.acquiredAt;
+        _needsCompletion = organization.needsCompletion;
+        _selectedTags.addAll(organization.tags.map((value) => value.id));
+        _selectedAlbums.addAll(organization.series.map((value) => value.id));
+        _selectedSets.addAll(memberships.map((value) => value.setId));
+        _condition.text = metadata.condition ?? '';
+        _itemNotes.text = metadata.itemNotes ?? '';
+        _issueQuantity.text = metadata.issueQuantity?.toString() ?? '';
+        _issuePrice.text = metadata.issuePrice?.toString() ?? '';
+      });
+    } catch (_) {
+      _showMessage('复制资料加载失败，你仍可手动新建卡片。');
+    }
+  }
+
+  void _applyAutofill(CardAutofillSuggestion suggestion) {
+    ref
+        .read(createCardControllerProvider.notifier)
+        .prefill(
+          name: suggestion.name,
+          city: suggestion.city,
+          issuer: suggestion.issuer,
+          issuedAt: PartialDate.tryParse(suggestion.issuedAt),
+          code: suggestion.code,
+        );
+    setState(() {
+      _formRevision++;
+      if (suggestion.cardType != null) {
+        _cardType.text = suggestion.cardType!;
+      }
+      if (suggestion.issueQuantity != null) {
+        _issueQuantity.text = suggestion.issueQuantity.toString();
+      }
+      if (suggestion.issuePrice != null) {
+        _issuePrice.text = suggestion.issuePrice!;
+      }
+    });
   }
 
   Future<void> _save() async {
     final int amountMinor;
     final int shippingMinor;
+    final ReservedMetadataInput metadataInput;
     try {
       amountMinor = parseOptionalCnyMinor(_amount.text);
       shippingMinor = parseOptionalCnyMinor(_shipping.text);
+      metadataInput = parseReservedMetadataInput(
+        condition: _condition,
+        itemNotes: _itemNotes,
+        issueQuantity: _issueQuantity,
+        issuePrice: _issuePrice,
+      );
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
+      return;
+    } on FormatException catch (failure) {
+      _showMessage(failure.message);
       return;
     }
 
@@ -57,13 +169,31 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
     if (!mounted || id == null) return;
     final draft = ref.read(createCardControllerProvider);
     try {
+      final fieldValues = await mergeReservedCardMetadata(
+        repository: ref.read(organizationRepositoryProvider),
+        idGenerator: ref.read(idGeneratorProvider),
+        definitions:
+            ref.read(organizationFieldDefinitionsProvider).value ??
+            const <CustomFieldDefinition>[],
+        existingValues: const <CustomFieldValueInput>[],
+        metadata: ReservedCardMetadata(
+          condition: metadataInput.condition,
+          itemNotes: metadataInput.itemNotes,
+          issueQuantity: metadataInput.issueQuantity,
+          issuePrice: metadataInput.issuePrice,
+        ),
+      );
       await ref
           .read(organizationRepositoryProvider)
           .saveCardOrganization(
             SaveCardOrganizationRequest(
               cardItemId: id,
+              cardType: _cardType.text,
+              acquiredAt: _acquiredAt,
+              needsCompletion: _needsCompletion,
               tagIds: _selectedTags.toList(growable: false),
               seriesIds: _selectedAlbums.toList(growable: false),
+              fieldValues: fieldValues,
             ),
           );
       await saveCardSetSelections(
@@ -154,12 +284,24 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
               : null,
         ),
         body: _CreateCardForm(
+          key: ValueKey<int>(_formRevision),
           state: state,
           amountController: _amount,
           shippingController: _shipping,
           selectedTags: _selectedTags,
           selectedSets: _selectedSets,
           selectedAlbums: _selectedAlbums,
+          conditionController: _condition,
+          itemNotesController: _itemNotes,
+          issueQuantityController: _issueQuantity,
+          issuePriceController: _issuePrice,
+          cardTypeController: _cardType,
+          acquiredAt: _acquiredAt,
+          needsCompletion: _needsCompletion,
+          onAcquiredAtChanged: (value) => setState(() => _acquiredAt = value),
+          onNeedsCompletionChanged: (value) =>
+              setState(() => _needsCompletion = value),
+          onAutofill: _applyAutofill,
           onCreateTag: _createTag,
           onSelectionChanged: setState,
           onSave: _save,
@@ -177,6 +319,17 @@ class _CreateCardForm extends ConsumerWidget {
     required this.selectedTags,
     required this.selectedSets,
     required this.selectedAlbums,
+    required this.conditionController,
+    required this.itemNotesController,
+    required this.issueQuantityController,
+    required this.issuePriceController,
+    required this.cardTypeController,
+    required this.acquiredAt,
+    required this.needsCompletion,
+    required this.onAcquiredAtChanged,
+    required this.onNeedsCompletionChanged,
+    required this.onAutofill,
+    super.key,
     required this.onCreateTag,
     required this.onSelectionChanged,
     required this.onSave,
@@ -188,6 +341,16 @@ class _CreateCardForm extends ConsumerWidget {
   final Set<String> selectedTags;
   final Set<String> selectedSets;
   final Set<String> selectedAlbums;
+  final TextEditingController conditionController;
+  final TextEditingController itemNotesController;
+  final TextEditingController issueQuantityController;
+  final TextEditingController issuePriceController;
+  final TextEditingController cardTypeController;
+  final DateTime? acquiredAt;
+  final bool needsCompletion;
+  final ValueChanged<DateTime?> onAcquiredAtChanged;
+  final ValueChanged<bool> onNeedsCompletionChanged;
+  final ValueChanged<CardAutofillSuggestion> onAutofill;
   final VoidCallback onCreateTag;
   final void Function(VoidCallback callback) onSelectionChanged;
   final Future<void> Function() onSave;
@@ -201,8 +364,7 @@ class _CreateCardForm extends ConsumerWidget {
     final cardSets =
         ref.watch(cardSetListProvider).value ?? const <CardSetSummary>[];
     final albums =
-        ref.watch(organizationSeriesProvider).value ??
-        const <SeriesSummary>[];
+        ref.watch(organizationSeriesProvider).value ?? const <SeriesSummary>[];
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -215,6 +377,13 @@ class _CreateCardForm extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           _DraftImagesEditor(state: state),
+          if (state.images.isNotEmpty) ...<Widget>[
+            SizedBox(height: tokens.spaceSm),
+            CardAutofillButton(
+              imagePath: state.images.first.displayPath,
+              onApply: onAutofill,
+            ),
+          ],
           SizedBox(height: tokens.spaceLg),
           Text('基本信息', style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: tokens.spaceMd),
@@ -271,8 +440,36 @@ class _CreateCardForm extends ConsumerWidget {
             textInputAction: TextInputAction.newline,
           ),
           SizedBox(height: tokens.spaceLg),
+          Text('藏品与发行信息', style: Theme.of(context).textTheme.titleLarge),
+          SizedBox(height: tokens.spaceMd),
+          ReservedCardMetadataFields(
+            conditionController: conditionController,
+            itemNotesController: itemNotesController,
+            issueQuantityController: issueQuantityController,
+            issuePriceController: issuePriceController,
+            enabled: !state.isSaving,
+          ),
+          SizedBox(height: tokens.spaceLg),
           Text('整理归属', style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: tokens.spaceMd),
+          TextField(
+            controller: cardTypeController,
+            enabled: !state.isSaving,
+            decoration: const InputDecoration(labelText: '卡片类型（可选）'),
+          ),
+          SizedBox(height: tokens.spaceMd),
+          OptionalDateField(
+            label: '入手日期（可选）',
+            value: acquiredAt,
+            enabled: !state.isSaving,
+            onChanged: onAcquiredAtChanged,
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('标记为待补全'),
+            value: needsCompletion,
+            onChanged: state.isSaving ? null : onNeedsCompletionChanged,
+          ),
           CardEntryMetadataFields(
             tags: tags,
             cardSets: cardSets,

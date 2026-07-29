@@ -32,6 +32,13 @@ class ProfileScreen extends StatelessWidget {
           ),
           _entry(
             context,
+            icon: Icons.settings_outlined,
+            title: '应用设置',
+            subtitle: '查看权限、存储空间、诊断与首次引导。',
+            path: appSettingsPath,
+          ),
+          _entry(
+            context,
             icon: Icons.delete_outline,
             title: '回收站',
             subtitle: '恢复已删除卡片，或将其永久删除。',
@@ -43,6 +50,13 @@ class ProfileScreen extends StatelessWidget {
             title: '导入与导出',
             subtitle: '备份、恢复或合并你的全部收藏数据。',
             path: backupPath,
+          ),
+          _entry(
+            context,
+            icon: Icons.table_view_outlined,
+            title: '导出 CSV',
+            subtitle: '导出可在 Excel 中查看的卡片清单。',
+            path: csvExportPath,
           ),
         ],
       ),

@@ -326,8 +326,8 @@ void main() {
     await harness.pump(tester, initialLocation: capturePath);
 
     expect(find.text('拍摄单张卡'), findsOneWidget);
-    expect(find.text('连续拍摄'), findsOneWidget);
-    expect(find.text('批量录入卡片'), findsOneWidget);
+    expect(find.text('单卡多图连拍'), findsOneWidget);
+    expect(find.text('批量建卡 / 创建套卡'), findsOneWidget);
   });
 
   testWidgets('single capture opens the existing card draft', (tester) async {
@@ -359,7 +359,7 @@ void main() {
     addTearDown(harness.dispose);
     await harness.pump(tester, initialLocation: capturePath);
 
-    await tester.tap(find.text('连续拍摄'));
+    await tester.tap(find.text('单卡多图连拍'));
     await tester.pumpAndSettle();
 
     expect(find.text('新建卡片'), findsOneWidget);
@@ -391,7 +391,8 @@ void main() {
     expect(find.text('正面（可选）'), findsOneWidget);
     expect(find.text('背面（可选）'), findsOneWidget);
     expect(find.text('名称（可选）'), findsOneWidget);
-    expect(find.text('集卡册（本批次共用，可选）'), findsOneWidget);
+    expect(find.text('加入卡册（本批次共用，可多选）'), findsOneWidget);
+    expect(find.text('已确认此卡资料'), findsOneWidget);
   });
 
   testWidgets('saving disables repeated submission', (tester) async {

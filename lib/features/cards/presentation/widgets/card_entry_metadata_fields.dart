@@ -70,10 +70,7 @@ class CardEntryMetadataFields extends StatelessWidget {
             onSelected: onTagSelected,
           ),
         const SizedBox(height: 16),
-        Text(
-          '加入套卡（可选）',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text('加入套卡（可选）', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         if (cardSets.isEmpty)
           Text('暂无套卡', style: Theme.of(context).textTheme.bodySmall)
@@ -87,10 +84,7 @@ class CardEntryMetadataFields extends StatelessWidget {
             onSelected: onSetSelected,
           ),
         const SizedBox(height: 16),
-        Text(
-          '加入卡册（可选）',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text('加入卡册（可选）', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         if (albums.isEmpty)
           Text('暂无卡册', style: Theme.of(context).textTheme.bodySmall)
@@ -137,12 +131,14 @@ class CardEntryCostFields extends StatelessWidget {
     required this.amountController,
     required this.shippingController,
     required this.enabled,
+    this.onChanged,
     super.key,
   });
 
   final TextEditingController amountController;
   final TextEditingController shippingController;
   final bool enabled;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +151,7 @@ class CardEntryCostFields extends StatelessWidget {
             controller: amountController,
             enabled: enabled,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: onChanged,
             decoration: const InputDecoration(
               labelText: '卡片金额（元）',
               prefixText: '¥ ',
@@ -169,6 +166,7 @@ class CardEntryCostFields extends StatelessWidget {
             controller: shippingController,
             enabled: enabled,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: onChanged,
             decoration: const InputDecoration(
               labelText: '运费（元）',
               prefixText: '¥ ',
@@ -194,15 +192,11 @@ int parseOptionalCnyMinor(String value) {
   return amount.minorUnits;
 }
 
-String formatCnyInput(int minorUnits) =>
-    minorUnits == 0
-        ? ''
-        : CurrencyAmount(minorUnits: minorUnits, currency: 'CNY').formatted;
+String formatCnyInput(int minorUnits) => minorUnits == 0
+    ? ''
+    : CurrencyAmount(minorUnits: minorUnits, currency: 'CNY').formatted;
 
-Future<String?> createTagInline(
-  BuildContext context,
-  WidgetRef ref,
-) async {
+Future<String?> createTagInline(BuildContext context, WidgetRef ref) async {
   final controller = TextEditingController();
   final name = await showDialog<String>(
     context: context,
@@ -213,8 +207,7 @@ Future<String?> createTagInline(
         autofocus: true,
         maxLength: 100,
         decoration: const InputDecoration(labelText: '标签名称'),
-        onSubmitted: (value) =>
-            Navigator.pop(dialogContext, value.trim()),
+        onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
       ),
       actions: <Widget>[
         TextButton(
@@ -222,8 +215,7 @@ Future<String?> createTagInline(
           child: const Text('取消'),
         ),
         FilledButton(
-          onPressed: () =>
-              Navigator.pop(dialogContext, controller.text.trim()),
+          onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
           child: const Text('创建'),
         ),
       ],

@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
+import '../../../../core/preferences/local_app_state.dart';
+import '../../../../core/preferences/local_app_state_providers.dart';
 import '../../../card_sets/presentation/library/card_set_collection_view.dart';
 import '../../../organization/data/organization_providers.dart';
 import '../../../organization/domain/organization_models.dart';
@@ -82,9 +84,116 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
     }
   }
 
+  Future<void> _saveCurrentFilter({SavedCardFilter? existing}) async {
+    final nameController = TextEditingController(text: existing?.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(existing == null ? '保存常用筛选' : '重命名常用筛选'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: '筛选名称'),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, nameController.text.trim()),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    nameController.dispose();
+    if (name == null || name.isEmpty) return;
+    await ref
+        .read(localAppStateProvider.notifier)
+        .saveFilter(
+          id: existing?.id,
+          name: name,
+          query: existing?.query ?? ref.read(cardLibraryQueryProvider),
+        );
+  }
+
+  Future<void> _openSavedFilters() async {
+    final filters =
+        ref.read(localAppStateProvider).value?.savedFilters ??
+        const <SavedCardFilter>[];
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.bookmark_add_outlined),
+              title: const Text('保存当前筛选'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _saveCurrentFilter();
+              },
+            ),
+            if (filters.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('还没有常用筛选。'),
+              )
+            else
+              for (final filter in filters)
+                ListTile(
+                  leading: const Icon(Icons.bookmark_outline),
+                  title: Text(filter.name),
+                  subtitle: Text(_activeFilterLabels(filter.query).join(' · ')),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ref
+                        .read(cardLibraryQueryProvider.notifier)
+                        .replace(filter.query);
+                    _searchController.text = filter.query.searchText ?? '';
+                    setState(() {});
+                  },
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (action) {
+                      Navigator.pop(sheetContext);
+                      if (action == 'rename') {
+                        _saveCurrentFilter(existing: filter);
+                      } else if (action == 'update') {
+                        ref
+                            .read(localAppStateProvider.notifier)
+                            .saveFilter(
+                              id: filter.id,
+                              name: filter.name,
+                              query: ref.read(cardLibraryQueryProvider),
+                            );
+                      } else {
+                        ref
+                            .read(localAppStateProvider.notifier)
+                            .deleteFilter(filter.id);
+                      }
+                    },
+                    itemBuilder: (context) => const <PopupMenuEntry<String>>[
+                      PopupMenuItem(value: 'update', child: Text('更新为当前筛选')),
+                      PopupMenuItem(value: 'rename', child: Text('重命名')),
+                      PopupMenuItem(value: 'delete', child: Text('删除')),
+                    ],
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(createCardControllerProvider);
+    ref.watch(localAppStateProvider);
     final cards = ref.watch(organizedCardListProvider);
     final facets = ref.watch(cardFilterFacetsProvider);
     final query = ref.watch(cardLibraryQueryProvider);
@@ -150,6 +259,12 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
                       label: Text('${_filterCount(query)}'),
                       child: const Icon(Icons.tune),
                     ),
+                  ),
+                  IconButton(
+                    key: const Key('open-saved-filters'),
+                    tooltip: '常用筛选',
+                    onPressed: _openSavedFilters,
+                    icon: const Icon(Icons.bookmarks_outlined),
                   ),
                   PopupMenuButton<_SortOption>(
                     key: const Key('library-sort-menu'),

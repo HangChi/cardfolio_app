@@ -485,6 +485,26 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             child: const Text('编辑资料'),
           ),
         ),
+        SizedBox(height: tokens.spaceSm),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => context.push(copyCardPath(card.cardItemId)),
+                icon: const Icon(Icons.content_copy_outlined),
+                label: const Text('复制资料建卡'),
+              ),
+            ),
+            SizedBox(width: tokens.spaceSm),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => context.push(editCardPath(card.cardItemId)),
+                icon: const Icon(Icons.payments_outlined),
+                label: const Text('记录入手成本'),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -619,10 +639,7 @@ class _CardCostSummary extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  '入手成本',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('入手成本', style: Theme.of(context).textTheme.titleMedium),
                 SizedBox(height: context.tokens.spaceSm),
                 Text('卡片 ¥$amount · 运费 ¥$shipping'),
                 SizedBox(height: context.tokens.spaceXs),

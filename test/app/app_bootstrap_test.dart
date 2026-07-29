@@ -43,6 +43,12 @@ void main() {
     await tester.pump();
 
     expect(attempts, 2);
+    expect(find.text('把每一张卡，整理成收藏'), findsOneWidget);
+
+    await tester.tap(find.text('跳过'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始使用'));
+    await tester.pumpAndSettle();
     expect(find.text('我的收藏'), findsOneWidget);
 
     await tester.runAsync(dependencies.close);

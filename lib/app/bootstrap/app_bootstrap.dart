@@ -10,6 +10,9 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/errors/app_failure.dart';
 import '../../core/id/id_generator.dart';
+import '../../core/preferences/json_local_app_state_store.dart';
+import '../../core/preferences/local_app_state.dart';
+import '../../core/preferences/local_app_state_providers.dart';
 import '../../core/time/clock.dart';
 import '../../features/backup/data/backup_providers.dart';
 import '../../features/backup/data/backup_repository_impl.dart';
@@ -50,6 +53,8 @@ final class CardfolioDependencies {
     required this.backupRepository,
     required this.accountSyncRepository,
     required this.httpClient,
+    required this.localAppStateStore,
+    required this.initialAppState,
   });
 
   static const String _dataDirectoryName = 'cardfolio';
@@ -67,6 +72,8 @@ final class CardfolioDependencies {
   final BackupRepository backupRepository;
   final AccountSyncRepository accountSyncRepository;
   final http.Client httpClient;
+  final LocalAppStateStore localAppStateStore;
+  final LocalAppState initialAppState;
 
   /// 打开持久化依赖并完成启动恢复。
   ///
@@ -91,6 +98,10 @@ final class CardfolioDependencies {
       final imageProcessingWork = Directory(
         p.join(dataRoot.path, _imageProcessingWorkDirectoryName),
       );
+      final localAppStateStore = JsonLocalAppStateStore(
+        File(p.join(dataRoot.path, 'app-state.json')),
+      );
+      final initialAppState = await localAppStateStore.read();
       await imageRoot.create(recursive: true);
       await _resetBackupWorkDirectory(backupWork);
       await _resetImageProcessingWorkDirectory(imageProcessingWork);
@@ -176,6 +187,8 @@ final class CardfolioDependencies {
         backupRepository: backupRepository,
         accountSyncRepository: accountSyncRepository,
         httpClient: httpClient,
+        localAppStateStore: localAppStateStore,
+        initialAppState: initialAppState,
       );
     } on AppFailure {
       httpClient?.close();
@@ -317,8 +330,17 @@ class _AppBootstrapState extends State<AppBootstrap> {
           accountSyncRepositoryProvider.overrideWithValue(
             dependencies.accountSyncRepository,
           ),
+          localAppStateStoreProvider.overrideWithValue(
+            dependencies.localAppStateStore,
+          ),
         ],
-        child: CardfolioApp(router: createAppRouter()),
+        child: CardfolioApp(
+          router: createAppRouter(
+            initialLocation: dependencies.initialAppState.onboardingCompleted
+                ? libraryPath
+                : onboardingPath,
+          ),
+        ),
       );
     }
 

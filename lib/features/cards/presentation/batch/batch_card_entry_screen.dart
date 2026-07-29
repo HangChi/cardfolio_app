@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/preferences/local_app_state.dart';
+import '../../../../core/preferences/local_app_state_providers.dart';
 import '../../../card_sets/data/card_set_providers.dart';
 import '../../../card_sets/domain/card_set_models.dart';
 import '../../../organization/data/organization_providers.dart';
@@ -28,12 +32,19 @@ class BatchCardEntryScreen extends ConsumerStatefulWidget {
 class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
   final _drafts = <_BatchCardDraft>[];
   final _selectedAlbumIds = <String>{};
+  final _sharedSetIds = <String>{};
+  final _sharedCity = TextEditingController();
+  final _sharedIssuer = TextEditingController();
+  final _sharedCardType = TextEditingController();
+  DateTime? _sharedAcquiredAt;
+  Timer? _persistDebounce;
+  bool _restoring = true;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _addDraft(rebuild: false);
+    Future<void>.microtask(_restoreDrafts);
   }
 
   @override
@@ -41,7 +52,68 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
     for (final draft in _drafts) {
       draft.dispose();
     }
+    _persistDebounce?.cancel();
+    _sharedCity.dispose();
+    _sharedIssuer.dispose();
+    _sharedCardType.dispose();
     super.dispose();
+  }
+
+  Future<void> _restoreDrafts() async {
+    try {
+      final snapshot =
+          (await ref.read(localAppStateStoreProvider).read()).batchEntry;
+      if (!mounted) return;
+      if (snapshot != null && snapshot.drafts.isNotEmpty) {
+        _sharedCity.text = snapshot.shared['city'] as String? ?? '';
+        _sharedIssuer.text = snapshot.shared['issuer'] as String? ?? '';
+        _sharedCardType.text = snapshot.shared['cardType'] as String? ?? '';
+        _sharedAcquiredAt = DateTime.tryParse(
+          snapshot.shared['acquiredAt'] as String? ?? '',
+        );
+        _selectedAlbumIds.addAll(
+          (snapshot.shared['albumIds'] as List<Object?>? ?? const <Object?>[])
+              .whereType<String>(),
+        );
+        _sharedSetIds.addAll(
+          (snapshot.shared['setIds'] as List<Object?>? ?? const <Object?>[])
+              .whereType<String>(),
+        );
+        _drafts.addAll(snapshot.drafts.map(_BatchCardDraft.fromJson));
+      } else {
+        _addDraft(rebuild: false);
+      }
+    } on Object {
+      await ref.read(localAppStateProvider.notifier).clearBatchEntry();
+      if (!mounted) return;
+      _addDraft(rebuild: false);
+    }
+    setState(() => _restoring = false);
+  }
+
+  void _schedulePersist() {
+    if (_restoring || _saving) return;
+    _persistDebounce?.cancel();
+    _persistDebounce = Timer(const Duration(milliseconds: 300), () {
+      ref
+          .read(localAppStateProvider.notifier)
+          .saveBatchEntry(
+            BatchEntrySnapshot(
+              shared: <String, Object?>{
+                'city': _sharedCity.text,
+                'issuer': _sharedIssuer.text,
+                'cardType': _sharedCardType.text,
+                'acquiredAt': _sharedAcquiredAt?.toIso8601String(),
+                'albumIds': _selectedAlbumIds.toList(growable: false),
+                'setIds': _sharedSetIds.toList(growable: false),
+              },
+              drafts: _drafts
+                  .where((draft) => !draft.saved)
+                  .map((draft) => draft.toJson())
+                  .toList(growable: false),
+            ),
+          );
+    });
   }
 
   void _addDraft({bool rebuild = true}) {
@@ -55,12 +127,14 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
     } else {
       _drafts.add(draft);
     }
+    _schedulePersist();
   }
 
   void _removeDraft(_BatchCardDraft draft) {
     if (_drafts.length == 1 || draft.saved || _saving) return;
     setState(() => _drafts.remove(draft));
     draft.dispose();
+    _schedulePersist();
   }
 
   Future<void> _chooseImage(_BatchCardDraft draft, CardImageKind side) async {
@@ -104,6 +178,7 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
           draft.backPath = path;
         }
       });
+      _schedulePersist();
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
     }
@@ -111,6 +186,10 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
 
   Future<void> _saveAll() async {
     if (_saving) return;
+    if (_drafts.any((draft) => !draft.saved && !draft.confirmed)) {
+      _showMessage('请先逐张确认本批次中的卡片资料。');
+      return;
+    }
     setState(() => _saving = true);
     var savedCount = 0;
     try {
@@ -136,6 +215,8 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
               ),
           ],
           name: draft.name.text,
+          city: _sharedCity.text,
+          issuer: _sharedIssuer.text,
           issuedAt: draft.issuedAt == null
               ? null
               : PartialDate.tryParse(formatOptionalDate(draft.issuedAt!)),
@@ -148,6 +229,8 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
             .saveCardOrganization(
               SaveCardOrganizationRequest(
                 cardItemId: cardItemId,
+                cardType: _sharedCardType.text,
+                acquiredAt: _sharedAcquiredAt,
                 tagIds: draft.tagIds.toList(growable: false),
                 seriesIds: _selectedAlbumIds.toList(growable: false),
               ),
@@ -155,7 +238,7 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
         await saveCardSetSelections(
           ref: ref,
           definitionId: draft.ids.definitionId,
-          selectedSetIds: draft.setIds,
+          selectedSetIds: <String>{..._sharedSetIds, ...draft.setIds},
         );
         await ref
             .read(purchaseRepositoryProvider)
@@ -172,7 +255,11 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
           draft.savedCardItemId = cardItemId;
         });
         savedCount++;
+        _schedulePersist();
       }
+      if (!mounted) return;
+      _persistDebounce?.cancel();
+      await ref.read(localAppStateProvider.notifier).clearBatchEntry();
       if (!mounted) return;
       _showMessage('已保存 $savedCount 张卡片。');
       context.go(libraryPath);
@@ -181,7 +268,10 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
     } catch (_) {
       _showMessage('已保存 $savedCount 张；当前草稿保存失败，请重试。');
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+        if (_drafts.any((draft) => !draft.saved)) _schedulePersist();
+      }
     }
   }
 
@@ -197,7 +287,51 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
       final id = await createTagInline(context, ref);
       if (id != null && mounted) {
         setState(() => draft.tagIds.add(id));
+        _schedulePersist();
       }
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
+    }
+  }
+
+  Future<void> _createSharedSet() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('创建本批次套卡'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: CreateCardSetRequest.maxNameLength,
+          decoration: const InputDecoration(labelText: '套卡名称'),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('创建并选中'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty) return;
+    try {
+      final id = ref.read(idGeneratorProvider).newId();
+      await ref
+          .read(cardSetRepositoryProvider)
+          .createSet(
+            CreateCardSetRequest(id: id, name: name, countKnown: false),
+          );
+      if (!mounted) return;
+      setState(() => _sharedSetIds.add(id));
+      _schedulePersist();
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
     }
@@ -212,6 +346,14 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
     final cardSets =
         ref.watch(cardSetListProvider).value ?? const <CardSetSummary>[];
     final tokens = context.tokens;
+
+    if (_restoring) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(semanticsLabel: '正在恢复批量草稿'),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -239,8 +381,41 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
         ),
         children: <Widget>[
           Text(
-            '每张卡片都可只录正面、只录背面或暂不添加图片；名称、日期和标签也都可稍后补充。',
+            '每张卡片都可只录正面、只录背面或暂不添加图片；填写后请逐张确认，再一次保存。',
             style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          SizedBox(height: tokens.spaceMd),
+          Text('本批次共用资料', style: Theme.of(context).textTheme.titleMedium),
+          SizedBox(height: tokens.spaceSm),
+          TextField(
+            controller: _sharedCity,
+            enabled: !_saving,
+            onChanged: (_) => _schedulePersist(),
+            decoration: const InputDecoration(labelText: '城市（共用，可选）'),
+          ),
+          SizedBox(height: tokens.spaceSm),
+          TextField(
+            controller: _sharedIssuer,
+            enabled: !_saving,
+            onChanged: (_) => _schedulePersist(),
+            decoration: const InputDecoration(labelText: '发行机构（共用，可选）'),
+          ),
+          SizedBox(height: tokens.spaceSm),
+          TextField(
+            controller: _sharedCardType,
+            enabled: !_saving,
+            onChanged: (_) => _schedulePersist(),
+            decoration: const InputDecoration(labelText: '卡片类型（共用，可选）'),
+          ),
+          SizedBox(height: tokens.spaceSm),
+          OptionalDateField(
+            label: '入手日期（共用，可选）',
+            value: _sharedAcquiredAt,
+            enabled: !_saving,
+            onChanged: (value) {
+              setState(() => _sharedAcquiredAt = value);
+              _schedulePersist();
+            },
           ),
           SizedBox(height: tokens.spaceMd),
           Text(
@@ -261,11 +436,53 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
                     selected: _selectedAlbumIds.contains(album.id),
                     onSelected: _saving
                         ? null
-                        : (selected) => setState(
-                            () => selected
+                        : (selected) => setState(() {
+                            selected
                                 ? _selectedAlbumIds.add(album.id)
-                                : _selectedAlbumIds.remove(album.id),
-                          ),
+                                : _selectedAlbumIds.remove(album.id);
+                            _schedulePersist();
+                          }),
+                  ),
+              ],
+            ),
+          SizedBox(height: tokens.spaceMd),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  '加入套卡（本批次共用，可多选）',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _saving ? null : _createSharedSet,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('新建套卡'),
+              ),
+            ],
+          ),
+          SizedBox(height: tokens.spaceSm),
+          if (cardSets.isEmpty)
+            Text('暂无套卡，可直接新建', style: Theme.of(context).textTheme.bodySmall)
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <Widget>[
+                for (final cardSet in cardSets)
+                  FilterChip(
+                    label: Text(cardSet.name),
+                    selected: _sharedSetIds.contains(cardSet.id),
+                    onSelected: _saving
+                        ? null
+                        : (selected) {
+                            setState(() {
+                              selected
+                                  ? _sharedSetIds.add(cardSet.id)
+                                  : _sharedSetIds.remove(cardSet.id);
+                            });
+                            _schedulePersist();
+                          },
                   ),
               ],
             ),
@@ -283,7 +500,10 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
               onChooseBack: () =>
                   _chooseImage(_drafts[index], CardImageKind.back),
               onCreateTag: () => _createTag(_drafts[index]),
-              onChanged: () => setState(() {}),
+              onChanged: () {
+                setState(() {});
+                _schedulePersist();
+              },
             ),
             SizedBox(height: tokens.spaceMd),
           ],
@@ -355,13 +575,25 @@ class _BatchDraftCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: tokens.spaceSm),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('已确认此卡资料'),
+              subtitle: const Text('确认后锁定本卡草稿；取消勾选可继续修改。'),
+              value: draft.confirmed,
+              onChanged: enabled && !draft.saved
+                  ? (value) {
+                      draft.confirmed = value ?? false;
+                      onChanged();
+                    }
+                  : null,
+            ),
             Row(
               children: <Widget>[
                 Expanded(
                   child: _SideImage(
                     label: '正面（可选）',
                     path: draft.frontPath,
-                    enabled: enabled && !draft.saved,
+                    enabled: enabled && !draft.saved && !draft.confirmed,
                     onPressed: onChooseFront,
                   ),
                 ),
@@ -370,7 +602,7 @@ class _BatchDraftCard extends StatelessWidget {
                   child: _SideImage(
                     label: '背面（可选）',
                     path: draft.backPath,
-                    enabled: enabled && !draft.saved,
+                    enabled: enabled && !draft.saved && !draft.confirmed,
                     onPressed: onChooseBack,
                   ),
                 ),
@@ -379,14 +611,15 @@ class _BatchDraftCard extends StatelessWidget {
             SizedBox(height: tokens.spaceMd),
             TextField(
               controller: draft.name,
-              enabled: enabled && !draft.saved,
+              enabled: enabled && !draft.saved && !draft.confirmed,
+              onChanged: (_) => onChanged(),
               decoration: const InputDecoration(labelText: '名称（可选）'),
             ),
             SizedBox(height: tokens.spaceMd),
             OptionalDateField(
               label: '发行日期（可选）',
               value: draft.issuedAt,
-              enabled: enabled && !draft.saved,
+              enabled: enabled && !draft.saved && !draft.confirmed,
               onChanged: (value) {
                 draft.issuedAt = value;
                 onChanged();
@@ -402,7 +635,9 @@ class _BatchDraftCard extends StatelessWidget {
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: enabled && !draft.saved ? onCreateTag : null,
+                  onPressed: enabled && !draft.saved && !draft.confirmed
+                      ? onCreateTag
+                      : null,
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('新建标签'),
                 ),
@@ -420,7 +655,7 @@ class _BatchDraftCard extends StatelessWidget {
                     FilterChip(
                       label: Text(tag.name),
                       selected: draft.tagIds.contains(tag.id),
-                      onSelected: enabled && !draft.saved
+                      onSelected: enabled && !draft.saved && !draft.confirmed
                           ? (selected) {
                               selected
                                   ? draft.tagIds.add(tag.id)
@@ -445,7 +680,7 @@ class _BatchDraftCard extends StatelessWidget {
                     FilterChip(
                       label: Text(cardSet.name),
                       selected: draft.setIds.contains(cardSet.id),
-                      onSelected: enabled && !draft.saved
+                      onSelected: enabled && !draft.saved && !draft.confirmed
                           ? (selected) {
                               selected
                                   ? draft.setIds.add(cardSet.id)
@@ -460,7 +695,8 @@ class _BatchDraftCard extends StatelessWidget {
             CardEntryCostFields(
               amountController: draft.amount,
               shippingController: draft.shipping,
-              enabled: enabled && !draft.saved,
+              enabled: enabled && !draft.saved && !draft.confirmed,
+              onChanged: (_) => onChanged(),
             ),
           ],
         ),
@@ -522,6 +758,33 @@ class _SideImage extends StatelessWidget {
 final class _BatchCardDraft {
   _BatchCardDraft({required this.ids, required this.backImageId});
 
+  factory _BatchCardDraft.fromJson(Map<String, Object?> json) {
+    final draft = _BatchCardDraft(
+      ids: CardDraftIds(
+        definitionId: json['definitionId'] as String,
+        cardItemId: json['cardItemId'] as String,
+        imageId: json['imageId'] as String,
+      ),
+      backImageId: json['backImageId'] as String,
+    );
+    draft.name.text = json['name'] as String? ?? '';
+    draft.amount.text = json['amount'] as String? ?? '';
+    draft.shipping.text = json['shipping'] as String? ?? '';
+    draft.frontPath = json['frontPath'] as String?;
+    draft.backPath = json['backPath'] as String?;
+    draft.issuedAt = DateTime.tryParse(json['issuedAt'] as String? ?? '');
+    draft.confirmed = json['confirmed'] as bool? ?? false;
+    draft.tagIds.addAll(
+      (json['tagIds'] as List<Object?>? ?? const <Object?>[])
+          .whereType<String>(),
+    );
+    draft.setIds.addAll(
+      (json['setIds'] as List<Object?>? ?? const <Object?>[])
+          .whereType<String>(),
+    );
+    return draft;
+  }
+
   final CardDraftIds ids;
   final String backImageId;
   final TextEditingController name = TextEditingController();
@@ -533,7 +796,24 @@ final class _BatchCardDraft {
   String? backPath;
   DateTime? issuedAt;
   bool saved = false;
+  bool confirmed = false;
   String? savedCardItemId;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'definitionId': ids.definitionId,
+    'cardItemId': ids.cardItemId,
+    'imageId': ids.imageId,
+    'backImageId': backImageId,
+    'name': name.text,
+    'amount': amount.text,
+    'shipping': shipping.text,
+    'frontPath': frontPath,
+    'backPath': backPath,
+    'issuedAt': issuedAt?.toIso8601String(),
+    'confirmed': confirmed,
+    'tagIds': tagIds.toList(growable: false),
+    'setIds': setIds.toList(growable: false),
+  };
 
   void dispose() {
     name.dispose();

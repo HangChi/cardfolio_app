@@ -12,8 +12,12 @@ import '../../../purchases/data/purchase_providers.dart';
 import '../../../purchases/domain/purchase_models.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
+import '../../domain/card_autofill.dart';
+import '../../domain/reserved_card_metadata.dart';
 import '../widgets/card_entry_metadata_fields.dart';
+import '../widgets/card_autofill_button.dart';
 import '../widgets/optional_date_field.dart';
+import '../widgets/reserved_card_metadata_fields.dart';
 
 class EditCardScreen extends ConsumerStatefulWidget {
   const EditCardScreen({required this.cardItemId, super.key});
@@ -34,6 +38,10 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
   final _cardType = TextEditingController();
   final _amount = TextEditingController();
   final _shipping = TextEditingController();
+  final _condition = TextEditingController();
+  final _itemNotes = TextEditingController();
+  final _issueQuantity = TextEditingController();
+  final _issuePrice = TextEditingController();
   final _selectedTags = <String>{};
   final _selectedSets = <String>{};
   final _selectedAlbums = <String>{};
@@ -57,6 +65,10 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
     _cardType.dispose();
     _amount.dispose();
     _shipping.dispose();
+    _condition.dispose();
+    _itemNotes.dispose();
+    _issueQuantity.dispose();
+    _issuePrice.dispose();
     super.dispose();
   }
 
@@ -87,6 +99,11 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
     _fieldValues = organization.fieldValues
         .map((field) => field.value)
         .toList(growable: false);
+    final metadata = ReservedCardMetadata.fromDetails(organization.fieldValues);
+    _condition.text = metadata.condition ?? '';
+    _itemNotes.text = metadata.itemNotes ?? '';
+    _issueQuantity.text = metadata.issueQuantity?.toString() ?? '';
+    _issuePrice.text = metadata.issuePrice?.toString() ?? '';
   }
 
   Future<void> _save() async {
@@ -99,16 +116,40 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
     }
     final int amountMinor;
     final int shippingMinor;
+    final ReservedMetadataInput metadataInput;
     try {
       amountMinor = parseOptionalCnyMinor(_amount.text);
       shippingMinor = parseOptionalCnyMinor(_shipping.text);
+      metadataInput = parseReservedMetadataInput(
+        condition: _condition,
+        itemNotes: _itemNotes,
+        issueQuantity: _issueQuantity,
+        issuePrice: _issuePrice,
+      );
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
+      return;
+    } on FormatException catch (failure) {
+      _showMessage(failure.message);
       return;
     }
 
     setState(() => _saving = true);
     try {
+      final fieldValues = await mergeReservedCardMetadata(
+        repository: ref.read(organizationRepositoryProvider),
+        idGenerator: ref.read(idGeneratorProvider),
+        definitions:
+            ref.read(organizationFieldDefinitionsProvider).value ??
+            const <CustomFieldDefinition>[],
+        existingValues: _fieldValues,
+        metadata: ReservedCardMetadata(
+          condition: metadataInput.condition,
+          itemNotes: metadataInput.itemNotes,
+          issueQuantity: metadataInput.issueQuantity,
+          issuePrice: metadataInput.issuePrice,
+        ),
+      );
       await ref
           .read(cardRepositoryProvider)
           .updateCard(
@@ -133,7 +174,7 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
               acquiredAt: _acquiredAt,
               tagIds: _selectedTags.toList(growable: false),
               seriesIds: _selectedAlbums.toList(growable: false),
-              fieldValues: _fieldValues,
+              fieldValues: fieldValues,
             ),
           );
       final definitionId = _definitionId;
@@ -180,6 +221,25 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
     }
+  }
+
+  void _applyAutofill(CardAutofillSuggestion suggestion) {
+    setState(() {
+      if (suggestion.name != null) _name.text = suggestion.name!;
+      if (suggestion.city != null) _city.text = suggestion.city!;
+      if (suggestion.issuer != null) _issuer.text = suggestion.issuer!;
+      if (suggestion.code != null) _code.text = suggestion.code!;
+      if (suggestion.issuedAt != null) {
+        _issuedAt = PartialDate.tryParse(suggestion.issuedAt);
+      }
+      if (suggestion.cardType != null) _cardType.text = suggestion.cardType!;
+      if (suggestion.issueQuantity != null) {
+        _issueQuantity.text = suggestion.issueQuantity.toString();
+      }
+      if (suggestion.issuePrice != null) {
+        _issuePrice.text = suggestion.issuePrice!;
+      }
+    });
   }
 
   @override
@@ -235,6 +295,7 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
                     membershipValues,
                   );
                   return _form(
+                    cardValue,
                     tags.value ?? const <TagSummary>[],
                     cardSets.value ?? const <CardSetSummary>[],
                     albums.value ?? const <SeriesSummary>[],
@@ -262,6 +323,7 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
   );
 
   Widget _form(
+    CardDetail card,
     List<TagSummary> tags,
     List<CardSetSummary> cardSets,
     List<SeriesSummary> albums,
@@ -275,6 +337,18 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
         tokens.spaceXl,
       ),
       children: <Widget>[
+        if (card.cover != null) ...<Widget>[
+          CardAutofillButton(
+            imagePath: ref
+                .read(managedImageStoreProvider)
+                .resolve(
+                  card.cover!.derivedRelativePath ?? card.cover!.relativePath,
+                )
+                .path,
+            onApply: _applyAutofill,
+          ),
+          SizedBox(height: tokens.spaceLg),
+        ],
         _sectionTitle('基础资料'),
         _textField(_name, '名称（可选）'),
         _gap(),
@@ -302,6 +376,15 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
         ),
         _gap(),
         _textField(_notes, '备注（可选）', minLines: 3, maxLines: 6),
+        SizedBox(height: tokens.spaceLg),
+        _sectionTitle('藏品与发行信息'),
+        ReservedCardMetadataFields(
+          conditionController: _condition,
+          itemNotesController: _itemNotes,
+          issueQuantityController: _issueQuantity,
+          issuePriceController: _issuePrice,
+          enabled: !_saving,
+        ),
         SizedBox(height: tokens.spaceLg),
         _sectionTitle('整理信息'),
         _textField(_cardType, '卡片类型（可选）'),

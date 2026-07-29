@@ -15,12 +15,15 @@ import '../features/cards/presentation/edit/edit_card_screen.dart';
 import '../features/cards/presentation/library/card_library_screen.dart';
 import '../features/dashboard/presentation/home_screen.dart';
 import '../features/dashboard/presentation/statistics_screen.dart';
+import '../features/export/presentation/csv_export_screen.dart';
 import '../features/organization/presentation/card/card_organization_screen.dart';
 import '../features/organization/presentation/management/organization_settings_screen.dart';
 import '../features/organization/presentation/series/series_detail_screen.dart';
 import '../features/organization/presentation/series/series_form_screen.dart';
 import '../features/recycle_bin/presentation/recycle_bin_screen.dart';
 import '../features/sync/presentation/profile_screen.dart';
+import '../features/settings/presentation/app_settings_screen.dart';
+import '../features/settings/presentation/onboarding_screen.dart';
 import 'navigation/app_shell.dart';
 
 const String homePath = '/home';
@@ -36,6 +39,9 @@ const String recycleBinPath = '/recycle-bin';
 const String backupPath = '/backup';
 const String imageEditorPath = '/image-editor';
 const String organizationSettingsPath = '/organization-settings';
+const String onboardingPath = '/onboarding';
+const String appSettingsPath = '/app-settings';
+const String csvExportPath = '/csv-export';
 
 @immutable
 final class ImageEditorRouteArgs {
@@ -50,6 +56,7 @@ final class ImageEditorRouteArgs {
 
 String cardDetailPath(String id) => '/cards/$id';
 String editCardPath(String id) => '/cards/$id/edit';
+String copyCardPath(String id) => '/cards/$id/copy';
 String cardOrganizationPath(String id) => '/cards/$id/organization';
 String cardSetDetailPath(String id) => '/sets/$id';
 String editCardSetPath(String id) => '/sets/$id/edit';
@@ -64,6 +71,10 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
     initialLocation: initialLocation,
     navigatorKey: rootNavigatorKey,
     routes: <RouteBase>[
+      GoRoute(
+        path: onboardingPath,
+        builder: (context, state) => const OnboardingScreen(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
@@ -87,6 +98,11 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
         path: '/cards/:id/edit',
         builder: (context, state) =>
             EditCardScreen(cardItemId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/cards/:id/copy',
+        builder: (context, state) =>
+            CreateCardScreen(copyFromCardItemId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/cards/:id/organization',
@@ -137,6 +153,14 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
       GoRoute(
         path: organizationSettingsPath,
         builder: (context, state) => const OrganizationSettingsScreen(),
+      ),
+      GoRoute(
+        path: appSettingsPath,
+        builder: (context, state) => const AppSettingsScreen(),
+      ),
+      GoRoute(
+        path: csvExportPath,
+        builder: (context, state) => const CsvExportScreen(),
       ),
       GoRoute(
         path: imageEditorPath,
