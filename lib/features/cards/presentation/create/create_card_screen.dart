@@ -6,6 +6,7 @@ import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
 import '../../domain/card_models.dart';
+import '../../domain/image_processing.dart';
 import 'create_card_controller.dart';
 import 'create_card_state.dart';
 import '../widgets/card_image.dart';
@@ -243,7 +244,7 @@ class _DraftImagesEditor extends ConsumerWidget {
                               fit: StackFit.expand,
                               children: <Widget>[
                                 CardImage.local(
-                                  path: image.selection.path,
+                                  path: image.displayPath,
                                   semanticLabel: '待保存卡片第 ${index + 1} 张',
                                   borderRadius: BorderRadius.circular(
                                     tokens.radiusMd,
@@ -289,6 +290,29 @@ class _DraftImagesEditor extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
+                              ),
+                              IconButton(
+                                onPressed: state.isSaving
+                                    ? null
+                                    : () async {
+                                        final result = await context
+                                            .push<ProcessedImage>(
+                                              imageEditorPath,
+                                              extra: ImageEditorRouteArgs(
+                                                sourcePath:
+                                                    image.selection.path,
+                                                outputId: image.id,
+                                              ),
+                                            );
+                                        if (result != null) {
+                                          controller.applyProcessedImage(
+                                            image.id,
+                                            result.path,
+                                          );
+                                        }
+                                      },
+                                tooltip: '裁切与增强',
+                                icon: const Icon(Icons.auto_fix_high_outlined),
                               ),
                               IconButton(
                                 onPressed: state.isSaving || index == 0

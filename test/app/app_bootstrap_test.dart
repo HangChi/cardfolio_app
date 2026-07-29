@@ -105,6 +105,11 @@ void main() {
     );
     await image.parent.create(recursive: true);
     await image.writeAsBytes(<int>[1, 2, 3], flush: true);
+    final staleDerived = File(
+      p.join(dataRoot.path, 'image-processing-work', 'outputs', 'stale.jpg'),
+    );
+    await staleDerived.parent.create(recursive: true);
+    await staleDerived.writeAsBytes(<int>[0xff, 0xd8, 0xff], flush: true);
 
     final dependencies = await CardfolioDependencies.initialize(
       supportDirectory: supportDirectory,
@@ -113,6 +118,11 @@ void main() {
 
     expect(await dependencies.database.countItems(), 0);
     expect(image.existsSync(), isFalse);
+    expect(staleDerived.existsSync(), isFalse);
+    expect(
+      Directory(p.join(dataRoot.path, 'image-processing-work')).existsSync(),
+      isTrue,
+    );
     expect(
       await dependencies.database
           .select(dependencies.database.fileCleanupQueueEntries)

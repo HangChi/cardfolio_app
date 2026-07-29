@@ -225,20 +225,36 @@ class CardRepositoryImpl implements CardRepository {
     }
   }
 
-  Future<List<ManagedImage>> _importImages(
+  Future<List<_ImportedCardImage>> _importImages(
     String cardItemId,
     List<PendingCardImage> inputs,
   ) async {
-    final imported = <ManagedImage>[];
+    final imported = <_ImportedCardImage>[];
     try {
       for (final input in inputs) {
-        imported.add(
-          await _images.importImage(
+        ManagedImage? original;
+        ManagedImage? derived;
+        try {
+          original = await _images.importImage(
             sourcePath: input.sourcePath,
             cardItemId: cardItemId,
             imageId: input.id,
-          ),
-        );
+          );
+          if (input.derivedSourcePath case final derivedSource?) {
+            derived = await _images.importDerivedImage(
+              sourcePath: derivedSource,
+              cardItemId: cardItemId,
+              imageId: input.id,
+            );
+          }
+          imported.add(
+            _ImportedCardImage(original: original, derived: derived),
+          );
+        } catch (_) {
+          if (derived != null) await _images.delete(derived.relativePath);
+          if (original != null) await _images.delete(original.relativePath);
+          rethrow;
+        }
       }
       return imported;
     } catch (_) {
@@ -247,9 +263,12 @@ class CardRepositoryImpl implements CardRepository {
     }
   }
 
-  Future<void> _deleteImported(List<ManagedImage> imported) async {
+  Future<void> _deleteImported(List<_ImportedCardImage> imported) async {
     for (final image in imported.reversed) {
-      await _images.delete(image.relativePath);
+      if (image.derived case final derived?) {
+        await _images.delete(derived.relativePath);
+      }
+      await _images.delete(image.original.relativePath);
     }
   }
 
@@ -263,7 +282,7 @@ class CardRepositoryImpl implements CardRepository {
 
   CardRowGraph _buildGraph(
     CreateCardRequest request,
-    List<ManagedImage> images,
+    List<_ImportedCardImage> images,
     DateTime now,
   ) {
     return CardRowGraph(
@@ -301,7 +320,7 @@ class CardRepositoryImpl implements CardRepository {
 
   CardImagesCompanion _imageCompanion({
     required PendingCardImage input,
-    required ManagedImage image,
+    required _ImportedCardImage image,
     required String cardItemId,
     required int sortOrder,
     required bool isCover,
@@ -311,11 +330,19 @@ class CardRepositoryImpl implements CardRepository {
       id: input.id,
       cardItemId: cardItemId,
       kind: input.kind,
-      relativePath: image.relativePath,
+      relativePath: image.original.relativePath,
+      derivedRelativePath: Value<String?>(image.derived?.relativePath),
       sortOrder: Value(sortOrder),
       isCover: Value(isCover),
-      checksum: image.checksum,
+      checksum: image.original.checksum,
       createdAt: createdAt,
     );
   }
+}
+
+final class _ImportedCardImage {
+  const _ImportedCardImage({required this.original, this.derived});
+
+  final ManagedImage original;
+  final ManagedImage? derived;
 }

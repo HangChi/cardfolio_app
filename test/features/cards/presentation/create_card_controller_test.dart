@@ -5,6 +5,7 @@ import 'package:cardfolio_app/core/id/id_generator.dart';
 import 'package:cardfolio_app/features/cards/data/card_providers.dart';
 import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
+import 'package:cardfolio_app/features/cards/domain/camera_capture.dart';
 import 'package:cardfolio_app/features/cards/domain/gallery_picker.dart';
 import 'package:cardfolio_app/features/cards/presentation/create/create_card_controller.dart';
 import 'package:cardfolio_app/features/cards/presentation/create/create_card_state.dart';
@@ -49,6 +50,31 @@ class FakeGalleryPicker implements GalleryPicker {
     recoverCalls++;
     return lostSelections;
   }
+}
+
+class FakeCameraCapture implements CameraCapture {
+  FakeCameraCapture({
+    List<CapturedImage?>? captures,
+    List<CapturedImage>? lost,
+    this.error,
+  }) : captures = captures ?? <CapturedImage?>[],
+       lost = lost ?? <CapturedImage>[];
+
+  final List<CapturedImage?> captures;
+  final List<CapturedImage> lost;
+  final AppFailure? error;
+  int captureCalls = 0;
+
+  @override
+  Future<CapturedImage?> capture() async {
+    captureCalls++;
+    if (error != null) throw error!;
+    if (captures.isEmpty) return null;
+    return captures.removeAt(0);
+  }
+
+  @override
+  Future<List<CapturedImage>> recoverLost() async => lost;
 }
 
 class FakeCardRepository implements CardRepository {
@@ -133,6 +159,7 @@ class SequenceIdGenerator implements IdGenerator {
 void main() {
   late FakeGalleryPicker picker;
   late FakeCardRepository repository;
+  late FakeCameraCapture camera;
   late SequenceIdGenerator ids;
   late ProviderContainer container;
 
@@ -140,6 +167,7 @@ void main() {
     return ProviderContainer.test(
       overrides: [
         galleryPickerProvider.overrideWithValue(picker),
+        cameraCaptureProvider.overrideWithValue(camera),
         cardRepositoryProvider.overrideWithValue(repository),
         idGeneratorProvider.overrideWithValue(ids),
       ],
@@ -153,8 +181,92 @@ void main() {
 
   setUp(() {
     picker = FakeGalleryPicker(selection: selectedImage);
+    camera = FakeCameraCapture();
     repository = FakeCardRepository();
     ids = SequenceIdGenerator();
+  });
+
+  group('camera capture', () {
+    const first = CapturedImage(
+      path: '/tmp/CAMERA_0001.jpg',
+      displayName: 'CAMERA_0001.jpg',
+    );
+    const second = CapturedImage(path: '/tmp/CAMERA_0002.jpg');
+
+    test('single capture creates a front-image draft', () async {
+      camera = FakeCameraCapture(captures: <CapturedImage?>[first]);
+      container = buildContainer();
+
+      expect(await controller().captureImage(), isTrue);
+
+      expect(state().images.single.selection.path, first.path);
+      expect(state().images.single.kind, CardImageKind.front);
+      expect(state().phase, CreateCardPhase.editing);
+    });
+
+    test(
+      'continuous capture stops on cancel and keeps confirmed images',
+      () async {
+        camera = FakeCameraCapture(
+          captures: <CapturedImage?>[first, second, null],
+        );
+        container = buildContainer();
+
+        expect(await controller().captureContinuously(), isTrue);
+
+        expect(state().images.map((image) => image.selection.path), <String>[
+          first.path,
+          second.path,
+        ]);
+        expect(camera.captureCalls, 3);
+        expect(state().failure, isNull);
+      },
+    );
+
+    test('camera cancellation leaves an empty draft idle', () async {
+      camera = FakeCameraCapture(captures: <CapturedImage?>[null]);
+      container = buildContainer();
+
+      expect(await controller().captureImage(), isFalse);
+
+      expect(state().phase, CreateCardPhase.idle);
+      expect(state().images, isEmpty);
+    });
+
+    test('camera failure is recoverable and keeps gallery available', () async {
+      camera = FakeCameraCapture(error: const CameraAccessFailure());
+      container = buildContainer();
+
+      expect(await controller().captureImage(), isFalse);
+
+      expect(state().failure, isA<CameraAccessFailure>());
+      expect(state().phase, CreateCardPhase.failure);
+    });
+
+    test('recovers lost camera results into the current draft', () async {
+      camera = FakeCameraCapture(lost: const <CapturedImage>[first, second]);
+      container = buildContainer();
+
+      expect(await controller().recoverLostCapture(), isTrue);
+
+      expect(state().images, hasLength(2));
+      expect(state().images.first.selection.path, first.path);
+    });
+
+    test('does not open camera after the 20-image limit', () async {
+      picker = FakeGalleryPicker(
+        selections: List<SelectedGalleryImage>.generate(
+          CreateCardRequest.maxImages,
+          (index) => SelectedGalleryImage(path: '/tmp/IMG_$index.jpg'),
+        ),
+      );
+      camera = FakeCameraCapture(captures: <CapturedImage?>[first]);
+      container = buildContainer();
+      await controller().pickImage();
+
+      expect(await controller().captureImage(append: true), isFalse);
+      expect(camera.captureCalls, 0);
+    });
   });
 
   group('pickImage', () {
@@ -236,6 +348,7 @@ void main() {
         );
         container.updateOverrides([
           galleryPickerProvider.overrideWithValue(picker),
+          cameraCaptureProvider.overrideWithValue(camera),
           cardRepositoryProvider.overrideWithValue(repository),
           idGeneratorProvider.overrideWithValue(ids),
         ]);
@@ -372,6 +485,23 @@ void main() {
         '/tmp/IMG_0003.jpg',
       ]);
     });
+
+    test(
+      'passes a processed draft path without replacing its original',
+      () async {
+        container = buildContainer();
+        await pickAndName('樱花纪念卡');
+        final imageId = state().images.single.id;
+
+        controller().applyProcessedImage(imageId, '/tmp/processed.jpg');
+        await controller().save();
+
+        final image = repository.requests.single.images.single;
+        expect(image.sourcePath, selectedImage.path);
+        expect(image.derivedSourcePath, '/tmp/processed.jpg');
+        expect(state().images.single.displayPath, '/tmp/processed.jpg');
+      },
+    );
 
     test('passes optional fields through to the repository', () async {
       container = buildContainer();

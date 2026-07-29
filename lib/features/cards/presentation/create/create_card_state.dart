@@ -31,17 +31,22 @@ final class DraftCardImage {
     required this.id,
     required this.selection,
     required this.kind,
+    this.derivedSourcePath,
   });
 
   final String id;
   final SelectedGalleryImage selection;
   final CardImageKind kind;
+  final String? derivedSourcePath;
 
-  DraftCardImage copyWith({CardImageKind? kind}) {
+  String get displayPath => derivedSourcePath ?? selection.path;
+
+  DraftCardImage copyWith({CardImageKind? kind, String? derivedSourcePath}) {
     return DraftCardImage(
       id: id,
       selection: selection,
       kind: kind ?? this.kind,
+      derivedSourcePath: derivedSourcePath ?? this.derivedSourcePath,
     );
   }
 }

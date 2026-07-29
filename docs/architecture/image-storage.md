@@ -18,14 +18,14 @@
 ```text
 cardfolio/
 ├── originals/<cardItemId>/<imageId>.<ext>
-├── derived/<cardItemId>/<imageId>/<variantKey>.<ext>
+├── derived/<cardItemId>/<imageId>.jpg
 ├── thumbnails/<cardItemId>/<imageId>.<ext>
 ├── staging/<operationId>/
 └── quarantine/<recoveryId>/
 ```
 
 - `originals`：用户明确导入或拍摄的原始文件。
-- `derived`：裁切、校正、增强和模板结果。
+- `derived`：当前活动的裁切、校正、增强和模板 JPEG；由原图重新生成。
 - `thumbnails`：可重建缓存。
 - `staging`：尚未完成数据库提交的临时文件。
 - `quarantine`：恢复流程发现但无法安全自动处理的文件。
@@ -47,8 +47,8 @@ cardfolio/
 ## 4. 原图与派生图
 
 - 原图默认只读，任何增强生成新文件。
-- 派生图记录来源原图、处理版本、参数摘要和校验值。
-- 模板或算法升级不原地改变旧派生图；按需生成新 variant。
+- 派生图通过 `card_images.derived_relative_path` 关联原图，当前版本只保留一张活动结果。
+- 模板或算法升级从不可变原图重新生成；需要历史 variant 时另行扩展模型。
 - 缩略图是可重建缓存，不作为导出一致性的唯一文件。
 - Feature 002 冻结为“删除时默认保留原图”；用户可在确认框中明确选择同时删除，低存储时不自动删除原图。
 
@@ -101,3 +101,7 @@ cardfolio/
 - 永久删除只清理无其他引用文件；
 - 导出校验值与实际文件一致；
 - Android/iOS 相同输入得到相同领域结果。
+
+Feature 009 的处理器与上限见
+[ADR-008](adr/ADR-008-local-image-processing-pipeline.md) 和
+[Feature 009 规格](../features/009-camera-and-image-processing/spec.md)。

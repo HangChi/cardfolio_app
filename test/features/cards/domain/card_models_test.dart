@@ -146,6 +146,21 @@ void main() {
       ]);
     });
 
+    test(
+      'normalizes an optional derived source without replacing the original',
+      () {
+        final normalized = const PendingCardImage(
+          id: ' image-2 ',
+          sourcePath: ' /tmp/original.heic ',
+          derivedSourcePath: ' /tmp/processed.jpg ',
+        ).normalized();
+
+        expect(normalized.id, 'image-2');
+        expect(normalized.sourcePath, '/tmp/original.heic');
+        expect(normalized.derivedSourcePath, '/tmp/processed.jpg');
+      },
+    );
+
     test('rejects more than twenty images', () {
       final additional = List<PendingCardImage>.generate(
         CreateCardRequest.maxImages,

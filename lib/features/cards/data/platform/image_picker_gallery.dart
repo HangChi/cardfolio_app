@@ -35,11 +35,15 @@ class ImagePickerGallery implements GalleryPicker {
       if (response.exception != null) {
         throw GalleryAccessFailure('上次选择的图片已失效，请重新选择。', response.exception);
       }
-      return response.files?.map(_toDomain).toList(growable: false) ??
-          const <SelectedGalleryImage>[];
+      final files = response.files ?? <XFile>[?response.file];
+      return files.map(_toDomain).toList(growable: false);
     } on GalleryAccessFailure {
       rethrow;
+    } on UnimplementedError {
+      return const <SelectedGalleryImage>[];
     } on PlatformException catch (error) {
+      throw GalleryAccessFailure('上次选择的图片已失效，请重新选择。', error);
+    } catch (error) {
       throw GalleryAccessFailure('上次选择的图片已失效，请重新选择。', error);
     }
   }

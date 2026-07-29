@@ -122,22 +122,29 @@ final class PendingCardImage {
   const PendingCardImage({
     required this.id,
     required this.sourcePath,
+    this.derivedSourcePath,
     this.kind = CardImageKind.other,
   });
 
   final String id;
   final String sourcePath;
+  final String? derivedSourcePath;
   final CardImageKind kind;
 
   PendingCardImage normalized() {
     final normalizedId = id.trim();
     final normalizedPath = sourcePath.trim();
+    final normalizedDerivedPath = derivedSourcePath?.trim();
     if (normalizedId.isEmpty || normalizedPath.isEmpty) {
       throw const ValidationFailure(CardField.image, '所选图片无效，请重新选择。');
     }
     return PendingCardImage(
       id: normalizedId,
       sourcePath: normalizedPath,
+      derivedSourcePath:
+          normalizedDerivedPath == null || normalizedDerivedPath.isEmpty
+          ? null
+          : normalizedDerivedPath,
       kind: kind,
     );
   }
@@ -147,10 +154,11 @@ final class PendingCardImage {
       other is PendingCardImage &&
       other.id == id &&
       other.sourcePath == sourcePath &&
+      other.derivedSourcePath == derivedSourcePath &&
       other.kind == kind;
 
   @override
-  int get hashCode => Object.hash(id, sourcePath, kind);
+  int get hashCode => Object.hash(id, sourcePath, derivedSourcePath, kind);
 }
 
 /// 相册中被选中的一张图片。领域层只持有路径，不暴露 `XFile`。
@@ -177,6 +185,7 @@ final class CreateCardRequest {
   const CreateCardRequest({
     required this.ids,
     required this.sourceImagePath,
+    this.derivedSourceImagePath,
     required this.name,
     this.primaryImageKind = CardImageKind.front,
     this.additionalImages = const <PendingCardImage>[],
@@ -196,6 +205,7 @@ final class CreateCardRequest {
 
   final CardDraftIds ids;
   final String sourceImagePath;
+  final String? derivedSourceImagePath;
   final CardImageKind primaryImageKind;
   final List<PendingCardImage> additionalImages;
   final String name;
@@ -213,6 +223,7 @@ final class CreateCardRequest {
     PendingCardImage(
       id: ids.imageId,
       sourcePath: sourceImagePath,
+      derivedSourcePath: derivedSourceImagePath,
       kind: primaryImageKind,
     ),
     ...additionalImages,
@@ -250,6 +261,7 @@ final class CreateCardRequest {
     return CreateCardRequest(
       ids: ids,
       sourceImagePath: normalizedImages.first.sourcePath,
+      derivedSourceImagePath: normalizedImages.first.derivedSourcePath,
       primaryImageKind: normalizedImages.first.kind,
       additionalImages: List<PendingCardImage>.unmodifiable(
         normalizedImages.skip(1),
@@ -279,6 +291,7 @@ final class CreateCardRequest {
       other is CreateCardRequest &&
       other.ids == ids &&
       other.sourceImagePath == sourceImagePath &&
+      other.derivedSourceImagePath == derivedSourceImagePath &&
       other.primaryImageKind == primaryImageKind &&
       _listEquals(other.additionalImages, additionalImages) &&
       other.name == name &&
@@ -294,6 +307,7 @@ final class CreateCardRequest {
   int get hashCode => Object.hash(
     ids,
     sourceImagePath,
+    derivedSourceImagePath,
     primaryImageKind,
     Object.hashAll(additionalImages),
     name,

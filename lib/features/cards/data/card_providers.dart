@@ -4,10 +4,13 @@ import '../../../core/id/id_generator.dart';
 import '../../../core/time/clock.dart';
 import '../domain/card_models.dart';
 import '../domain/card_repository.dart';
+import '../domain/camera_capture.dart';
 import '../domain/gallery_picker.dart';
+import '../domain/image_processing.dart';
 import 'card_repository_impl.dart';
 import 'files/managed_image_store.dart';
 import 'local/card_database.dart';
+import 'platform/image_picker_camera_capture.dart';
 import 'platform/image_picker_gallery.dart';
 
 /// 数据库实例。需要应用支持目录，由启动流程在 `ProviderScope` 中覆盖。
@@ -32,6 +35,15 @@ final Provider<IdGenerator> idGeneratorProvider = Provider<IdGenerator>(
 final Provider<GalleryPicker> galleryPickerProvider = Provider<GalleryPicker>(
   (ref) => ImagePickerGallery(),
 );
+
+final Provider<CameraCapture> cameraCaptureProvider = Provider<CameraCapture>(
+  (ref) => ImagePickerCameraCapture(),
+);
+
+final Provider<ImageProcessor> imageProcessorProvider =
+    Provider<ImageProcessor>((ref) {
+      throw StateError('imageProcessorProvider 必须由启动流程覆盖');
+    });
 
 final Provider<CardRepository> cardRepositoryProvider =
     Provider<CardRepository>((ref) {

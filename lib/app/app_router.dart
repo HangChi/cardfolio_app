@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/backup/presentation/backup_screen.dart';
 import '../features/card_sets/presentation/detail/card_set_detail_screen.dart';
 import '../features/card_sets/presentation/form/card_set_form_screen.dart';
 import '../features/cards/presentation/capture/capture_entry_screen.dart';
+import '../features/cards/data/card_providers.dart';
 import '../features/cards/presentation/create/create_card_screen.dart';
 import '../features/cards/presentation/detail/card_detail_screen.dart';
+import '../features/cards/presentation/edit/image_editor_screen.dart';
 import '../features/cards/presentation/library/card_library_screen.dart';
 import '../features/dashboard/presentation/home_screen.dart';
 import '../features/dashboard/presentation/statistics_screen.dart';
@@ -31,6 +34,18 @@ const String purchasesPath = '/purchases';
 const String createPurchasePath = '/purchases/new';
 const String recycleBinPath = '/recycle-bin';
 const String backupPath = '/backup';
+const String imageEditorPath = '/image-editor';
+
+@immutable
+final class ImageEditorRouteArgs {
+  const ImageEditorRouteArgs({
+    required this.sourcePath,
+    required this.outputId,
+  });
+
+  final String sourcePath;
+  final String outputId;
+}
 
 String cardDetailPath(String id) => '/cards/$id';
 String cardOrganizationPath(String id) => '/cards/$id/organization';
@@ -115,6 +130,19 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
       GoRoute(
         path: backupPath,
         builder: (context, state) => const BackupScreen(),
+      ),
+      GoRoute(
+        path: imageEditorPath,
+        builder: (context, state) {
+          final args = state.extra! as ImageEditorRouteArgs;
+          return Consumer(
+            builder: (context, ref, child) => ImageEditorScreen(
+              sourcePath: args.sourcePath,
+              outputId: args.outputId,
+              processor: ref.watch(imageProcessorProvider),
+            ),
+          );
+        },
       ),
     ],
   );

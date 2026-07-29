@@ -15,8 +15,10 @@ import '../../features/backup/domain/backup_repository.dart';
 import '../../features/cards/data/card_providers.dart';
 import '../../features/cards/data/card_repository_impl.dart';
 import '../../features/cards/data/files/managed_image_store.dart';
+import '../../features/cards/data/image_processing/local_image_processor.dart';
 import '../../features/cards/data/local/card_database.dart';
 import '../../features/cards/domain/card_repository.dart';
+import '../../features/cards/domain/image_processing.dart';
 import '../../features/recycle_bin/data/recycle_bin_providers.dart';
 import '../../features/recycle_bin/data/recycle_bin_repository_impl.dart';
 import '../../features/recycle_bin/domain/recycle_bin_repository.dart';
@@ -33,6 +35,7 @@ final class CardfolioDependencies {
     required this.database,
     required this.imageStore,
     required this.repository,
+    required this.imageProcessor,
     required this.recycleBinRepository,
     required this.backupRepository,
   });
@@ -41,10 +44,13 @@ final class CardfolioDependencies {
   static const String _databaseFileName = 'cardfolio.sqlite';
   static const String _imageDirectoryName = 'images';
   static const String _backupWorkDirectoryName = 'backup-work';
+  static const String _imageProcessingWorkDirectoryName =
+      'image-processing-work';
 
   final AppDatabase database;
   final ManagedImageStore imageStore;
   final CardRepository repository;
+  final ImageProcessor imageProcessor;
   final RecycleBinRepository recycleBinRepository;
   final BackupRepository backupRepository;
 
@@ -67,8 +73,12 @@ final class CardfolioDependencies {
       final backupWork = Directory(
         p.join(dataRoot.path, _backupWorkDirectoryName),
       );
+      final imageProcessingWork = Directory(
+        p.join(dataRoot.path, _imageProcessingWorkDirectoryName),
+      );
       await imageRoot.create(recursive: true);
       await _resetBackupWorkDirectory(backupWork);
+      await _resetImageProcessingWorkDirectory(imageProcessingWork);
 
       database = AppDatabase(
         NativeDatabase.createInBackground(
@@ -81,6 +91,7 @@ final class CardfolioDependencies {
         imageStore: imageStore,
         clock: const SystemClock(),
       );
+      final imageProcessor = LocalImageProcessor(imageProcessingWork);
       final recycleBinRepository = RecycleBinRepositoryImpl(
         database: database,
         imageStore: imageStore,
@@ -104,6 +115,7 @@ final class CardfolioDependencies {
         database: database,
         imageStore: imageStore,
         repository: repository,
+        imageProcessor: imageProcessor,
         recycleBinRepository: recycleBinRepository,
         backupRepository: backupRepository,
       );
@@ -132,6 +144,17 @@ final class CardfolioDependencies {
       await directory.create(recursive: true);
     } on FileSystemException catch (error) {
       throw BackupStorageFailure('无法准备备份临时空间，请检查存储空间。', error);
+    }
+  }
+
+  static Future<void> _resetImageProcessingWorkDirectory(
+    Directory directory,
+  ) async {
+    try {
+      if (directory.existsSync()) await directory.delete(recursive: true);
+      await directory.create(recursive: true);
+    } on FileSystemException catch (error) {
+      throw ImageProcessingFailure('无法准备图片处理空间，请检查存储空间。', error);
     }
   }
 }
@@ -211,6 +234,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
           appDatabaseProvider.overrideWithValue(dependencies.database),
           managedImageStoreProvider.overrideWithValue(dependencies.imageStore),
           cardRepositoryProvider.overrideWithValue(dependencies.repository),
+          imageProcessorProvider.overrideWithValue(dependencies.imageProcessor),
           recycleBinRepositoryProvider.overrideWithValue(
             dependencies.recycleBinRepository,
           ),

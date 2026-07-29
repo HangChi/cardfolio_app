@@ -12,6 +12,7 @@
 | [ADR-005](./ADR-005-managed-image-storage.md) | App 私有目录管理图片 | Accepted |
 | [ADR-006](./ADR-006-uuid-time-versioning.md) | UUID、UTC 时间和实体版本 | Accepted |
 | [ADR-007](./ADR-007-local-first-sync-boundary.md) | 本地优先同步边界 | Accepted |
+| [ADR-008](./ADR-008-local-image-processing-pipeline.md) | 系统相机与本地图片处理管线 | Accepted |
 
 状态定义：
 

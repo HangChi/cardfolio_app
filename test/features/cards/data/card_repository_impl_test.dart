@@ -124,6 +124,78 @@ void main() {
       expect(detail.cover?.id, 'image-1');
     });
 
+    test(
+      'persists an immutable original and its derived display image',
+      () async {
+        final derivedSource = File(p.join(sourceDir.path, 'processed.jpg'));
+        final derivedBytes = Uint8List.fromList(<int>[
+          ...jpegBytes.take(4),
+          ...List<int>.filled(64, 0x77),
+          ...jpegBytes.skip(jpegBytes.length - 2),
+        ]);
+        await derivedSource.writeAsBytes(derivedBytes, flush: true);
+        final originalBytes = await File(sourcePath).readAsBytes();
+
+        await repository.createCard(
+          CreateCardRequest(
+            ids: const CardDraftIds(
+              definitionId: 'definition-1',
+              cardItemId: 'item-1',
+              imageId: 'image-1',
+            ),
+            sourceImagePath: sourcePath,
+            derivedSourceImagePath: derivedSource.path,
+            name: '樱花纪念卡',
+          ),
+        );
+
+        final image =
+            (await repository.watchCard('item-1').first)!.images.single;
+        expect(image.relativePath, 'originals/item-1/image-1.jpg');
+        expect(image.derivedRelativePath, 'derived/item-1/image-1.jpg');
+        expect(image.displayRelativePath, image.derivedRelativePath);
+        expect(
+          await store.resolve(image.relativePath).readAsBytes(),
+          originalBytes,
+        );
+        expect(
+          await store.resolve(image.derivedRelativePath!).readAsBytes(),
+          derivedBytes,
+        );
+        expect(await repository.referencedImagePaths(), <String>{
+          image.relativePath,
+          image.derivedRelativePath!,
+        });
+      },
+    );
+
+    test('compensates the original when derived import fails', () async {
+      final brokenDerived = File(p.join(sourceDir.path, 'processed.png'));
+      await brokenDerived.writeAsBytes(<int>[0x89, 0x50, 0x4e, 0x47]);
+
+      await expectLater(
+        repository.createCard(
+          CreateCardRequest(
+            ids: const CardDraftIds(
+              definitionId: 'definition-1',
+              cardItemId: 'item-1',
+              imageId: 'image-1',
+            ),
+            sourceImagePath: sourcePath,
+            derivedSourceImagePath: brokenDerived.path,
+            name: '樱花纪念卡',
+          ),
+        ),
+        throwsA(isA<ImageImportFailure>()),
+      );
+
+      expect(await db.countItems(), 0);
+      final managedFiles = root.existsSync()
+          ? root.listSync(recursive: true).whereType<File>()
+          : const <File>[];
+      expect(managedFiles, isEmpty);
+    });
+
     test('compensates every copied file when a later image fails', () async {
       final broken = File(p.join(sourceDir.path, 'broken.jpg'));
       await broken.writeAsString('not an image', flush: true);

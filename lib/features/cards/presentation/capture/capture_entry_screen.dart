@@ -7,10 +7,28 @@ import '../../../../app/app_theme.dart';
 import '../create/create_card_controller.dart';
 
 /// Feature 001 的采集方式入口；仅相册导入可执行。
-class CaptureEntryScreen extends ConsumerWidget {
+class CaptureEntryScreen extends ConsumerStatefulWidget {
   const CaptureEntryScreen({super.key});
 
-  Future<void> _pickFromGallery(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<CaptureEntryScreen> createState() => _CaptureEntryScreenState();
+}
+
+class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.microtask(_recoverLostCapture);
+  }
+
+  Future<void> _recoverLostCapture() async {
+    final recovered = await ref
+        .read(createCardControllerProvider.notifier)
+        .recoverLostCapture();
+    if (mounted && recovered) context.push(createCardPath);
+  }
+
+  Future<void> _pickFromGallery(BuildContext context) async {
     final picked = await ref
         .read(createCardControllerProvider.notifier)
         .pickImage();
@@ -29,8 +47,29 @@ class CaptureEntryScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _capture(
+    BuildContext context, {
+    required bool continuous,
+  }) async {
+    final controller = ref.read(createCardControllerProvider.notifier);
+    final captured = continuous
+        ? await controller.captureContinuously()
+        : await controller.captureImage();
+    if (!context.mounted) return;
+    if (captured) {
+      context.push(createCardPath);
+      return;
+    }
+    final failure = ref.read(createCardControllerProvider).failure;
+    if (failure != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     // 入口页在新建页压入根导航器后仍保留监听，确保草稿状态跨路由存活。
     ref.watch(createCardControllerProvider);
     final tokens = context.tokens;
@@ -53,16 +92,20 @@ class CaptureEntryScreen extends ConsumerWidget {
             ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
           SizedBox(height: tokens.spaceLg),
-          const _CaptureOption(
+          _CaptureOption(
             icon: Icons.center_focus_strong_outlined,
             title: '拍摄单张卡',
             subtitle: '自动识别边缘并校正',
+            enabled: true,
+            onTap: () => _capture(context, continuous: false),
           ),
           SizedBox(height: tokens.spaceMd),
-          const _CaptureOption(
+          _CaptureOption(
             icon: Icons.view_stream_outlined,
             title: '连续拍摄',
             subtitle: '适合一次录入多张卡',
+            enabled: true,
+            onTap: () => _capture(context, continuous: true),
           ),
           SizedBox(height: tokens.spaceMd),
           const _CaptureOption(
@@ -76,7 +119,7 @@ class CaptureEntryScreen extends ConsumerWidget {
             title: '从相册导入',
             subtitle: '选择一张已有图片',
             enabled: true,
-            onTap: () => _pickFromGallery(context, ref),
+            onTap: () => _pickFromGallery(context),
           ),
           SizedBox(height: tokens.spaceXl),
           Container(
@@ -96,7 +139,7 @@ class CaptureEntryScreen extends ConsumerWidget {
                   ),
                 ),
                 SizedBox(height: 8),
-                Text('拍摄功能将在图片处理能力完成后开放；当前可直接从相册导入。'),
+                Text('拍摄时才会申请相机权限；若不可用，仍可从相册导入。'),
               ],
             ),
           ),

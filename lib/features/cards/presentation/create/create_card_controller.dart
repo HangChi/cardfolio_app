@@ -38,6 +38,48 @@ class CreateCardController extends Notifier<CreateCardState> {
     );
   }
 
+  /// 打开系统相机拍摄一张。用户取消返回 false，不产生错误。
+  Future<bool> captureImage({bool append = false}) {
+    if (state.images.length >= CreateCardRequest.maxImages || state.isSaving) {
+      return Future<bool>.value(false);
+    }
+    return _consumeSelection(() async {
+      final captured = await ref.read(cameraCaptureProvider).capture();
+      if (captured == null) return const <SelectedGalleryImage>[];
+      return <SelectedGalleryImage>[
+        SelectedGalleryImage(
+          path: captured.path,
+          displayName: captured.displayName,
+        ),
+      ];
+    }, append: append);
+  }
+
+  /// 连续逐张调用系统相机；取消当前系统相机即结束，并保留已确认图片。
+  Future<bool> captureContinuously() async {
+    var capturedAny = false;
+    while (state.images.length < CreateCardRequest.maxImages &&
+        !state.isSaving) {
+      final captured = await captureImage(append: state.hasImage);
+      if (!captured) break;
+      capturedAny = true;
+    }
+    return capturedAny;
+  }
+
+  Future<bool> recoverLostCapture() {
+    return _consumeSelection(() async {
+      final recovered = await ref.read(cameraCaptureProvider).recoverLost();
+      return <SelectedGalleryImage>[
+        for (final image in recovered)
+          SelectedGalleryImage(
+            path: image.path,
+            displayName: image.displayName,
+          ),
+      ];
+    }, append: state.hasImage);
+  }
+
   /// 尝试恢复 Android 丢失的选择结果。返回是否恢复到图片。
   Future<bool> recoverLostImage() {
     return _consumeSelection(
@@ -143,6 +185,18 @@ class CreateCardController extends Notifier<CreateCardState> {
     );
   }
 
+  void applyProcessedImage(String imageId, String derivedSourcePath) {
+    if (state.isSaving || derivedSourcePath.trim().isEmpty) return;
+    state = state.copyWith(
+      images: <DraftCardImage>[
+        for (final image in state.images)
+          image.id == imageId
+              ? image.copyWith(derivedSourcePath: derivedSourcePath.trim())
+              : image,
+      ],
+    );
+  }
+
   void moveImage(String imageId, int delta) {
     if (state.isSaving || delta == 0) return;
     final from = state.images.indexWhere((image) => image.id == imageId);
@@ -213,12 +267,14 @@ class CreateCardController extends Notifier<CreateCardState> {
       request = CreateCardRequest(
         ids: ids,
         sourceImagePath: images.first.selection.path,
+        derivedSourceImagePath: images.first.derivedSourcePath,
         primaryImageKind: images.first.kind,
         additionalImages: <PendingCardImage>[
           for (final image in images.skip(1))
             PendingCardImage(
               id: image.id,
               sourcePath: image.selection.path,
+              derivedSourcePath: image.derivedSourcePath,
               kind: image.kind,
             ),
         ],

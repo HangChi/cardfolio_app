@@ -193,6 +193,43 @@ void main() {
     );
   });
 
+  group('importDerivedImage', () {
+    test(
+      'stores only JPEG bytes under derived and keeps source unchanged',
+      () async {
+        final source = await writeSource('processed.jpg', jpegBytes);
+
+        final imported = await store.importDerivedImage(
+          sourcePath: source,
+          cardItemId: 'item-1',
+          imageId: 'image-1',
+        );
+
+        expect(imported.relativePath, 'derived/item-1/image-1.jpg');
+        expect(
+          await store.resolve(imported.relativePath).readAsBytes(),
+          jpegBytes,
+        );
+        expect(await File(source).readAsBytes(), jpegBytes);
+      },
+    );
+
+    test('rejects a non-JPEG derived file without leaving residue', () async {
+      final source = await writeSource('processed.png', pngBytes);
+
+      await expectLater(
+        store.importDerivedImage(
+          sourcePath: source,
+          cardItemId: 'item-1',
+          imageId: 'image-1',
+        ),
+        throwsA(isA<ImageImportFailure>()),
+      );
+
+      expect(Directory(p.join(root.path, 'derived')).existsSync(), isFalse);
+    });
+  });
+
   group('resolve', () {
     test('rejects a path that escapes the managed root', () {
       expect(
@@ -251,6 +288,24 @@ void main() {
       );
       final orphan = await store.importImage(
         sourcePath: await writeSource('b.png', pngBytes),
+        cardItemId: 'item-2',
+        imageId: 'image-2',
+      );
+
+      await store.removeOrphans(<String>{kept.relativePath});
+
+      expect(store.resolve(kept.relativePath).existsSync(), isTrue);
+      expect(store.resolve(orphan.relativePath).existsSync(), isFalse);
+    });
+
+    test('applies orphan cleanup to derived files', () async {
+      final kept = await store.importDerivedImage(
+        sourcePath: await writeSource('kept.jpg', jpegBytes),
+        cardItemId: 'item-1',
+        imageId: 'image-1',
+      );
+      final orphan = await store.importDerivedImage(
+        sourcePath: await writeSource('orphan.jpg', jpegBytes),
         cardItemId: 'item-2',
         imageId: 'image-2',
       );

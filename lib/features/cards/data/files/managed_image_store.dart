@@ -49,6 +49,7 @@ class ManagedImageStore {
   final Directory root;
 
   static const String _originalsDir = 'originals';
+  static const String _derivedDir = 'derived';
   static const String _stagingDir = 'staging';
 
   /// 单文件大小上限，避免选到超大文件时耗尽内存与磁盘。
@@ -117,6 +118,54 @@ class ManagedImageStore {
     );
   }
 
+  /// 导入处理管线生成的展示图。派生图固定为 JPEG，绝不覆盖原图目录。
+  Future<ManagedImage> importDerivedImage({
+    required String sourcePath,
+    required String cardItemId,
+    required String imageId,
+  }) async {
+    final source = File(sourcePath);
+    if (!source.existsSync()) {
+      throw const ImageImportFailure('找不到派生图，请重新生成。');
+    }
+
+    final Uint8List bytes;
+    try {
+      bytes = await source.readAsBytes();
+    } on FileSystemException catch (error) {
+      throw ImageImportFailure('派生图无法读取，请重新生成。', error);
+    }
+    if (bytes.isEmpty || bytes.length > maxByteSize) {
+      throw const ImageImportFailure('派生图无效，请重新生成。');
+    }
+    if (_sniffMediaType(bytes) != ImageMediaType.jpeg) {
+      throw const ImageImportFailure('派生图必须为 JPEG，请重新生成。');
+    }
+
+    final relativePath = p.url.join(_derivedDir, cardItemId, '$imageId.jpg');
+    final staged = File(
+      p.join(root.path, _stagingDir, '$imageId-derived', '$imageId.tmp'),
+    );
+    try {
+      await staged.parent.create(recursive: true);
+      await staged.writeAsBytes(bytes, flush: true);
+      final destination = resolve(relativePath);
+      await destination.parent.create(recursive: true);
+      await _moveInto(staged, destination);
+    } on FileSystemException catch (error) {
+      throw ImageImportFailure('保存派生图失败，请检查存储空间后重试。', error);
+    } finally {
+      await _deleteDirectoryQuietly(staged.parent);
+    }
+
+    return ManagedImage(
+      relativePath: relativePath,
+      checksum: sha256.convert(bytes).toString(),
+      byteSize: bytes.length,
+      mediaType: ImageMediaType.jpeg,
+    );
+  }
+
   /// 把受管相对路径解析为绝对文件。
   ///
   /// 路径逃逸或绝对路径一律抛出 [ImageImportFailure]，绝不接受任意路径
@@ -159,9 +208,10 @@ class ManagedImageStore {
 
     final rootPath = p.normalize(root.absolute.path);
 
-    final originals = Directory(p.join(rootPath, _originalsDir));
-    if (originals.existsSync()) {
-      await for (final entity in originals.list(recursive: true)) {
+    for (final directoryName in <String>[_originalsDir, _derivedDir]) {
+      final managedDirectory = Directory(p.join(rootPath, directoryName));
+      if (!managedDirectory.existsSync()) continue;
+      await for (final entity in managedDirectory.list(recursive: true)) {
         if (entity is! File) continue;
         final relative = p.url.joinAll(
           p.split(p.relative(entity.path, from: rootPath)),

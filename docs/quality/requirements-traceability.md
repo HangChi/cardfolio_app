@@ -7,8 +7,8 @@
 | FR-ONB-001..002 | 001、010 | 首启/阶段状态 Widget；账号上线后的引导验收 |
 | FR-ACC-001..002 | 010 | 账号、退出保留本地、安全测试 |
 | FR-IMG-001 | 001、002 | 相册取消/成功；多选 |
-| FR-IMG-002..005 | 009 | 相机与处理 Spike、设备测试 |
-| FR-IMG-006..007 | 002、009 | 多图顺序、封面、原图/派生图 |
+| FR-IMG-002..005 | 009 | [Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md)：相机接口、连续草稿、边缘/四角、透视增强、模板与 Widget 自动化；设备验收待执行 |
+| FR-IMG-006..007 | 002、009 | 多图顺序/封面及 [Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md) 的原图/派生图关联与补偿 |
 | FR-CARD-001..005 | 001、004、007 | 创建、编辑模型、查询、删除 |
 | FR-SET-001..003 | 003 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md)：关系、完成度与 Widget 自动化通过；设备验收待执行 |
 | FR-SER-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T06：卡片/套卡多对多关联与系列页面自动化通过；设备验收待执行 |
@@ -29,7 +29,7 @@
 | BR-CARD-001..004 | 001、003、004 | 款式/藏品身份、数量、字段语义 |
 | BR-SET-001..005 | 003、006、007 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md) 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T03、T09：完成度、重复、删除与统计下钻口径自动化通过；恢复属于 Feature 007 |
 | BR-COST-001..006 | 005、006、008 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T05：购买事实、费用口径、分摊、原币种和调整自动化通过 |
-| BR-IMG-001..003 | 001、002、008、009 | 原图、派生图、引用与删除 |
+| BR-IMG-001..003 | 001、002、008、009 | [Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md)：原图不变、派生引用、取消/失败清理；软删和永久删除沿用 Feature 007 |
 | BR-DEL-001..002 | 007 | [Feature 007 测试矩阵](../features/007-recycle-bin/test-matrix.md) T02..T07：默认查询排除、关联恢复、影响预览与依赖顺序自动化通过 |
 | BR-SYNC-001..004 | 010 | 本地优先、版本、幂等、冲突 |
 
@@ -37,7 +37,7 @@
 
 | 需求 | 主要文档 | 发布证据 |
 |---|---|---|
-| NFR-PERF-001..003、NFR-CAP-001 | [性能计划](performance-plan.md)、[Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) | 10,000 款式无设备聚合门槛通过；固定设备与真实图片基准待执行 |
+| NFR-PERF-001..003、NFR-CAP-001 | [性能计划](performance-plan.md)、[Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md)、[Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md) | 10,000 款式无设备聚合门槛和图片 worker isolate 自动化通过；固定设备与真实图片基准待执行 |
 | NFR-DATA-001..003 | [测试策略](test-strategy.md)、[备份恢复](../operations/backup-and-recovery.md)、[Feature 008 测试矩阵](../features/008-import-export-and-migration/test-matrix.md) | 事务回滚、格式迁移、导入恢复自动化通过；设备重启验收待执行 |
 | NFR-SYNC-001 | [Feature 010](../features/010-account-and-local-first-sync/README.md) | 重试/重放与无重复 |
 | NFR-UX-001..002、NFR-A11Y-001..002 | [设计系统](../design/design-system.md) | Widget、语义、字体缩放、设备验收 |

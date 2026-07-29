@@ -8,6 +8,7 @@ import 'package:cardfolio_app/features/cards/data/card_providers.dart';
 import 'package:cardfolio_app/features/cards/data/files/managed_image_store.dart';
 import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
+import 'package:cardfolio_app/features/cards/domain/camera_capture.dart';
 import 'package:cardfolio_app/features/cards/domain/gallery_picker.dart';
 import 'package:cardfolio_app/features/cards/presentation/create/create_card_controller.dart';
 import 'package:cardfolio_app/features/organization/data/organization_providers.dart';
@@ -55,6 +56,20 @@ class _FakeGalleryPicker implements GalleryPicker {
   @override
   Future<List<SelectedGalleryImage>> recoverLost() async =>
       const <SelectedGalleryImage>[];
+}
+
+class _FakeCameraCapture implements CameraCapture {
+  _FakeCameraCapture(List<CapturedImage?> captures)
+    : _captures = List<CapturedImage?>.of(captures);
+
+  final List<CapturedImage?> _captures;
+
+  @override
+  Future<CapturedImage?> capture() async =>
+      _captures.isEmpty ? null : _captures.removeAt(0);
+
+  @override
+  Future<List<CapturedImage>> recoverLost() async => const <CapturedImage>[];
 }
 
 class _SequenceIdGenerator implements IdGenerator {
@@ -169,6 +184,7 @@ class CardFlowHarness {
   CardFlowHarness._({
     required this._repository,
     required this.selections,
+    required this.captures,
     required this.imageRoot,
   });
 
@@ -176,10 +192,12 @@ class CardFlowHarness {
     SelectedGalleryImage? selection = _selectedImage,
     List<SelectedGalleryImage>? selections,
     bool holdSave = false,
+    List<CapturedImage?> captures = const <CapturedImage?>[],
   }) {
     return CardFlowHarness._(
       repository: _FakeCardRepository(holdSave: holdSave),
       selections: selections ?? <SelectedGalleryImage>[?selection],
+      captures: captures,
       imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
     );
   }
@@ -191,6 +209,7 @@ class CardFlowHarness {
         details: <String, CardDetail>{_detail.cardItemId: _detail},
       ),
       selections: const <SelectedGalleryImage>[_selectedImage],
+      captures: const <CapturedImage?>[],
       imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
     );
   }
@@ -198,11 +217,13 @@ class CardFlowHarness {
   factory CardFlowHarness.withMissingDetail() => CardFlowHarness._(
     repository: _FakeCardRepository(),
     selections: const <SelectedGalleryImage>[_selectedImage],
+    captures: const <CapturedImage?>[],
     imageRoot: Directory.systemTemp.createTempSync('cardfolio-flow-'),
   );
 
   final _FakeCardRepository _repository;
   final List<SelectedGalleryImage> selections;
+  final List<CapturedImage?> captures;
   final Directory imageRoot;
   ProviderContainer? _container;
 
@@ -220,6 +241,7 @@ class CardFlowHarness {
     _container = ProviderContainer(
       overrides: [
         galleryPickerProvider.overrideWithValue(_FakeGalleryPicker(selections)),
+        cameraCaptureProvider.overrideWithValue(_FakeCameraCapture(captures)),
         cardRepositoryProvider.overrideWithValue(_repository),
         managedImageStoreProvider.overrideWithValue(
           ManagedImageStore(imageRoot),
@@ -289,12 +311,50 @@ void main() {
     expect(find.text('新建卡片'), findsOneWidget);
   });
 
-  testWidgets('disabled capture modes announce 后续开放', (tester) async {
+  testWidgets('single and continuous capture are available', (tester) async {
     final harness = CardFlowHarness.empty();
     addTearDown(harness.dispose);
     await harness.pump(tester, initialLocation: capturePath);
 
-    expect(find.text('后续开放'), findsNWidgets(3));
+    expect(find.text('后续开放'), findsOneWidget);
+    expect(find.text('拍摄单张卡'), findsOneWidget);
+    expect(find.text('连续拍摄'), findsOneWidget);
+  });
+
+  testWidgets('single capture opens the existing card draft', (tester) async {
+    final harness = CardFlowHarness.empty(
+      captures: const <CapturedImage?>[
+        CapturedImage(path: 'C:/test/camera-front.jpg'),
+      ],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: capturePath);
+
+    await tester.tap(find.text('拍摄单张卡'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('新建卡片'), findsOneWidget);
+    expect(find.text('1 张图片'), findsOneWidget);
+  });
+
+  testWidgets('continuous capture keeps confirmed images and stops on cancel', (
+    tester,
+  ) async {
+    final harness = CardFlowHarness.empty(
+      captures: const <CapturedImage?>[
+        CapturedImage(path: 'C:/test/camera-front.jpg'),
+        CapturedImage(path: 'C:/test/camera-back.jpg'),
+        null,
+      ],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: capturePath);
+
+    await tester.tap(find.text('连续拍摄'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('新建卡片'), findsOneWidget);
+    expect(find.text('2 张图片'), findsOneWidget);
   });
 
   testWidgets('blank card name shows 名称不能为空', (tester) async {

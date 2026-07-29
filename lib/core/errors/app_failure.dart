@@ -110,6 +110,22 @@ final class GalleryAccessFailure extends AppFailure {
   ]);
 }
 
+/// 相机权限被拒绝、系统相机不可用或平台拍摄入口失败。
+final class CameraAccessFailure extends AppFailure {
+  const CameraAccessFailure([
+    super.userMessage = '无法打开相机，你仍可从相册导入图片。',
+    super.cause,
+  ]);
+}
+
+/// 图片无法解码、处理参数非法或派生图生成失败。
+final class ImageProcessingFailure extends AppFailure {
+  const ImageProcessingFailure([
+    super.userMessage = '无法处理这张图片，原图不会被修改。',
+    super.cause,
+  ]);
+}
+
 /// 源图片不可读、格式不支持或复制到受管目录失败。
 final class ImageImportFailure extends AppFailure {
   const ImageImportFailure([
