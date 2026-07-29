@@ -9,6 +9,7 @@ import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
+import 'generated/schema_v6.dart' as v6;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -237,6 +238,47 @@ void main() {
     expect((await db.watchCardDetail('item-v5').first)?.name, '迁移前卡片');
     expect(await db.select(db.recycleBinSettingsRows).get(), isEmpty);
     expect(await db.select(db.fileCleanupQueueEntries).get(), isEmpty);
+    await db.close();
+  });
+
+  test('v6 card and recycle data survive the v7 sync migration', () async {
+    final schema = await verifier.schemaAt(6);
+    final oldDb = v6.DatabaseAtV6(schema.newConnection());
+    final createdAt =
+        DateTime.utc(2026, 7, 29, 8).millisecondsSinceEpoch ~/
+        Duration.millisecondsPerSecond;
+    await oldDb
+        .into(oldDb.cardDefinitions)
+        .insert(
+          v6.CardDefinitionsCompanion.insert(
+            id: 'definition-v6',
+            name: '同步迁移前卡片',
+            createdAt: createdAt,
+            updatedAt: createdAt,
+          ),
+        );
+    await oldDb
+        .into(oldDb.recycleBinSettings)
+        .insert(
+          v6.RecycleBinSettingsCompanion.insert(
+            id: const Value(1),
+            retentionDays: const Value(90),
+            updatedAt: createdAt,
+          ),
+        );
+    await oldDb.close();
+
+    final db = AppDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 7);
+
+    expect((await db.select(db.cardDefinitions).getSingle()).name, '同步迁移前卡片');
+    expect(
+      (await db.select(db.recycleBinSettingsRows).getSingle()).retentionDays,
+      90,
+    );
+    expect(await db.select(db.syncSettingsRows).get(), isEmpty);
+    expect(await db.select(db.syncOutboxEntries).get(), isEmpty);
+    expect(await db.select(db.syncConflictRows).get(), isEmpty);
     await db.close();
   });
 }

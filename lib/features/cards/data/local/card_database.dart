@@ -493,6 +493,148 @@ class FileCleanupQueueEntries extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{relativePath};
 }
 
+class SyncSettingsRows extends Table {
+  @override
+  String get tableName => 'sync_settings';
+
+  IntColumn get id => integer()();
+
+  TextColumn get deviceId => text()();
+
+  BoolColumn get enabled => boolean().withDefault(const Constant(false))();
+
+  TextColumn get cursor => text().nullable()();
+
+  TextColumn get accountUserId => text().nullable()();
+
+  TextColumn get accountEmail => text().nullable()();
+
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+
+  TextColumn get lastErrorCode => text().nullable()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  List<String> get customConstraints => <String>['CHECK (id = 1)'];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+class SyncEntityStateRows extends Table {
+  @override
+  String get tableName => 'sync_entity_states';
+
+  TextColumn get entityType => text()();
+
+  TextColumn get entityId => text()();
+
+  IntColumn get serverVersion => integer()();
+
+  TextColumn get payloadJson => text().nullable()();
+
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (server_version >= 0)',
+    'CHECK ((deleted = 0 AND payload_json IS NOT NULL) OR '
+        '(deleted = 1 AND payload_json IS NULL))',
+  ];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{entityType, entityId};
+}
+
+@TableIndex(
+  name: 'idx_sync_outbox_entity',
+  columns: {#entityType, #entityId},
+  unique: true,
+)
+@TableIndex(name: 'idx_sync_outbox_due', columns: {#nextAttemptAt, #createdAt})
+class SyncOutboxEntries extends Table {
+  @override
+  String get tableName => 'sync_outbox';
+
+  TextColumn get operationId => text()();
+
+  TextColumn get entityType => text()();
+
+  TextColumn get entityId => text()();
+
+  TextColumn get operation => text()();
+
+  IntColumn get baseServerVersion => integer()();
+
+  TextColumn get payloadJson => text().nullable()();
+
+  TextColumn get changedFieldsJson => text()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  IntColumn get attemptCount => integer().withDefault(const Constant(0))();
+
+  DateTimeColumn get nextAttemptAt => dateTime().nullable()();
+
+  TextColumn get lastErrorCode => text().nullable()();
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (operation IN (\'upsert\', \'delete\'))',
+    'CHECK (base_server_version >= 0)',
+    'CHECK (attempt_count >= 0)',
+    'CHECK ((operation = \'upsert\' AND payload_json IS NOT NULL) OR '
+        '(operation = \'delete\' AND payload_json IS NULL))',
+  ];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{operationId};
+}
+
+@TableIndex(
+  name: 'idx_sync_conflicts_open',
+  columns: {#resolvedAt, #detectedAt},
+)
+class SyncConflictRows extends Table {
+  @override
+  String get tableName => 'sync_conflicts';
+
+  TextColumn get id => text()();
+
+  TextColumn get entityType => text()();
+
+  TextColumn get entityId => text()();
+
+  TextColumn get localOperation => text()();
+
+  TextColumn get localPayloadJson => text().nullable()();
+
+  TextColumn get remoteOperation => text()();
+
+  TextColumn get remotePayloadJson => text().nullable()();
+
+  IntColumn get remoteServerVersion => integer()();
+
+  TextColumn get conflictingFieldsJson => text()();
+
+  DateTimeColumn get detectedAt => dateTime()();
+
+  DateTimeColumn get resolvedAt => dateTime().nullable()();
+
+  @override
+  List<String> get customConstraints => <String>[
+    'CHECK (local_operation IN (\'upsert\', \'delete\'))',
+    'CHECK (remote_operation IN (\'upsert\', \'delete\'))',
+    'CHECK (remote_server_version > 0)',
+  ];
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
 /// 一次建卡写入涉及的全部行。三张表在同一事务内插入。
 class CardRowGraph {
   const CardRowGraph({
@@ -538,13 +680,17 @@ class RemovedImageRecord {
     ExchangeRates,
     RecycleBinSettingsRows,
     FileCleanupQueueEntries,
+    SyncSettingsRows,
+    SyncEntityStateRows,
+    SyncOutboxEntries,
+    SyncConflictRows,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -555,6 +701,7 @@ class AppDatabase extends _$AppDatabase {
       await _createOrganizationIndexes();
       await _createPurchaseIndexes();
       await _createRecycleBinIndexes();
+      await _createSyncIndexes();
     },
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
@@ -601,6 +748,13 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.recycleBinSettings);
         await m.createTable(schema.fileCleanupQueue);
         await _createRecycleBinIndexes();
+      },
+      from6To7: (m, schema) async {
+        await m.createTable(schema.syncSettings);
+        await m.createTable(schema.syncEntityStates);
+        await m.createTable(schema.syncOutbox);
+        await m.createTable(schema.syncConflicts);
+        await _createSyncIndexes();
       },
     ),
     beforeOpen: (details) async {
@@ -751,6 +905,21 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_file_cleanup_created_at '
       'ON file_cleanup_queue(created_at);',
+    );
+  }
+
+  Future<void> _createSyncIndexes() async {
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_outbox_entity '
+      'ON sync_outbox(entity_type, entity_id);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_outbox_due '
+      'ON sync_outbox(next_attempt_at, created_at);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_conflicts_open '
+      'ON sync_conflicts(resolved_at, detected_at);',
     );
   }
 

@@ -4,10 +4,12 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/errors/app_failure.dart';
+import '../../core/id/id_generator.dart';
 import '../../core/time/clock.dart';
 import '../../features/backup/data/backup_providers.dart';
 import '../../features/backup/data/backup_repository_impl.dart';
@@ -22,6 +24,14 @@ import '../../features/cards/domain/image_processing.dart';
 import '../../features/recycle_bin/data/recycle_bin_providers.dart';
 import '../../features/recycle_bin/data/recycle_bin_repository_impl.dart';
 import '../../features/recycle_bin/domain/recycle_bin_repository.dart';
+import '../../features/sync/data/account_sync_remote.dart';
+import '../../features/sync/data/account_sync_repository_impl.dart';
+import '../../features/sync/data/local/sync_local_store.dart';
+import '../../features/sync/data/rest_account_sync_remote.dart';
+import '../../features/sync/data/secure_session_store.dart';
+import '../../features/sync/data/sync_providers.dart';
+import '../../features/sync/domain/account_sync_repository.dart';
+import '../../features/sync/domain/sync_models.dart';
 import '../app_router.dart';
 import '../app_theme.dart';
 import '../cardfolio_app.dart';
@@ -38,6 +48,8 @@ final class CardfolioDependencies {
     required this.imageProcessor,
     required this.recycleBinRepository,
     required this.backupRepository,
+    required this.accountSyncRepository,
+    required this.httpClient,
   });
 
   static const String _dataDirectoryName = 'cardfolio';
@@ -53,6 +65,8 @@ final class CardfolioDependencies {
   final ImageProcessor imageProcessor;
   final RecycleBinRepository recycleBinRepository;
   final BackupRepository backupRepository;
+  final AccountSyncRepository accountSyncRepository;
+  final http.Client httpClient;
 
   /// 打开持久化依赖并完成启动恢复。
   ///
@@ -63,6 +77,7 @@ final class CardfolioDependencies {
     WidgetsFlutterBinding.ensureInitialized();
 
     AppDatabase? database;
+    http.Client? httpClient;
     try {
       final platformSupport =
           supportDirectory ?? await getApplicationSupportDirectory();
@@ -103,6 +118,47 @@ final class CardfolioDependencies {
         workingDirectory: backupWork,
         clock: const SystemClock(),
       );
+      httpClient = http.Client();
+      const apiBaseUrl = String.fromEnvironment('CARD_FOLIO_API_BASE_URL');
+      final AccountSyncRemote syncRemote = apiBaseUrl.isEmpty
+          ? const UnavailableAccountSyncRemote()
+          : RestAccountSyncRemote(
+              baseUri: Uri.parse(apiBaseUrl),
+              client: httpClient,
+            );
+      final secureSessions = SecureSessionStoreImpl(
+        const FlutterSecureKeyValueStore(),
+      );
+      final syncLocal = SyncLocalStore(
+        database: database,
+        idGenerator: const UuidGenerator(),
+        clock: const SystemClock(),
+      );
+      final accountSyncRepository = AccountSyncRepositoryImpl(
+        remote: syncRemote,
+        sessions: secureSessions,
+        local: syncLocal,
+        images: imageStore,
+        clock: const SystemClock(),
+      );
+
+      // 安全存储暂时不可用不能阻断本地收藏库启动。
+      try {
+        final session = await secureSessions.read();
+        final syncSettings = await syncLocal.settings();
+        if (session == null && syncSettings.account != null) {
+          await syncLocal.clearSyncIdentity();
+        } else if (session != null && syncSettings.account == null) {
+          await syncLocal.setAccount(
+            AccountSummary(userId: session.userId, email: session.email),
+          );
+        }
+        if (session != null && (await syncLocal.settings()).enabled) {
+          unawaited(_resumeSyncQuietly(accountSyncRepository));
+        }
+      } on Object {
+        // 用户仍可使用全部本地能力，并可稍后从“我的”重试登录。
+      }
 
       // 先完成到期永久删除和中断文件清理，再按最新引用清理孤儿文件。
       await recycleBinRepository.purgeExpired();
@@ -118,23 +174,40 @@ final class CardfolioDependencies {
         imageProcessor: imageProcessor,
         recycleBinRepository: recycleBinRepository,
         backupRepository: backupRepository,
+        accountSyncRepository: accountSyncRepository,
+        httpClient: httpClient,
       );
     } on AppFailure {
+      httpClient?.close();
       if (database != null) await _closeQuietly(database);
       rethrow;
     } catch (error) {
+      httpClient?.close();
       if (database != null) await _closeQuietly(database);
       throw DatabaseUnavailableFailure('卡迹暂时无法启动，请重试。', error);
     }
   }
 
-  Future<void> close() => database.close();
+  Future<void> close() async {
+    httpClient.close();
+    await database.close();
+  }
 
   static Future<void> _closeQuietly(AppDatabase database) async {
     try {
       await database.close();
     } on Object {
       // 初始化已失败，关闭异常不能覆盖原始失败。
+    }
+  }
+
+  static Future<void> _resumeSyncQuietly(
+    AccountSyncRepository repository,
+  ) async {
+    try {
+      await repository.syncNow();
+    } on Object {
+      // 后台恢复失败会保留队列和重试状态，不影响本地模式启动。
     }
   }
 
@@ -240,6 +313,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
           ),
           backupRepositoryProvider.overrideWithValue(
             dependencies.backupRepository,
+          ),
+          accountSyncRepositoryProvider.overrideWithValue(
+            dependencies.accountSyncRepository,
           ),
         ],
         child: CardfolioApp(router: createAppRouter()),

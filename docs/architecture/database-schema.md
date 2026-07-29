@@ -1,6 +1,6 @@
 # 数据库模型与迁移规范
 
-状态：schema v6 已实现
+状态：schema v7 已实现
 日期：2026-07-29
 存储实现：Drift + SQLite
 
@@ -62,8 +62,10 @@
 | 表 | 关键列 | 约束/索引 |
 |---|---|---|
 | export_history | schema_version, manifest_checksum, destination_type, completed_at | 仅存元数据，不存外部路径凭证 |
-| sync_records | entity_type, entity_id, operation, idempotency_key, entity_version, status, retry_count, next_attempt_at | idempotency_key 唯一 |
-| sync_conflicts | entity_type, entity_id, local_payload, remote_payload, detected_at, resolved_at | 未解决索引 |
+| sync_settings | device_id, enabled, cursor, account_user_id, account_email, last_synced_at, last_error_code | 单例 id=1；账号身份与游标可清除而不删除业务数据 |
+| sync_entity_states | entity_type, entity_id, server_version, payload_json, deleted, updated_at | entity_type+entity_id 组合主键；保存最近确认的云端基线 |
+| sync_outbox | operation_id, entity_type, entity_id, operation, base_server_version, payload_json, changed_fields_json, attempt_count, next_attempt_at, last_error_code | operation_id 主键；每实体至多一条待发操作；到期重试索引 |
+| sync_conflicts | entity_type, entity_id, local_operation, local_payload_json, remote_operation, remote_payload_json, remote_server_version, conflicting_fields_json, detected_at, resolved_at | 未解决冲突索引；本地与远端副本均保留 |
 | app_metadata | key, value | key 主键 |
 
 ## 3. 外键与删除
@@ -102,6 +104,8 @@ MVP 必须覆盖：
 7. 发布构建禁止使用自动清库作为迁移兜底。
 
 schema v6 新增回收站设置与文件清理队列；v5→v6 只创建新表和索引，不改写既有卡片、套卡、整理或购买数据。
+
+schema v7 新增同步设置、云端基线、持久 outbox 与冲突副本；v6→v7 只创建新表和索引，默认保持本地模式，不改写既有业务数据。
 
 ## 6. 事务边界
 

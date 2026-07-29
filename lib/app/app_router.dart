@@ -20,6 +20,7 @@ import '../features/organization/presentation/series/series_form_screen.dart';
 import '../features/purchases/presentation/purchase_form_screen.dart';
 import '../features/purchases/presentation/purchase_list_screen.dart';
 import '../features/recycle_bin/presentation/recycle_bin_screen.dart';
+import '../features/sync/presentation/profile_screen.dart';
 import 'navigation/app_shell.dart';
 
 const String homePath = '/home';
@@ -35,6 +36,7 @@ const String createPurchasePath = '/purchases/new';
 const String recycleBinPath = '/recycle-bin';
 const String backupPath = '/backup';
 const String imageEditorPath = '/image-editor';
+const String organizationSettingsPath = '/organization-settings';
 
 @immutable
 final class ImageEditorRouteArgs {
@@ -70,7 +72,7 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
           _branch(libraryPath, const CardLibraryScreen()),
           _branch(capturePath, const CaptureEntryScreen()),
           _branch(statsPath, const StatisticsScreen()),
-          _branch(profilePath, const OrganizationSettingsScreen()),
+          _branch(profilePath, const ProfileScreen()),
         ],
       ),
       GoRoute(
@@ -130,6 +132,10 @@ GoRouter createAppRouter({String initialLocation = libraryPath}) {
       GoRoute(
         path: backupPath,
         builder: (context, state) => const BackupScreen(),
+      ),
+      GoRoute(
+        path: organizationSettingsPath,
+        builder: (context, state) => const OrganizationSettingsScreen(),
       ),
       GoRoute(
         path: imageEditorPath,

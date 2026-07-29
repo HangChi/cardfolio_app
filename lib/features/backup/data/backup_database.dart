@@ -244,6 +244,177 @@ extension BackupDatabase on AppDatabase {
       skippedCount: preview.skippedCount,
     );
   }
+
+  /// 同步协议复用备份的规范行格式，按实体类型原子覆盖一行。
+  ///
+  /// 实体名来自 [BackupSnapshot.entityNames] 的固定白名单，绝不把远端值拼进 SQL。
+  Future<void> upsertLogicalEntity(
+    String entity,
+    Map<String, Object?> row,
+  ) async {
+    switch (entity) {
+      case 'cardDefinitions':
+        await into(cardDefinitions).insertOnConflictUpdate(
+          CardDefinition.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'cardItems':
+        await into(cardItems).insertOnConflictUpdate(
+          CardItem.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'cardImages':
+        await into(cardImages).insertOnConflictUpdate(
+          CardImage.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'cardSets':
+        await into(cardSets).insertOnConflictUpdate(
+          CardSet.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'cardSetMembers':
+        await into(cardSetMembers).insertOnConflictUpdate(
+          CardSetMember.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'tags':
+        await into(
+          tags,
+        ).insertOnConflictUpdate(Tag.fromJson(row, serializer: _utcSerializer));
+      case 'cardTags':
+        await into(cardTags).insertOnConflictUpdate(
+          CardTag.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'seriesRecords':
+        await into(seriesRecords).insertOnConflictUpdate(
+          SeriesRecord.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'seriesCards':
+        await into(seriesCards).insertOnConflictUpdate(
+          SeriesCard.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'seriesSets':
+        await into(seriesSets).insertOnConflictUpdate(
+          SeriesSet.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'customFieldDefinitions':
+        await into(organizationFieldDefinitions).insertOnConflictUpdate(
+          OrganizationFieldDefinition.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'customFieldValues':
+        await into(organizationFieldValues).insertOnConflictUpdate(
+          OrganizationFieldValue.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'purchases':
+        await into(purchases).insertOnConflictUpdate(
+          Purchase.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'purchaseItems':
+        await into(purchaseItems).insertOnConflictUpdate(
+          PurchaseItem.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'exchangeRates':
+        await into(exchangeRates).insertOnConflictUpdate(
+          ExchangeRate.fromJson(row, serializer: _utcSerializer),
+        );
+      case 'recycleBinSettings':
+        await into(recycleBinSettingsRows).insertOnConflictUpdate(
+          RecycleBinSettingsRow.fromJson(row, serializer: _utcSerializer),
+        );
+      default:
+        throw BackupValidationFailure('同步包含未知实体：$entity。');
+    }
+  }
+
+  /// 应用关系实体的物理删除；带 `deletedAt` 的实体仍通过 upsert 传播软删除。
+  Future<void> deleteLogicalEntity(String entity, String key) async {
+    final parts = key.split('\u0000');
+    switch (entity) {
+      case 'cardDefinitions':
+        await (delete(
+          cardDefinitions,
+        )..where((row) => row.id.equals(key))).go();
+      case 'cardItems':
+        await (delete(cardItems)..where((row) => row.id.equals(key))).go();
+      case 'cardImages':
+        await (delete(cardImages)..where((row) => row.id.equals(key))).go();
+      case 'cardSets':
+        await (delete(cardSets)..where((row) => row.id.equals(key))).go();
+      case 'cardSetMembers':
+        await (delete(cardSetMembers)..where((row) => row.id.equals(key))).go();
+      case 'tags':
+        await (delete(tags)..where((row) => row.id.equals(key))).go();
+      case 'cardTags':
+        _requireKeyParts(parts, 2);
+        await (delete(cardTags)..where(
+              (row) =>
+                  row.tagId.equals(parts[0]) &
+                  row.definitionId.equals(parts[1]),
+            ))
+            .go();
+      case 'seriesRecords':
+        await (delete(seriesRecords)..where((row) => row.id.equals(key))).go();
+      case 'seriesCards':
+        _requireKeyParts(parts, 2);
+        await (delete(seriesCards)..where(
+              (row) =>
+                  row.seriesId.equals(parts[0]) &
+                  row.definitionId.equals(parts[1]),
+            ))
+            .go();
+      case 'seriesSets':
+        _requireKeyParts(parts, 2);
+        await (delete(seriesSets)..where(
+              (row) =>
+                  row.seriesId.equals(parts[0]) & row.setId.equals(parts[1]),
+            ))
+            .go();
+      case 'customFieldDefinitions':
+        await (delete(
+          organizationFieldDefinitions,
+        )..where((row) => row.id.equals(key))).go();
+      case 'customFieldValues':
+        _requireKeyParts(parts, 2);
+        await (delete(organizationFieldValues)..where(
+              (row) =>
+                  row.fieldId.equals(parts[0]) &
+                  row.definitionId.equals(parts[1]),
+            ))
+            .go();
+      case 'purchases':
+        await (delete(purchases)..where((row) => row.id.equals(key))).go();
+      case 'purchaseItems':
+        _requireKeyParts(parts, 3);
+        await (delete(purchaseItems)..where(
+              (row) =>
+                  row.purchaseId.equals(parts[0]) &
+                  row.targetType.equals(parts[1]) &
+                  row.targetId.equals(parts[2]),
+            ))
+            .go();
+      case 'exchangeRates':
+        _requireKeyParts(parts, 4);
+        await (delete(exchangeRates)..where(
+              (row) =>
+                  row.baseCurrency.equals(parts[0]) &
+                  row.quoteCurrency.equals(parts[1]) &
+                  row.rateDate.equals(DateTime.parse(parts[2]).toUtc()) &
+                  row.source.equals(parts[3]),
+            ))
+            .go();
+      case 'recycleBinSettings':
+        await (delete(
+          recycleBinSettingsRows,
+        )..where((row) => row.id.equals(int.parse(key)))).go();
+      default:
+        throw BackupValidationFailure('同步包含未知实体：$entity。');
+    }
+  }
+}
+
+String logicalEntityRowKey(String entity, Map<String, Object?> row) =>
+    _rowKey(entity, row);
+
+void _requireKeyParts(List<String> parts, int expected) {
+  if (parts.length != expected) {
+    throw const BackupValidationFailure('同步实体主键无效。');
+  }
 }
 
 Future<void> _validateSnapshotInIsolation(BackupSnapshot snapshot) async {

@@ -146,3 +146,40 @@ final class DatabaseUnavailableFailure extends AppFailure {
     super.cause,
   ]);
 }
+
+/// 同步服务地址缺失、非 HTTPS 或构建配置不安全。
+final class SyncConfigurationFailure extends AppFailure {
+  const SyncConfigurationFailure([
+    super.userMessage = '当前版本未配置安全的云同步服务。',
+    super.cause,
+  ]);
+}
+
+/// 登录凭据无效、会话过期或刷新令牌失效。
+final class AuthenticationFailure extends AppFailure {
+  const AuthenticationFailure([
+    super.userMessage = '登录信息无效或已过期，请重新登录。',
+    super.cause,
+  ]);
+}
+
+/// 网络、限流或服务端暂时不可用。队列必须保留。
+final class SyncTransportFailure extends AppFailure {
+  const SyncTransportFailure({
+    required this.code,
+    required this.retryable,
+    String userMessage = '暂时无法同步，本地更改已保留。',
+    Object? cause,
+  }) : super(userMessage, cause);
+
+  final String code;
+  final bool retryable;
+}
+
+/// 协议版本、载荷、幂等确认或附件校验不符合冻结契约。
+final class SyncProtocolFailure extends AppFailure {
+  const SyncProtocolFailure([
+    super.userMessage = '云端数据格式暂不兼容，本地更改已保留。',
+    super.cause,
+  ]);
+}

@@ -166,6 +166,63 @@ class ManagedImageStore {
     );
   }
 
+  /// 把云端同步得到的图片原子发布到原有受管相对路径。
+  ///
+  /// 只有 `originals/` 与 `derived/` 可写；字节、扩展名和 SHA-256 全部验证后，
+  /// 才从 staging 移入最终位置。失败不会留下可见半文件。
+  Future<void> writeSyncedImage({
+    required String relativePath,
+    required Uint8List bytes,
+    required String expectedChecksum,
+  }) async {
+    final segments = p.url.split(relativePath);
+    if (segments.length < 3 ||
+        !<String>{_originalsDir, _derivedDir}.contains(segments.first)) {
+      throw const ImageImportFailure('同步图片路径无效。');
+    }
+    if (bytes.isEmpty || bytes.length > maxByteSize) {
+      throw const ImageImportFailure('同步图片为空或超过大小限制。');
+    }
+    final actualChecksum = sha256.convert(bytes).toString();
+    if (actualChecksum != expectedChecksum) {
+      throw const ImageImportFailure('同步图片校验失败，请重试。');
+    }
+    final mediaType = _sniffMediaType(bytes);
+    final extension = p
+        .extension(relativePath)
+        .replaceFirst('.', '')
+        .toLowerCase();
+    if (mediaType == null || extension != mediaType.extension) {
+      throw const ImageImportFailure('同步图片格式与路径不一致。');
+    }
+
+    final destination = resolve(relativePath);
+    if (destination.existsSync()) {
+      try {
+        if (sha256.convert(await destination.readAsBytes()).toString() ==
+            expectedChecksum) {
+          return;
+        }
+      } on FileSystemException {
+        // 继续走 staging 覆盖损坏的受管副本。
+      }
+    }
+
+    final staged = File(
+      p.join(root.path, _stagingDir, 'sync-$expectedChecksum', 'image.tmp'),
+    );
+    try {
+      await staged.parent.create(recursive: true);
+      await staged.writeAsBytes(bytes, flush: true);
+      await destination.parent.create(recursive: true);
+      await _moveInto(staged, destination);
+    } on FileSystemException catch (error) {
+      throw ImageImportFailure('同步图片保存失败，请检查存储空间。', error);
+    } finally {
+      await _deleteDirectoryQuietly(staged.parent);
+    }
+  }
+
   /// 把受管相对路径解析为绝对文件。
   ///
   /// 路径逃逸或绝对路径一律抛出 [ImageImportFailure]，绝不接受任意路径

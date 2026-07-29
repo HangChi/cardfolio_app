@@ -230,6 +230,42 @@ void main() {
     });
   });
 
+  group('writeSyncedImage', () {
+    test('publishes checksum-verified bytes to a managed path', () async {
+      final checksum = sha256.convert(jpegBytes).toString();
+
+      await store.writeSyncedImage(
+        relativePath: 'originals/item-1/image-1.jpg',
+        bytes: jpegBytes,
+        expectedChecksum: checksum,
+      );
+
+      expect(
+        await store.resolve('originals/item-1/image-1.jpg').readAsBytes(),
+        jpegBytes,
+      );
+    });
+
+    test(
+      'rejects a mismatched checksum without leaving a final file',
+      () async {
+        await expectLater(
+          store.writeSyncedImage(
+            relativePath: 'derived/item-1/image-1.jpg',
+            bytes: jpegBytes,
+            expectedChecksum: List<String>.filled(64, '0').join(),
+          ),
+          throwsA(isA<ImageImportFailure>()),
+        );
+
+        expect(
+          store.resolve('derived/item-1/image-1.jpg').existsSync(),
+          isFalse,
+        );
+      },
+    );
+  });
+
   group('resolve', () {
     test('rejects a path that escapes the managed root', () {
       expect(

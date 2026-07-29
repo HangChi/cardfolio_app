@@ -38,7 +38,7 @@
 - [Feature 总索引](features/README.md)
 - [Feature 001 九件套](features/001-local-card-creation/spec.md)
 - [Feature 002 九件套](features/002-multi-image-management/spec.md)
-- Feature 003–009 已建立九件套并完成实现；Feature 010 保留开发门禁。
+- Feature 003–010 已建立九件套并完成客户端实现；Feature 010 的生产部署与双设备验收单独保留发布门禁。
 
 ## 工程
 
@@ -81,6 +81,6 @@
 
 ## 当前边界
 
-Feature 001–009 已完成本地建卡、多图、套卡、整理、购买、统计、回收站、可验证备份、
-系统相机与本地图片处理自动化闭环，设备验收仍待执行。账号与本地优先同步属于
-Feature 010。
+Feature 001–010 已完成本地建卡、多图、套卡、整理、购买、统计、回收站、可验证备份、
+系统相机、本地图片处理、可选账号与本地优先同步的客户端自动化闭环。设备验收仍待
+执行；Feature 010 的实际 REST 服务部署、双设备验证和发布治理不计为本地客户端已完成。
