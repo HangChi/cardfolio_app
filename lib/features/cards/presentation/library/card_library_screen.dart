@@ -8,6 +8,7 @@ import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/preferences/local_app_state.dart';
 import '../../../../core/preferences/local_app_state_providers.dart';
+import '../../../../core/widgets/app_name_dialog.dart';
 import '../../../card_sets/presentation/library/card_set_collection_view.dart';
 import '../../../organization/data/organization_providers.dart';
 import '../../../organization/domain/organization_models.dart';
@@ -85,31 +86,13 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
   }
 
   Future<void> _saveCurrentFilter({SavedCardFilter? existing}) async {
-    final nameController = TextEditingController(text: existing?.name);
-    final name = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(existing == null ? '保存常用筛选' : '重命名常用筛选'),
-        content: TextField(
-          controller: nameController,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: '筛选名称'),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, nameController.text.trim()),
-            child: const Text('保存'),
-          ),
-        ],
-      ),
+    final name = await showAppNameDialog(
+      context,
+      title: existing == null ? '保存常用筛选' : '重命名常用筛选',
+      initialValue: existing?.name,
+      fieldLabel: '筛选名称',
+      actionLabel: '保存',
     );
-    nameController.dispose();
     if (name == null || name.isEmpty) return;
     await ref
         .read(localAppStateProvider.notifier)

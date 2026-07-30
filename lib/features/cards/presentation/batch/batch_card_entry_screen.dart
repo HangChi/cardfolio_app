@@ -9,6 +9,7 @@ import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
 import '../../../../core/preferences/local_app_state.dart';
 import '../../../../core/preferences/local_app_state_providers.dart';
+import '../../../../core/widgets/app_name_dialog.dart';
 import '../../../card_sets/data/card_set_providers.dart';
 import '../../../card_sets/domain/card_set_models.dart';
 import '../../../organization/data/organization_providers.dart';
@@ -295,32 +296,13 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
   }
 
   Future<void> _createSharedSet() async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('创建本批次套卡'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: CreateCardSetRequest.maxNameLength,
-          decoration: const InputDecoration(labelText: '套卡名称'),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('创建并选中'),
-          ),
-        ],
-      ),
+    final name = await showAppNameDialog(
+      context,
+      title: '创建本批次套卡',
+      fieldLabel: '套卡名称',
+      actionLabel: '创建并选中',
+      maxLength: CreateCardSetRequest.maxNameLength,
     );
-    controller.dispose();
     if (name == null || name.isEmpty) return;
     try {
       final id = ref.read(idGeneratorProvider).newId();

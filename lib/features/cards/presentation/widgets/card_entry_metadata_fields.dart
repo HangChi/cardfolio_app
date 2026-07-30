@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/widgets/app_name_dialog.dart';
 import '../../../card_sets/data/card_set_providers.dart';
 import '../../../card_sets/domain/card_set_models.dart';
 import '../../../organization/data/organization_providers.dart';
@@ -197,31 +198,11 @@ String formatCnyInput(int minorUnits) => minorUnits == 0
     : CurrencyAmount(minorUnits: minorUnits, currency: 'CNY').formatted;
 
 Future<String?> createTagInline(BuildContext context, WidgetRef ref) async {
-  final controller = TextEditingController();
-  final name = await showDialog<String>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('新建标签'),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        maxLength: 100,
-        decoration: const InputDecoration(labelText: '标签名称'),
-        onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-          child: const Text('创建'),
-        ),
-      ],
-    ),
+  final name = await showAppNameDialog(
+    context,
+    title: '新建标签',
+    fieldLabel: '标签名称',
   );
-  controller.dispose();
   if (name == null || name.isEmpty) return null;
   final id = ref.read(idGeneratorProvider).newId();
   return ref
