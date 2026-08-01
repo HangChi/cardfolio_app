@@ -18,10 +18,8 @@ final class CardSetRepositoryImpl implements CardSetRepository {
   Stream<List<CardSetSummary>> watchSets() => _db.watchCardSetSummaries();
 
   @override
-  Stream<List<CardSetMembership>> watchMemberships(String definitionId) =>
-      _db.watchCardSetMemberships(
-        _requiredId(definitionId, CardSetField.member),
-      );
+  Stream<List<CardSetMembership>> watchMemberships(String definitionId) => _db
+      .watchCardSetMemberships(_requiredId(definitionId, CardSetField.member));
 
   @override
   Stream<CardSetDetail?> watchSet(String setId) =>
@@ -125,6 +123,25 @@ final class CardSetRepositoryImpl implements CardSetRepository {
       action: () => _db.setCardSetCover(
         setId: _requiredId(setId, CardSetField.cover),
         imageId: normalizedImageId,
+        now: clock.nowUtc(),
+      ),
+      field: CardSetField.cover,
+      failureMessage: '更新套卡封面失败，请重试。',
+    );
+  }
+
+  @override
+  Future<void> setStandaloneCover({
+    required String setId,
+    String? relativePath,
+  }) async {
+    final normalizedPath = relativePath?.trim();
+    await _write(
+      action: () => _db.setCardSetStandaloneCover(
+        setId: _requiredId(setId, CardSetField.cover),
+        relativePath: normalizedPath == null || normalizedPath.isEmpty
+            ? null
+            : normalizedPath,
         now: clock.nowUtc(),
       ),
       field: CardSetField.cover,

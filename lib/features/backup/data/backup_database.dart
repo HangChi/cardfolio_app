@@ -32,7 +32,12 @@ final class BackupSnapshot {
         throw const BackupValidationFailure('备份实体数量超出安全限制。');
       }
       entities[name] = rawRows
-          .map((row) => _asObject(row, '备份实体字段无效。'))
+          .map((row) {
+            final parsed = _asObject(row, '备份实体字段无效。');
+            if (name == 'cardSets')
+              parsed.putIfAbsent('coverRelativePath', () => null);
+            return parsed;
+          })
           .toList(growable: false);
     }
     return BackupSnapshot._(entities);
@@ -122,11 +127,7 @@ extension BackupDatabase on AppDatabase {
           (row) => row.toJson(serializer: _utcSerializer),
           (row) => row.id,
         ),
-        'cardSets': await _readRows(
-          await select(cardSets).get(),
-          (row) => row.toJson(serializer: _utcSerializer),
-          (row) => row.id,
-        ),
+        'cardSets': await _exportCardSetRows(),
         'cardSetMembers': await _readRows(
           await select(cardSetMembers).get(),
           (row) => row.toJson(serializer: _utcSerializer),
@@ -268,6 +269,10 @@ extension BackupDatabase on AppDatabase {
       case 'cardSets':
         await into(cardSets).insertOnConflictUpdate(
           CardSet.fromJson(row, serializer: _utcSerializer),
+        );
+        await _writeCardSetCoverPath(
+          row['id'] as String,
+          _cardSetCoverFromRow(row),
         );
       case 'cardSetMembers':
         await into(cardSetMembers).insertOnConflictUpdate(
@@ -562,6 +567,10 @@ Future<void> _insertSnapshotRows(
     await db
         .into(db.cardSets)
         .insert(CardSet.fromJson(row, serializer: _utcSerializer));
+    await db._writeCardSetCoverPath(
+      row['id'] as String,
+      _cardSetCoverFromRow(row),
+    );
   }
   for (final row in snapshot.rows('cardSetMembers')) {
     await db
@@ -689,6 +698,55 @@ Future<List<Map<String, Object?>>> _readRows<T>(
 ) async {
   final sorted = rows.toList()..sort((a, b) => key(a).compareTo(key(b)));
   return sorted.map(toJson).toList(growable: false);
+}
+
+extension on AppDatabase {
+  Future<List<Map<String, Object?>>> _exportCardSetRows() async {
+    final coverRows = await customSelect(
+      'SELECT id, cover_relative_path FROM card_sets',
+      readsFrom: <ResultSetImplementation<Table, Object?>>{cardSets},
+    ).get();
+    final covers = <String, String?>{
+      for (final row in coverRows)
+        row.read<String>('id'): row.readNullable<String>('cover_relative_path'),
+    };
+    return _readRows(
+      await select(cardSets).get(),
+      (row) => <String, Object?>{
+        ...row.toJson(serializer: _utcSerializer),
+        'coverRelativePath': covers[row.id],
+      },
+      (row) => row.id,
+    );
+  }
+
+  Future<void> _writeCardSetCoverPath(
+    String setId,
+    String? relativePath,
+  ) async {
+    if (relativePath == null) {
+      await customUpdate(
+        'UPDATE card_sets SET cover_relative_path = NULL WHERE id = ?',
+        variables: <Variable<Object>>[Variable<String>(setId)],
+        updates: <TableInfo<Table, Object?>>{cardSets},
+      );
+      return;
+    }
+    await customUpdate(
+      'UPDATE card_sets SET cover_relative_path = ? WHERE id = ?',
+      variables: <Variable<Object>>[
+        Variable<String>(relativePath),
+        Variable<String>(setId),
+      ],
+      updates: <TableInfo<Table, Object?>>{cardSets},
+    );
+  }
+}
+
+String? _cardSetCoverFromRow(Map<String, Object?> row) {
+  final value = row['coverRelativePath'];
+  if (value == null || value is String) return value as String?;
+  throw const BackupValidationFailure('套卡封面路径无效。');
 }
 
 String _canonicalJson(Object? value) => jsonEncode(_canonicalize(value));

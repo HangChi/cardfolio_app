@@ -57,6 +57,7 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
   void initState() {
     super.initState();
     if (widget.copyFromCardItemId != null) {
+      ref.read(createCardControllerProvider.notifier).startCopyDraft();
       Future<void>.microtask(_loadCopy);
     }
   }
@@ -210,6 +211,7 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
               cardItemId: id,
               amountMinor: amountMinor,
               shippingMinor: shippingMinor,
+              purchasedAt: _acquiredAt,
             ),
           );
     } on AppFailure catch (failure) {
@@ -643,14 +645,74 @@ class _DraftImagesEditor extends ConsumerWidget {
                                   ),
                                   if (index == 0)
                                     Positioned(
-                                      top: tokens.spaceSm,
-                                      left: tokens.spaceSm,
-                                      child: const Chip(
-                                        avatar: Icon(Icons.star, size: 16),
-                                        label: Text('封面'),
-                                        visualDensity: VisualDensity.compact,
+                                      top: tokens.spaceXs,
+                                      left: tokens.spaceXs,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.58,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            tokens.radiusPill,
+                                          ),
+                                        ),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 3,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: <Widget>[
+                                              Icon(
+                                                Icons.star_rounded,
+                                                size: 12,
+                                                color: Colors.white,
+                                              ),
+                                              SizedBox(width: 3),
+                                              Text(
+                                                '封面',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
+                                  Positioned(
+                                    top: tokens.spaceXs,
+                                    right: tokens.spaceXs,
+                                    child: Material(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.58,
+                                      ),
+                                      shape: const CircleBorder(),
+                                      child: IconButton(
+                                        onPressed: state.isSaving
+                                            ? null
+                                            : () => controller.discardImage(
+                                                image.id,
+                                              ),
+                                        tooltip: '删除这张图片',
+                                        visualDensity: VisualDensity.compact,
+                                        constraints:
+                                            const BoxConstraints.tightFor(
+                                              width: 32,
+                                              height: 32,
+                                            ),
+                                        padding: EdgeInsets.zero,
+                                        icon: const Icon(
+                                          Icons.close_rounded,
+                                          size: 18,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),

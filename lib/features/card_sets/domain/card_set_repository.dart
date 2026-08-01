@@ -25,4 +25,9 @@ abstract interface class CardSetRepository {
   Future<void> removeMember({required String setId, required String memberId});
 
   Future<void> setCover({required String setId, String? imageId});
+
+  Future<void> setStandaloneCover({
+    required String setId,
+    String? relativePath,
+  });
 }

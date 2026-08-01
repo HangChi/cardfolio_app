@@ -56,8 +56,10 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   static const Duration _exitConfirmationWindow = Duration(seconds: 2);
+  static const Duration _duplicateBackEventWindow = Duration(milliseconds: 160);
 
   DateTime? _lastBackPressedAt;
+  DateTime? _lastBackEventAt;
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +130,12 @@ class _AppShellState extends State<AppShell> {
     if (didPop) return;
 
     final now = DateTime.now();
+    final lastBackEventAt = _lastBackEventAt;
+    _lastBackEventAt = now;
+    if (lastBackEventAt != null &&
+        now.difference(lastBackEventAt) <= _duplicateBackEventWindow) {
+      return;
+    }
     final lastBackPressedAt = _lastBackPressedAt;
     if (lastBackPressedAt != null &&
         now.difference(lastBackPressedAt) <= _exitConfirmationWindow) {
@@ -150,6 +158,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _goToBranch(int index) {
+    _lastBackPressedAt = null;
+    _lastBackEventAt = null;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     widget.navigationShell.goBranch(
       index,
       initialLocation: index == widget.navigationShell.currentIndex,

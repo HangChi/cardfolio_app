@@ -193,6 +193,7 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
               cardItemId: widget.cardItemId,
               amountMinor: amountMinor,
               shippingMinor: shippingMinor,
+              purchasedAt: _acquiredAt,
             ),
           );
       if (mounted) context.pop(true);

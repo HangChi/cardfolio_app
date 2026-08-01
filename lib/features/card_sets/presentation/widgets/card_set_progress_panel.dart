@@ -58,21 +58,30 @@ class CardSetProgressPanel extends StatelessWidget {
                   semanticsValue: '${(fraction * 100).round()}%',
                 ),
                 SizedBox(height: tokens.spaceMd),
-                Wrap(
-                  spacing: tokens.spaceSm,
-                  runSpacing: tokens.spaceSm,
+                Row(
                   children: <Widget>[
-                    _StatusPill(
-                      icon: Icons.check_circle_outline,
-                      label: '已拥有 ${progress.ownedRequiredCount}',
+                    Expanded(
+                      child: _StatusMetric(
+                        icon: Icons.check_circle_outline,
+                        label: '已拥有',
+                        value: progress.ownedRequiredCount,
+                      ),
                     ),
-                    _StatusPill(
-                      icon: Icons.radio_button_unchecked,
-                      label: '缺失 ${progress.missingRequiredCount}',
+                    SizedBox(width: tokens.spaceSm),
+                    Expanded(
+                      child: _StatusMetric(
+                        icon: Icons.radio_button_unchecked,
+                        label: '缺失',
+                        value: progress.missingRequiredCount,
+                      ),
                     ),
-                    _StatusPill(
-                      icon: Icons.content_copy_outlined,
-                      label: '重复卡片 ${progress.duplicateMemberCount} 张',
+                    SizedBox(width: tokens.spaceSm),
+                    Expanded(
+                      child: _StatusMetric(
+                        icon: Icons.content_copy_outlined,
+                        label: '重复',
+                        value: progress.duplicateMemberCount,
+                      ),
                     ),
                   ],
                 ),
@@ -94,30 +103,38 @@ class CardSetProgressPanel extends StatelessWidget {
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.icon, required this.label});
+class _StatusMetric extends StatelessWidget {
+  const _StatusMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   final IconData icon;
   final String label;
+  final int value;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.tokens.spaceSm,
-        vertical: context.tokens.spaceXs,
-      ),
+      padding: EdgeInsets.symmetric(vertical: context.tokens.spaceSm),
       decoration: BoxDecoration(
         color: context.palette.surface,
         borderRadius: BorderRadius.circular(context.tokens.radiusPill),
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
-          SizedBox(width: context.tokens.spaceXs),
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
+          SizedBox(height: context.tokens.spaceXs),
+          Text(
+            '$value',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
     );

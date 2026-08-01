@@ -692,12 +692,15 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await customStatement(
+        'ALTER TABLE card_sets ADD COLUMN cover_relative_path TEXT;',
+      );
       await _createImageIndexes();
       await _createCardSetIndexes();
       await _createOrganizationIndexes();
@@ -705,66 +708,76 @@ class AppDatabase extends _$AppDatabase {
       await _createRecycleBinIndexes();
       await _createSyncIndexes();
     },
-    onUpgrade: stepByStep(
-      from1To2: (m, schema) async {
-        await m.addColumn(
-          schema.cardImages,
-          schema.cardImages.derivedRelativePath,
+    onUpgrade: (m, from, to) async {
+      if (from < 8) {
+        await stepByStep(
+          from1To2: (m, schema) async {
+            await m.addColumn(
+              schema.cardImages,
+              schema.cardImages.derivedRelativePath,
+            );
+            await m.addColumn(schema.cardImages, schema.cardImages.isCover);
+            await m.addColumn(schema.cardImages, schema.cardImages.deletedAt);
+            await customStatement('UPDATE card_images SET is_cover = 1;');
+            await _createImageIndexes();
+          },
+          from2To3: (m, schema) async {
+            await m.createTable(schema.cardSets);
+            await m.createTable(schema.cardSetMembers);
+            await _createCardSetIndexes();
+          },
+          from3To4: (m, schema) async {
+            await m.addColumn(
+              schema.cardDefinitions,
+              schema.cardDefinitions.cardType,
+            );
+            await m.addColumn(
+              schema.cardDefinitions,
+              schema.cardDefinitions.needsCompletion,
+            );
+            await m.addColumn(schema.cardItems, schema.cardItems.acquiredAt);
+            await m.createTable(schema.tags);
+            await m.createTable(schema.cardTags);
+            await m.createTable(schema.seriesRecords);
+            await m.createTable(schema.seriesCards);
+            await m.createTable(schema.seriesSets);
+            await m.createTable(schema.customFieldDefinitions);
+            await m.createTable(schema.customFieldValues);
+            await _createOrganizationIndexes();
+          },
+          from4To5: (m, schema) async {
+            await m.createTable(schema.purchases);
+            await m.createTable(schema.purchaseItems);
+            await m.createTable(schema.exchangeRates);
+            await _createPurchaseIndexes();
+          },
+          from5To6: (m, schema) async {
+            await m.createTable(schema.recycleBinSettings);
+            await m.createTable(schema.fileCleanupQueue);
+            await _createRecycleBinIndexes();
+          },
+          from6To7: (m, schema) async {
+            await m.createTable(schema.syncSettings);
+            await m.createTable(schema.syncEntityStates);
+            await m.createTable(schema.syncOutbox);
+            await m.createTable(schema.syncConflicts);
+            await _createSyncIndexes();
+          },
+          from7To8: (m, schema) async {
+            await m.addColumn(
+              schema.seriesRecords,
+              schema.seriesRecords.coverRelativePath,
+            );
+          },
+        )(m, from, 8);
+      }
+      if (from < 9) {
+        await customStatement(
+          'ALTER TABLE card_sets ADD COLUMN cover_relative_path TEXT;',
         );
-        await m.addColumn(schema.cardImages, schema.cardImages.isCover);
-        await m.addColumn(schema.cardImages, schema.cardImages.deletedAt);
-        await customStatement('UPDATE card_images SET is_cover = 1;');
-        await _createImageIndexes();
-      },
-      from2To3: (m, schema) async {
-        await m.createTable(schema.cardSets);
-        await m.createTable(schema.cardSetMembers);
-        await _createCardSetIndexes();
-      },
-      from3To4: (m, schema) async {
-        await m.addColumn(
-          schema.cardDefinitions,
-          schema.cardDefinitions.cardType,
-        );
-        await m.addColumn(
-          schema.cardDefinitions,
-          schema.cardDefinitions.needsCompletion,
-        );
-        await m.addColumn(schema.cardItems, schema.cardItems.acquiredAt);
-        await m.createTable(schema.tags);
-        await m.createTable(schema.cardTags);
-        await m.createTable(schema.seriesRecords);
-        await m.createTable(schema.seriesCards);
-        await m.createTable(schema.seriesSets);
-        await m.createTable(schema.customFieldDefinitions);
-        await m.createTable(schema.customFieldValues);
-        await _createOrganizationIndexes();
-      },
-      from4To5: (m, schema) async {
-        await m.createTable(schema.purchases);
-        await m.createTable(schema.purchaseItems);
-        await m.createTable(schema.exchangeRates);
-        await _createPurchaseIndexes();
-      },
-      from5To6: (m, schema) async {
-        await m.createTable(schema.recycleBinSettings);
-        await m.createTable(schema.fileCleanupQueue);
-        await _createRecycleBinIndexes();
-      },
-      from6To7: (m, schema) async {
-        await m.createTable(schema.syncSettings);
-        await m.createTable(schema.syncEntityStates);
-        await m.createTable(schema.syncOutbox);
-        await m.createTable(schema.syncConflicts);
-        await _createSyncIndexes();
-      },
-      from7To8: (m, schema) async {
-        await m.addColumn(
-          schema.seriesRecords,
-          schema.seriesRecords.coverRelativePath,
-        );
-      },
-    ),
+        await _normalizeLegacyAcquiredDates();
+      }
+    },
     beforeOpen: (details) async {
       // 外键约束默认关闭，必须在每个连接上显式启用。
       await customStatement('PRAGMA foreign_keys = ON;');
@@ -1367,7 +1380,58 @@ class AppDatabase extends _$AppDatabase {
       final cover = row.read(seriesRecords.coverRelativePath);
       if (cover != null) paths.add(cover);
     }
+    final setCovers = await customSelect(
+      'SELECT cover_relative_path FROM card_sets '
+      'WHERE cover_relative_path IS NOT NULL',
+      readsFrom: <ResultSetImplementation<Table, Object?>>{cardSets},
+    ).get();
+    for (final row in setCovers) {
+      final cover = row.readNullable<String>('cover_relative_path');
+      if (cover != null) paths.add(cover);
+    }
     return paths;
+  }
+
+  Future<void> _normalizeLegacyAcquiredDates() async {
+    final rows = await customSelect(
+      'SELECT id, acquired_at FROM card_items WHERE acquired_at IS NOT NULL',
+    ).get();
+    for (final row in rows) {
+      final stored = DateTime.fromMillisecondsSinceEpoch(
+        row.read<int>('acquired_at') * Duration.millisecondsPerSecond,
+        isUtc: true,
+      );
+      final local = stored.toLocal();
+      final calendarDay = DateTime.utc(local.year, local.month, local.day);
+      await customUpdate(
+        'UPDATE card_items SET acquired_at = ? WHERE id = ?',
+        variables: <Variable<Object>>[
+          Variable<DateTime>(calendarDay),
+          Variable<String>(row.read<String>('id')),
+        ],
+      );
+    }
+    await customStatement('''
+UPDATE purchases
+SET purchased_at = (
+  SELECT ci.acquired_at
+  FROM purchase_items pi
+  JOIN card_items ci ON ci.id = pi.target_id
+  WHERE pi.purchase_id = purchases.id
+    AND pi.target_type = 'card'
+    AND ci.acquired_at IS NOT NULL
+  LIMIT 1
+)
+WHERE purchases.id LIKE 'card-entry-cost:%'
+  AND EXISTS (
+    SELECT 1
+    FROM purchase_items pi
+    JOIN card_items ci ON ci.id = pi.target_id
+    WHERE pi.purchase_id = purchases.id
+      AND pi.target_type = 'card'
+      AND ci.acquired_at IS NOT NULL
+  );
+''');
   }
 
   Future<int> countDefinitions() => _countRows(cardDefinitions);

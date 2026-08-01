@@ -8,6 +8,7 @@ import '../../../cards/data/card_providers.dart';
 import '../../../cards/presentation/widgets/card_image.dart';
 import '../../data/organization_providers.dart';
 import '../../domain/organization_models.dart';
+import 'series_cover_presets.dart';
 
 class SeriesFormScreen extends ConsumerStatefulWidget {
   const SeriesFormScreen({super.key, this.seriesId});
@@ -286,6 +287,11 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
               title: const Text('从相册选择'),
               onTap: () => Navigator.pop(sheetContext, _CoverAction.gallery),
             ),
+            ListTile(
+              leading: const Icon(Icons.palette_outlined),
+              title: const Text('使用默认封面'),
+              onTap: () => Navigator.pop(sheetContext, _CoverAction.preset),
+            ),
             if (_coverRelativePath != null)
               ListTile(
                 leading: const Icon(Icons.delete_outline),
@@ -305,6 +311,8 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
         await _captureCover();
       case _CoverAction.gallery:
         await _pickCover();
+      case _CoverAction.preset:
+        await _choosePresetCover();
       case _CoverAction.clear:
         _setCover(null);
       case null:
@@ -331,6 +339,81 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
       if (selected.isNotEmpty) await _importCover(selected.first.path);
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
+    } finally {
+      if (mounted) setState(() => _coverBusy = false);
+    }
+  }
+
+  Future<void> _choosePresetCover() async {
+    final preset = await showModalBottomSheet<SeriesCoverPreset>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            sheetContext.tokens.spaceLg,
+            0,
+            sheetContext.tokens.spaceLg,
+            sheetContext.tokens.spaceLg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('默认封面', style: Theme.of(sheetContext).textTheme.titleLarge),
+              SizedBox(height: sheetContext.tokens.spaceMd),
+              Wrap(
+                spacing: sheetContext.tokens.spaceSm,
+                runSpacing: sheetContext.tokens.spaceSm,
+                children: <Widget>[
+                  for (final item in seriesCoverPresets)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(
+                        sheetContext.tokens.radiusMd,
+                      ),
+                      onTap: () => Navigator.pop(sheetContext, item),
+                      child: Container(
+                        width: 96,
+                        height: 76,
+                        padding: EdgeInsets.all(sheetContext.tokens.spaceSm),
+                        decoration: BoxDecoration(
+                          color: item.background,
+                          borderRadius: BorderRadius.circular(
+                            sheetContext.tokens.radiusMd,
+                          ),
+                          border: Border(
+                            left: BorderSide(color: item.accent, width: 8),
+                          ),
+                        ),
+                        alignment: Alignment.bottomLeft,
+                        child: Text(
+                          item.name,
+                          maxLines: 2,
+                          style: Theme.of(sheetContext).textTheme.labelSmall
+                              ?.copyWith(color: item.foreground),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (preset == null || !mounted) return;
+    setState(() => _coverBusy = true);
+    try {
+      final sourcePath = await createSeriesPresetCover(
+        preset: preset,
+        title: _nameController.text,
+        outputId: ref.read(idGeneratorProvider).newId(),
+      );
+      await _importCover(sourcePath);
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
+    } catch (_) {
+      _showMessage('默认封面生成失败，请重试。');
     } finally {
       if (mounted) setState(() => _coverBusy = false);
     }
@@ -400,7 +483,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
   }
 }
 
-enum _CoverAction { camera, gallery, clear }
+enum _CoverAction { camera, gallery, preset, clear }
 
 class _SelectableMemberTile extends StatelessWidget {
   const _SelectableMemberTile({

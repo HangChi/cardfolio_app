@@ -903,8 +903,8 @@ List<String> _activeFilterLabels(CardLibraryQuery query) {
 }
 
 String _acquiredRangeLabel(DateTime? fromUtc, DateTime? beforeUtc) {
-  final from = fromUtc?.toLocal();
-  final before = beforeUtc?.toLocal();
+  final from = fromUtc;
+  final before = beforeUtc;
   if (from != null &&
       before != null &&
       from.day == 1 &&

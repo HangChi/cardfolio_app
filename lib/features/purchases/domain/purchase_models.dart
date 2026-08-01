@@ -91,10 +91,7 @@ final class CurrencyAmount {
 
 @immutable
 final class CardEntryCost {
-  const CardEntryCost({
-    required this.amountMinor,
-    required this.shippingMinor,
-  });
+  const CardEntryCost({required this.amountMinor, required this.shippingMinor});
 
   const CardEntryCost.empty() : amountMinor = 0, shippingMinor = 0;
 
@@ -110,12 +107,14 @@ final class SaveCardEntryCostRequest {
     required this.cardItemId,
     required this.amountMinor,
     required this.shippingMinor,
+    this.purchasedAt,
     this.isNormalized = false,
   });
 
   final String cardItemId;
   final int amountMinor;
   final int shippingMinor;
+  final DateTime? purchasedAt;
   final bool isNormalized;
 
   bool get isEmpty => amountMinor == 0 && shippingMinor == 0;
@@ -135,6 +134,13 @@ final class SaveCardEntryCostRequest {
       cardItemId: _requiredId(cardItemId, PurchaseField.target),
       amountMinor: amountMinor,
       shippingMinor: shippingMinor,
+      purchasedAt: purchasedAt == null
+          ? null
+          : DateTime.utc(
+              purchasedAt!.year,
+              purchasedAt!.month,
+              purchasedAt!.day,
+            ),
       isNormalized: true,
     );
   }

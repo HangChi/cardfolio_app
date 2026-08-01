@@ -48,7 +48,7 @@ extension PurchaseDatabase on AppDatabase {
         await into(purchases).insert(
           PurchasesCompanion.insert(
             id: purchaseId,
-            purchasedAt: now,
+            purchasedAt: normalized.purchasedAt ?? now,
             amountMinor: normalized.amountMinor,
             currency: 'CNY',
             shippingMinor: Value(normalized.shippingMinor),
@@ -70,6 +70,7 @@ extension PurchaseDatabase on AppDatabase {
             seller: const Value<String?>(null),
             notes: const Value<String?>(null),
             adjustmentOfId: const Value<String?>(null),
+            purchasedAt: Value(normalized.purchasedAt ?? existing.purchasedAt),
             version: Value(existing.version + 1),
             updatedAt: Value(now),
           ),

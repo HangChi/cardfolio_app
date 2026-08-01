@@ -13,8 +13,14 @@ import io.flutter.plugin.common.MethodChannel
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private val textRecognizerDelegate = lazy {
+        TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
+    }
+    private val textRecognizer by textRecognizerDelegate
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(
@@ -48,25 +54,36 @@ class MainActivity : FlutterActivity() {
                 result.error("invalid_path", "图片路径为空", null)
                 return@setMethodCallHandler
             }
-            val image = try {
-                InputImage.fromFilePath(this, Uri.fromFile(java.io.File(path)))
-            } catch (error: Exception) {
-                result.error("invalid_image", error.message, null)
+            val source = File(path)
+            if (!source.isFile || !source.canRead()) {
+                result.error("invalid_path", "图片文件不存在或无法读取", null)
                 return@setMethodCallHandler
             }
-            val recognizer = TextRecognition.getClient(
-                ChineseTextRecognizerOptions.Builder().build(),
-            )
-            recognizer.process(image)
+            val image = try {
+                InputImage.fromFilePath(this, Uri.fromFile(source))
+            } catch (error: Exception) {
+                result.error("invalid_image", error.message ?: "无法读取图片", null)
+                return@setMethodCallHandler
+            }
+            textRecognizer.process(image)
                 .addOnSuccessListener { text ->
                     result.success(text.text)
-                    recognizer.close()
                 }
                 .addOnFailureListener { error ->
-                    result.error("recognition_failed", error.message, null)
-                    recognizer.close()
+                    result.error(
+                        "recognition_failed",
+                        error.message ?: "文字识别服务暂时不可用",
+                        null,
+                    )
                 }
         }
+    }
+
+    override fun onDestroy() {
+        if (textRecognizerDelegate.isInitialized()) {
+            textRecognizer.close()
+        }
+        super.onDestroy()
     }
 
     private fun inspectDevice(): Map<String, Any> {

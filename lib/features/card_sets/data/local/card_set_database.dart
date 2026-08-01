@@ -334,6 +334,56 @@ extension CardSetDatabase on AppDatabase {
           version: Value(set.version + 1),
         ),
       );
+      await customUpdate(
+        'UPDATE card_sets SET cover_relative_path = NULL WHERE id = ?',
+        variables: <Variable<Object>>[Variable<String>(setId)],
+        updates: <TableInfo<Table, Object?>>{cardSets},
+      );
+    });
+  }
+
+  Future<void> setCardSetStandaloneCover({
+    required String setId,
+    required String? relativePath,
+    required DateTime now,
+  }) {
+    return transaction(() async {
+      final set = await _activeCardSet(this, setId);
+      if (set == null) throw StateError('套卡不存在。');
+      if (relativePath == null) {
+        await customUpdate(
+          '''
+UPDATE card_sets
+SET cover_relative_path = NULL,
+    cover_image_id = NULL,
+    updated_at = ?,
+    version = version + 1
+WHERE id = ?
+''',
+          variables: <Variable<Object>>[
+            Variable<DateTime>(now),
+            Variable<String>(setId),
+          ],
+          updates: <TableInfo<Table, Object?>>{cardSets},
+        );
+        return;
+      }
+      await customUpdate(
+        '''
+UPDATE card_sets
+SET cover_relative_path = ?,
+    cover_image_id = NULL,
+    updated_at = ?,
+    version = version + 1
+WHERE id = ?
+''',
+        variables: <Variable<Object>>[
+          Variable<String>(relativePath),
+          Variable<DateTime>(now),
+          Variable<String>(setId),
+        ],
+        updates: <TableInfo<Table, Object?>>{cardSets},
+      );
     });
   }
 }
@@ -388,13 +438,29 @@ Stream<List<_CardSetAggregate>> _watchCardSetAggregates(
           OrderingTerm.asc(db.cardItems.id),
         ]);
 
-  return query.watch().map((rows) {
+  return query.watch().asyncMap((rows) async {
+    final standaloneCovers = <String, String>{};
+    final coverRows = await db
+        .customSelect(
+          'SELECT id, cover_relative_path FROM card_sets '
+          'WHERE cover_relative_path IS NOT NULL',
+          readsFrom: <ResultSetImplementation<Table, Object?>>{db.cardSets},
+        )
+        .get();
+    for (final row in coverRows) {
+      standaloneCovers[row.read<String>('id')] = row.read<String>(
+        'cover_relative_path',
+      );
+    }
     final sets = <String, _CardSetAggregateBuilder>{};
     for (final row in rows) {
       final set = row.readTable(db.cardSets);
       final builder = sets.putIfAbsent(
         set.id,
-        () => _CardSetAggregateBuilder(set: set),
+        () => _CardSetAggregateBuilder(
+          set: set,
+          standaloneCoverRelativePath: standaloneCovers[set.id],
+        ),
       );
       builder.addSetCover(row.readTableOrNull(setCover));
       final member = row.readTableOrNull(db.cardSetMembers);
@@ -414,9 +480,13 @@ Stream<List<_CardSetAggregate>> _watchCardSetAggregates(
 }
 
 final class _CardSetAggregateBuilder {
-  _CardSetAggregateBuilder({required this.set});
+  _CardSetAggregateBuilder({
+    required this.set,
+    required this.standaloneCoverRelativePath,
+  });
 
   final CardSet set;
+  final String? standaloneCoverRelativePath;
   CardImage? cover;
   final LinkedHashMap<String, _MemberBuilder> members =
       LinkedHashMap<String, _MemberBuilder>();
@@ -449,7 +519,7 @@ final class _CardSetAggregateBuilder {
     return _CardSetAggregate(
       set: set,
       coverImageId: cover?.id,
-      coverRelativePath: _displayPath(cover),
+      coverRelativePath: standaloneCoverRelativePath ?? _displayPath(cover),
       members: builtMembers,
     );
   }

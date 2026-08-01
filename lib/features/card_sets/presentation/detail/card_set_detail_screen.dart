@@ -113,6 +113,86 @@ class _CardSetDetailScreenState extends ConsumerState<CardSetDetailScreen> {
   }
 
   Future<void> _showCoverPicker(CardSetDetail set) async {
+    final action = await showModalBottomSheet<_CoverSourceAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('拍摄封面'),
+              onTap: () =>
+                  Navigator.pop(sheetContext, _CoverSourceAction.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () =>
+                  Navigator.pop(sheetContext, _CoverSourceAction.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.style_outlined),
+              title: const Text('使用成员卡面'),
+              onTap: () =>
+                  Navigator.pop(sheetContext, _CoverSourceAction.member),
+            ),
+            if (set.coverRelativePath != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('清除封面'),
+                onTap: () =>
+                    Navigator.pop(sheetContext, _CoverSourceAction.clear),
+              ),
+          ],
+        ),
+      ),
+    );
+    switch (action) {
+      case _CoverSourceAction.camera:
+        await _run(() => _captureSetCover(set));
+      case _CoverSourceAction.gallery:
+        await _run(() => _pickSetCover(set));
+      case _CoverSourceAction.member:
+        await _showMemberCoverPicker(set);
+      case _CoverSourceAction.clear:
+        await _run(
+          () => ref
+              .read(cardSetRepositoryProvider)
+              .setStandaloneCover(setId: set.id),
+        );
+      case null:
+        break;
+    }
+  }
+
+  Future<void> _captureSetCover(CardSetDetail set) async {
+    final captured = await ref.read(cameraCaptureProvider).capture();
+    if (captured == null) return;
+    await _importSetCover(set, captured.path);
+  }
+
+  Future<void> _pickSetCover(CardSetDetail set) async {
+    final selected = await ref.read(galleryPickerProvider).pickMany(limit: 1);
+    if (selected.isEmpty) return;
+    await _importSetCover(set, selected.first.path);
+  }
+
+  Future<void> _importSetCover(CardSetDetail set, String sourcePath) async {
+    final managed = await ref
+        .read(managedImageStoreProvider)
+        .importImage(
+          sourcePath: sourcePath,
+          cardItemId: 'set-${set.id}',
+          imageId: ref.read(idGeneratorProvider).newId(),
+        );
+    await ref
+        .read(cardSetRepositoryProvider)
+        .setStandaloneCover(setId: set.id, relativePath: managed.relativePath);
+  }
+
+  Future<void> _showMemberCoverPicker(CardSetDetail set) async {
     final candidates = set.members
         .where((member) => member.coverImageId != null)
         .toList(growable: false);
@@ -539,34 +619,48 @@ class _DetailBody extends StatelessWidget {
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     onTap: busy ? null : onSetCover,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        SizedBox(
-                          height: 180,
-                          child: set.coverRelativePath == null
+                    child: SizedBox(
+                      height: 188,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          set.coverRelativePath == null
                               ? CardImage.placeholder(
-                                  semanticLabel: '${set.name}套卡封面',
+                                  semanticLabel: '${set.name}套卡封面，点击设置',
                                 )
                               : CardImage.managed(
                                   relativePath: set.coverRelativePath!,
-                                  semanticLabel: '${set.name}套卡封面',
+                                  semanticLabel: '${set.name}套卡封面，点击更换',
                                 ),
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.image_outlined),
-                          title: Text(
-                            set.coverRelativePath == null ? '设置套卡封面' : '更换套卡封面',
+                          Positioned(
+                            right: tokens.spaceSm,
+                            bottom: tokens.spaceSm,
+                            child: Material(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surface.withValues(alpha: 0.9),
+                              shape: const CircleBorder(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(9),
+                                child: Icon(
+                                  Icons.camera_alt_outlined,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
                           ),
-                          trailing: const Icon(Icons.chevron_right),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 if (set.issueInfo case final issue?) ...<Widget>[
-                  SizedBox(height: tokens.spaceSm),
-                  Text(issue),
+                  SizedBox(height: tokens.spaceMd),
+                  _SetInfoCard(
+                    icon: Icons.event_note_outlined,
+                    title: '发行信息',
+                    content: issue,
+                  ),
                 ],
                 SizedBox(height: tokens.spaceLg),
                 CardSetProgressPanel(
@@ -582,13 +676,10 @@ class _DetailBody extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
-                    FilledButton.tonalIcon(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 48),
-                      ),
+                    IconButton.filledTonal(
                       onPressed: busy ? null : onAdd,
+                      tooltip: '添加成员',
                       icon: const Icon(Icons.add),
-                      label: const Text('添加成员'),
                     ),
                   ],
                 ),
@@ -607,14 +698,57 @@ class _DetailBody extends StatelessWidget {
                     ),
                 if (set.notes case final notes?) ...<Widget>[
                   SizedBox(height: tokens.spaceLg),
-                  Text('备注', style: Theme.of(context).textTheme.titleMedium),
-                  SizedBox(height: tokens.spaceSm),
-                  Text(notes),
+                  _SetInfoCard(
+                    icon: Icons.sticky_note_2_outlined,
+                    title: '备注',
+                    content: notes,
+                  ),
                 ],
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SetInfoCard extends StatelessWidget {
+  const _SetInfoCard({
+    required this.icon,
+    required this.title,
+    required this.content,
+  });
+
+  final IconData icon;
+  final String title;
+  final String content;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.surfaceContainerLow,
+      child: Padding(
+        padding: EdgeInsets.all(tokens.spaceMd),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(icon, size: 20, color: scheme.primary),
+            SizedBox(width: tokens.spaceSm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title, style: Theme.of(context).textTheme.labelLarge),
+                  SizedBox(height: tokens.spaceXs),
+                  Text(content, style: Theme.of(context).textTheme.bodyMedium),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -731,6 +865,8 @@ class _MemberTrackTile extends StatelessWidget {
 }
 
 enum _MemberAction { edit, moveUp, moveDown, cover, remove }
+
+enum _CoverSourceAction { camera, gallery, member, clear }
 
 class _EmptyMembers extends StatelessWidget {
   const _EmptyMembers();

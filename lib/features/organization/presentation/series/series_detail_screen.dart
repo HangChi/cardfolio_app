@@ -46,6 +46,13 @@ class _SeriesDetailBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final nestedDefinitionIds = <String>{
+      for (final group in series.setGroups)
+        for (final card in group.cards) card.id,
+    };
+    final ungroupedCards = series.cards
+        .where((card) => !nestedDefinitionIds.contains(card.id))
+        .toList(growable: false);
     return Scaffold(
       appBar: AppBar(
         title: Text(series.name),
@@ -100,17 +107,34 @@ class _SeriesDetailBody extends ConsumerWidget {
             ),
           ),
           SizedBox(height: context.tokens.spaceLg),
-          _MemberSection(
-            title: '卡片 · ${series.cards.length}',
-            items: series.cards,
-            isCard: true,
-          ),
-          SizedBox(height: context.tokens.spaceLg),
-          _MemberSection(
-            title: '套卡 · ${series.sets.length}',
-            items: series.sets,
-            isCard: false,
-          ),
+          Text('目录', style: Theme.of(context).textTheme.titleLarge),
+          SizedBox(height: context.tokens.spaceSm),
+          if (series.setGroups.isEmpty && ungroupedCards.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('这个集卡册还没有收录内容。'),
+              ),
+            )
+          else ...<Widget>[
+            for (
+              var index = 0;
+              index < series.setGroups.length;
+              index++
+            ) ...<Widget>[
+              _SetDirectory(group: series.setGroups[index]),
+              if (index < series.setGroups.length - 1)
+                SizedBox(height: context.tokens.spaceSm),
+            ],
+            if (ungroupedCards.isNotEmpty) ...<Widget>[
+              SizedBox(height: context.tokens.spaceSm),
+              _MemberSection(
+                title: '其他卡片 · ${ungroupedCards.length}',
+                items: ungroupedCards,
+                isCard: true,
+              ),
+            ],
+          ],
         ],
       ),
     );
@@ -150,6 +174,88 @@ class _SeriesDetailBody extends ConsumerWidget {
   }
 }
 
+class _SetDirectory extends StatelessWidget {
+  const _SetDirectory({required this.group});
+
+  final SeriesSetGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    final set = group.set;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        leading: SizedBox(
+          width: 64,
+          height: 44,
+          child: set.coverRelativePath == null
+              ? CardImage.placeholder(semanticLabel: '${set.name}套卡封面')
+              : CardImage.managed(
+                  relativePath: set.coverRelativePath!,
+                  semanticLabel: '${set.name}套卡封面',
+                ),
+        ),
+        title: Text(set.name),
+        subtitle: Text('${group.cards.length} 张已拥有卡片'),
+        childrenPadding: EdgeInsets.fromLTRB(
+          context.tokens.spaceMd,
+          0,
+          context.tokens.spaceMd,
+          context.tokens.spaceMd,
+        ),
+        children: <Widget>[
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => context.push(cardSetDetailPath(set.id)),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Text('查看套卡'),
+            ),
+          ),
+          if (group.cards.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('这个套卡暂无已拥有成员'),
+              ),
+            )
+          else
+            for (final card in group.cards) _NestedCardTile(card: card),
+        ],
+      ),
+    );
+  }
+}
+
+class _NestedCardTile extends StatelessWidget {
+  const _NestedCardTile({required this.card});
+
+  final SeriesMemberSummary card;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      onTap: card.cardItemId == null
+          ? null
+          : () => context.push(cardDetailPath(card.cardItemId!)),
+      leading: SizedBox(
+        width: 56,
+        height: 40,
+        child: card.coverRelativePath == null
+            ? CardImage.placeholder(semanticLabel: '${card.name}卡片封面')
+            : CardImage.managed(
+                relativePath: card.coverRelativePath!,
+                semanticLabel: '${card.name}卡片封面',
+              ),
+      ),
+      title: Text(card.name),
+      trailing: const Icon(Icons.chevron_right),
+    );
+  }
+}
+
 class _MemberSection extends StatelessWidget {
   const _MemberSection({
     required this.title,
@@ -171,7 +277,7 @@ class _MemberSection extends StatelessWidget {
         if (items.isEmpty)
           const Text('暂无成员')
         else
-          for (final item in items)
+          for (var index = 0; index < items.length; index++) ...<Widget>[
             Card(
               child: ListTile(
                 onTap: isCard
@@ -193,6 +299,9 @@ class _MemberSection extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right),
               ),
             ),
+            if (index < items.length - 1)
+              SizedBox(height: context.tokens.spaceSm),
+          ],
       ],
     );
   }

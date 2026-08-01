@@ -508,7 +508,9 @@ final class SaveCardOrganizationRequest {
         field: OrganizationField.value,
       ),
       needsCompletion: needsCompletion,
-      acquiredAt: acquiredAt?.toUtc(),
+      acquiredAt: acquiredAt == null
+          ? null
+          : DateTime.utc(acquiredAt!.year, acquiredAt!.month, acquiredAt!.day),
       tagIds: List<String>.unmodifiable(
         _normalizedIds(tagIds, field: OrganizationField.tag),
       ),
@@ -585,6 +587,14 @@ final class SeriesMemberSummary {
 }
 
 @immutable
+final class SeriesSetGroup {
+  const SeriesSetGroup({required this.set, required this.cards});
+
+  final SeriesMemberSummary set;
+  final List<SeriesMemberSummary> cards;
+}
+
+@immutable
 final class SeriesDetail {
   const SeriesDetail({
     required this.id,
@@ -593,6 +603,7 @@ final class SeriesDetail {
     required this.updatedAt,
     required this.cards,
     required this.sets,
+    required this.setGroups,
     this.description,
     this.coverRelativePath,
   });
@@ -605,6 +616,7 @@ final class SeriesDetail {
   final DateTime updatedAt;
   final List<SeriesMemberSummary> cards;
   final List<SeriesMemberSummary> sets;
+  final List<SeriesSetGroup> setGroups;
 }
 
 @immutable

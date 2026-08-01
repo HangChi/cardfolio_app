@@ -48,8 +48,15 @@ class _CardAutofillButtonState extends ConsumerState<CardAutofillButton> {
       _message('已填入你确认的识别资料，请核对后保存。');
     } on MissingPluginException {
       _message('当前平台暂不支持卡面文字识别。');
+    } on PlatformException catch (error) {
+      _message(switch (error.code) {
+        'invalid_path' => '图片已经不可用，请重新拍摄或选择后再识别。',
+        'invalid_image' => '无法读取这张图片，请换一张清晰的卡面照片。',
+        'recognition_failed' => '文字识别服务暂时不可用，请稍后重试。',
+        _ => '文字识别失败，请换一张图片重试。',
+      });
     } catch (_) {
-      _message('卡面文字识别失败，请稍后重试。');
+      _message('文字识别失败，请换一张图片重试。');
     } finally {
       if (mounted) setState(() => _working = false);
     }

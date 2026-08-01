@@ -202,6 +202,12 @@ class CreateCardController extends Notifier<CreateCardState> {
     );
   }
 
+  /// Starts a copy flow without carrying over capture/import draft state.
+  ///
+  /// Copying duplicates descriptive metadata only. Images and idempotency IDs
+  /// must belong to the new card and are therefore intentionally discarded.
+  void startCopyDraft() => state = const CreateCardState();
+
   void updateImageKind(String imageId, CardImageKind kind) {
     if (state.isSaving) return;
     state = state.copyWith(

@@ -282,6 +282,7 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
                 cardItemId: cardItemId,
                 amountMinor: amountMinor,
                 shippingMinor: shippingMinor,
+                purchasedAt: _sharedAcquiredAt,
               ),
             );
         if (!mounted) return;

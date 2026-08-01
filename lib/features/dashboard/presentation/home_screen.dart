@@ -135,11 +135,8 @@ class _HomeContent extends ConsumerWidget {
                       icon: Icons.calendar_month_outlined,
                       onTap: () {
                         final now = ref.read(clockProvider).nowUtc().toLocal();
-                        final fromUtc = DateTime(now.year, now.month).toUtc();
-                        final beforeUtc = DateTime(
-                          now.year,
-                          now.month + 1,
-                        ).toUtc();
+                        final fromUtc = DateTime.utc(now.year, now.month);
+                        final beforeUtc = DateTime.utc(now.year, now.month + 1);
                         ref
                             .read(cardLibraryQueryProvider.notifier)
                             .replace(

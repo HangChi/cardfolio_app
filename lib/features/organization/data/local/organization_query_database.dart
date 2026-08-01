@@ -130,6 +130,12 @@ ORDER BY s.updated_at DESC, s.id ASC
       )..where((entry) => entry.id.equals(seriesId))).getSingle();
       final cards = await _seriesCards(this, seriesId);
       final sets = await _seriesSets(this, seriesId);
+      final setGroups = <SeriesSetGroup>[];
+      for (final set in sets) {
+        setGroups.add(
+          SeriesSetGroup(set: set, cards: await _seriesSetCards(this, set.id)),
+        );
+      }
       return SeriesDetail(
         id: series.id,
         name: series.name,
@@ -139,6 +145,7 @@ ORDER BY s.updated_at DESC, s.id ASC
         updatedAt: series.updatedAt.toUtc(),
         cards: cards,
         sets: sets,
+        setGroups: List<SeriesSetGroup>.unmodifiable(setGroups),
       );
     });
   }
@@ -417,7 +424,11 @@ Future<List<SeriesMemberSummary>> _seriesSets(
 SELECT
   cs.id,
   cs.name,
-  COALESCE(cover.derived_relative_path, cover.relative_path) AS cover_path
+  COALESCE(
+    cs.cover_relative_path,
+    cover.derived_relative_path,
+    cover.relative_path
+  ) AS cover_path
 FROM series_sets ss
 JOIN card_sets cs ON cs.id = ss.set_id
 LEFT JOIN card_images cover
@@ -433,6 +444,61 @@ ORDER BY cs.name COLLATE NOCASE ASC, cs.id ASC
         (row) => SeriesMemberSummary(
           id: row.read<String>('id'),
           name: row.read<String>('name'),
+          coverRelativePath: row.readNullable<String>('cover_path'),
+        ),
+      )
+      .toList(growable: false);
+}
+
+Future<List<SeriesMemberSummary>> _seriesSetCards(
+  AppDatabase db,
+  String setId,
+) async {
+  final rows = await db
+      .customSelect(
+        '''
+SELECT
+  cd.id,
+  cd.name,
+  (
+    SELECT ci.id
+    FROM card_items ci
+    WHERE ci.definition_id = cd.id
+      AND ci.deleted_at IS NULL
+    ORDER BY ci.created_at ASC, ci.id ASC
+    LIMIT 1
+  ) AS card_item_id,
+  (
+    SELECT COALESCE(image.derived_relative_path, image.relative_path)
+    FROM card_items ci
+    JOIN card_images image ON image.card_item_id = ci.id
+    WHERE ci.definition_id = cd.id
+      AND ci.deleted_at IS NULL
+      AND image.deleted_at IS NULL
+    ORDER BY image.is_cover DESC, image.sort_order ASC, image.id ASC
+    LIMIT 1
+  ) AS cover_path
+FROM card_set_members csm
+JOIN card_definitions cd ON cd.id = csm.definition_id
+WHERE csm.set_id = ?
+  AND csm.deleted_at IS NULL
+  AND cd.deleted_at IS NULL
+  AND EXISTS (
+    SELECT 1 FROM card_items active_ci
+    WHERE active_ci.definition_id = cd.id
+      AND active_ci.deleted_at IS NULL
+  )
+ORDER BY csm.sort_order ASC, csm.id ASC
+''',
+        variables: <Variable<Object>>[Variable<String>(setId)],
+      )
+      .get();
+  return rows
+      .map(
+        (row) => SeriesMemberSummary(
+          id: row.read<String>('id'),
+          name: row.read<String>('name'),
+          cardItemId: row.readNullable<String>('card_item_id'),
           coverRelativePath: row.readNullable<String>('cover_path'),
         ),
       )

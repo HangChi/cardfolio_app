@@ -64,8 +64,8 @@ Future<HomeDashboard> _loadHomeDashboard(
   required CostDisplayOptions options,
 }) async {
   final localNow = nowUtc.toLocal();
-  final monthStartUtc = DateTime(localNow.year, localNow.month).toUtc();
-  final nextMonthStartUtc = DateTime(localNow.year, localNow.month + 1).toUtc();
+  final monthStartUtc = DateTime.utc(localNow.year, localNow.month);
+  final nextMonthStartUtc = DateTime.utc(localNow.year, localNow.month + 1);
   final counts = await db
       .customSelect(
         '''
@@ -392,7 +392,9 @@ Future<List<CostTrendPoint>> _loadCostTrend(
   final totals = <(int, int, String), int>{};
   final counts = <(int, int, String), int>{};
   for (final row in rows) {
-    final local = row.effectiveAt.toLocal();
+    final local = row.calendarDate
+        ? row.effectiveAt
+        : row.effectiveAt.toLocal();
     final currency = row.currency;
     final key = (local.year, local.month, currency);
     final amount = row.minorUnits;
@@ -425,7 +427,9 @@ Future<SpendingCalendarMonth> _loadSpendingCalendarMonth(
 }) async {
   final grouped = <DateTime, List<SpendingCalendarEntry>>{};
   for (final row in await _loadActiveSpendingRows(db, options)) {
-    final local = row.effectiveAt.toLocal();
+    final local = row.calendarDate
+        ? row.effectiveAt
+        : row.effectiveAt.toLocal();
     if (local.year != month.year || local.month != month.month) continue;
     final day = DateTime(local.year, local.month, local.day);
     grouped
@@ -491,6 +495,22 @@ SELECT
     )
     ELSE p.purchased_at
   END AS effective_at,
+  CASE
+    WHEN p.adjustment_of_id IS NULL
+      AND p.id LIKE 'card-entry-cost:%'
+      AND EXISTS (
+        SELECT 1
+        FROM purchase_items calendar_pi
+        JOIN card_items calendar_ci
+          ON calendar_pi.target_type = 'card'
+          AND calendar_ci.id = calendar_pi.target_id
+        WHERE calendar_pi.purchase_id = p.id
+          AND calendar_ci.acquired_at IS NOT NULL
+          AND calendar_ci.deleted_at IS NULL
+        LIMIT 1
+      )
+    THEN 1 ELSE 0
+  END AS calendar_date,
   COALESCE(
     (
       SELECT GROUP_CONCAT(label_pi.target_name, '、')
@@ -517,6 +537,7 @@ ORDER BY effective_at ASC, p.id ASC
         (row) => _ActiveSpendingRow(
           purchaseId: row.read<String>('purchase_id'),
           effectiveAt: _timestamp(row.read<int>('effective_at')),
+          calendarDate: row.read<int>('calendar_date') == 1,
           currency: row.read<String>('currency'),
           minorUnits: row.read<int>('ledger_minor'),
           label: row.read<String>('target_label'),
@@ -530,6 +551,7 @@ final class _ActiveSpendingRow {
   const _ActiveSpendingRow({
     required this.purchaseId,
     required this.effectiveAt,
+    required this.calendarDate,
     required this.currency,
     required this.minorUnits,
     required this.label,
@@ -538,6 +560,7 @@ final class _ActiveSpendingRow {
 
   final String purchaseId;
   final DateTime effectiveAt;
+  final bool calendarDate;
   final String currency;
   final int minorUnits;
   final String label;
