@@ -279,6 +279,24 @@ class CreateCardController extends Notifier<CreateCardState> {
       state = state.copyWith(ids: ids);
     }
 
+    final requiredErrors = <CardField, String>{};
+    if (state.name.trim().isEmpty) {
+      requiredErrors[CardField.name] = '请填写卡片名称。';
+    }
+    if (state.city.trim().isEmpty) {
+      requiredErrors[CardField.city] = '请选择或填写城市。';
+    }
+    if (requiredErrors.isNotEmpty) {
+      state = state.copyWith(
+        phase: CreateCardPhase.editing,
+        fieldErrors: <CardField, String>{
+          ...state.fieldErrors,
+          ...requiredErrors,
+        },
+      );
+      return null;
+    }
+
     // 部分日期需要在构造请求前解析，无法解析属于字段级错误。
     final issuedAtText = state.issuedAtText.trim();
     final issuedAt = issuedAtText.isEmpty

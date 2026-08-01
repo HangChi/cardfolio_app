@@ -5,6 +5,7 @@ import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
 import '../../../card_sets/data/card_set_providers.dart';
 import '../../../cards/data/card_providers.dart';
+import '../../../cards/presentation/widgets/card_image.dart';
 import '../../data/organization_providers.dart';
 import '../../domain/organization_models.dart';
 
@@ -22,6 +23,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
   final _descriptionController = TextEditingController();
   final _definitionIds = <String>{};
   final _setIds = <String>{};
+  String? _coverRelativePath;
   bool _initialized = false;
   bool _saving = false;
 
@@ -39,8 +41,8 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
     final detail = widget.seriesId == null
         ? const AsyncValue<SeriesDetail?>.data(null)
         : ref.watch(seriesDetailProvider(widget.seriesId!));
-
     detail.whenData(_initialize);
+    final tokens = context.tokens;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.seriesId == null ? '新建集卡册' : '编辑集卡册')),
@@ -53,108 +55,213 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
             )
           : ListView(
               padding: EdgeInsets.fromLTRB(
-                context.tokens.spaceLg,
-                context.tokens.spaceMd,
-                context.tokens.spaceLg,
-                context.tokens.spaceXl,
+                tokens.spaceLg,
+                tokens.spaceMd,
+                tokens.spaceLg,
+                tokens.spaceXl,
               ),
               children: <Widget>[
                 TextField(
                   key: const Key('series-name-input'),
                   controller: _nameController,
                   maxLength: 100,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
-                    labelText: '集卡册名称',
+                    labelText: '集卡册名称 *',
                     hintText: '例如：城市交通、世界博览会',
                   ),
                 ),
-                SizedBox(height: context.tokens.spaceSm),
+                SizedBox(height: tokens.spaceMd),
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      SizedBox(
+                        height: 176,
+                        child: _coverRelativePath == null
+                            ? CardImage.placeholder(semanticLabel: '集卡册封面')
+                            : CardImage.managed(
+                                relativePath: _coverRelativePath!,
+                                semanticLabel: '集卡册封面',
+                              ),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.photo_library_outlined),
+                        title: Text(
+                          _coverRelativePath == null ? '选择集卡册封面' : '已设置集卡册封面',
+                        ),
+                        subtitle: const Text('在下方已选卡片或套卡中点击封面按钮'),
+                        trailing: _coverRelativePath == null
+                            ? null
+                            : IconButton(
+                                tooltip: '清除封面',
+                                onPressed: _saving
+                                    ? null
+                                    : () => setState(
+                                        () => _coverRelativePath = null,
+                                      ),
+                                icon: const Icon(Icons.close),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: tokens.spaceMd),
                 TextField(
                   key: const Key('series-description-input'),
                   controller: _descriptionController,
                   maxLength: SaveSeriesRequest.maxDescriptionLength,
                   minLines: 2,
                   maxLines: 4,
-                  decoration: const InputDecoration(labelText: '说明（可选）'),
+                  decoration: const InputDecoration(
+                    labelText: '说明',
+                    hintText: '记录主题、收录范围或整理说明',
+                  ),
                 ),
-                SizedBox(height: context.tokens.spaceLg),
+                SizedBox(height: tokens.spaceLg),
                 const _SectionTitle(
                   title: '卡片',
-                  description: '同一定义下的多张实体卡只需选择一次。',
+                  description: '选择要收录的卡片，并可将其中一张设为封面。',
                 ),
+                SizedBox(height: tokens.spaceSm),
                 cards.when(
                   loading: () =>
                       const LinearProgressIndicator(semanticsLabel: '加载卡片'),
                   error: (error, stackTrace) => const Text('卡片暂时无法加载，请稍后重试。'),
                   data: (items) => items.isEmpty
                       ? const _EmptySelection(label: '还没有可选择的卡片')
-                      : Column(
-                          children: <Widget>[
-                            for (final card in items)
-                              CheckboxListTile(
-                                key: Key('series-card-${card.definitionId}'),
-                                value: _definitionIds.contains(
-                                  card.definitionId,
+                      : Card(
+                          child: Column(
+                            children: <Widget>[
+                              for (
+                                var index = 0;
+                                index < items.length;
+                                index++
+                              ) ...<Widget>[
+                                if (index > 0) const Divider(height: 1),
+                                _SelectableMemberTile(
+                                  key: Key(
+                                    'series-card-${items[index].definitionId}',
+                                  ),
+                                  name: items[index].name,
+                                  subtitle: '持有 ${items[index].quantity} 张',
+                                  coverRelativePath:
+                                      items[index].coverRelativePath,
+                                  selected: _definitionIds.contains(
+                                    items[index].definitionId,
+                                  ),
+                                  isCover:
+                                      _coverRelativePath != null &&
+                                      _coverRelativePath ==
+                                          items[index].coverRelativePath,
+                                  enabled: !_saving,
+                                  onChanged: (selected) => _changeSelection(
+                                    ids: _definitionIds,
+                                    id: items[index].definitionId,
+                                    coverPath: items[index].coverRelativePath,
+                                    selected: selected,
+                                  ),
+                                  onSetCover:
+                                      items[index].coverRelativePath == null
+                                      ? null
+                                      : () => setState(
+                                          () => _coverRelativePath =
+                                              items[index].coverRelativePath,
+                                        ),
                                 ),
-                                title: Text(card.name),
-                                subtitle: card.quantity > 1
-                                    ? Text('持有 ${card.quantity} 张')
-                                    : null,
-                                onChanged: (selected) => setState(() {
-                                  if (selected == true) {
-                                    _definitionIds.add(card.definitionId);
-                                  } else {
-                                    _definitionIds.remove(card.definitionId);
-                                  }
-                                }),
-                              ),
-                          ],
+                              ],
+                            ],
+                          ),
                         ),
                 ),
-                SizedBox(height: context.tokens.spaceLg),
+                SizedBox(height: tokens.spaceLg),
                 const _SectionTitle(
                   title: '套卡',
-                  description: '集卡册可收纳卡片和套卡，不改变套卡的完成度。',
+                  description: '收纳套卡不会改变套卡原有的完成度。',
                 ),
+                SizedBox(height: tokens.spaceSm),
                 sets.when(
                   loading: () =>
                       const LinearProgressIndicator(semanticsLabel: '加载套卡'),
                   error: (error, stackTrace) => const Text('套卡暂时无法加载，请稍后重试。'),
                   data: (items) => items.isEmpty
                       ? const _EmptySelection(label: '还没有可选择的套卡')
-                      : Column(
-                          children: <Widget>[
-                            for (final set in items)
-                              CheckboxListTile(
-                                key: Key('series-set-${set.id}'),
-                                value: _setIds.contains(set.id),
-                                title: Text(set.name),
-                                onChanged: (selected) => setState(() {
-                                  if (selected == true) {
-                                    _setIds.add(set.id);
-                                  } else {
-                                    _setIds.remove(set.id);
-                                  }
-                                }),
-                              ),
-                          ],
+                      : Card(
+                          child: Column(
+                            children: <Widget>[
+                              for (
+                                var index = 0;
+                                index < items.length;
+                                index++
+                              ) ...<Widget>[
+                                if (index > 0) const Divider(height: 1),
+                                _SelectableMemberTile(
+                                  key: Key('series-set-${items[index].id}'),
+                                  name: items[index].name,
+                                  subtitle: items[index].countKnown
+                                      ? '${items[index].progress.ownedRequiredCount} / '
+                                            '${items[index].progress.requiredMemberCount}'
+                                      : '总数未知',
+                                  coverRelativePath:
+                                      items[index].coverRelativePath,
+                                  selected: _setIds.contains(items[index].id),
+                                  isCover:
+                                      _coverRelativePath != null &&
+                                      _coverRelativePath ==
+                                          items[index].coverRelativePath,
+                                  enabled: !_saving,
+                                  onChanged: (selected) => _changeSelection(
+                                    ids: _setIds,
+                                    id: items[index].id,
+                                    coverPath: items[index].coverRelativePath,
+                                    selected: selected,
+                                  ),
+                                  onSetCover:
+                                      items[index].coverRelativePath == null
+                                      ? null
+                                      : () => setState(
+                                          () => _coverRelativePath =
+                                              items[index].coverRelativePath,
+                                        ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                 ),
-                SizedBox(height: context.tokens.spaceXl),
-                FilledButton.icon(
+                SizedBox(height: tokens.spaceXl),
+                FilledButton(
                   key: const Key('save-series'),
                   onPressed: _saving ? null : _save,
-                  icon: _saving
+                  child: _saving
                       ? const SizedBox.square(
-                          dimension: 18,
+                          dimension: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.save_outlined),
-                  label: Text(_saving ? '正在保存' : '保存集卡册'),
+                      : Text(widget.seriesId == null ? '创建集卡册' : '保存修改'),
                 ),
               ],
             ),
     );
+  }
+
+  void _changeSelection({
+    required Set<String> ids,
+    required String id,
+    required String? coverPath,
+    required bool selected,
+  }) {
+    setState(() {
+      if (selected) {
+        ids.add(id);
+      } else {
+        ids.remove(id);
+        if (coverPath != null && coverPath == _coverRelativePath) {
+          _coverRelativePath = null;
+        }
+      }
+    });
   }
 
   void _initialize(SeriesDetail? detail) {
@@ -163,6 +270,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
     if (detail == null) return;
     _nameController.text = detail.name;
     _descriptionController.text = detail.description ?? '';
+    _coverRelativePath = detail.coverRelativePath;
     _definitionIds.addAll(detail.cards.map((card) => card.id));
     _setIds.addAll(detail.sets.map((set) => set.id));
   }
@@ -178,6 +286,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
               id: id,
               name: _nameController.text,
               description: _descriptionController.text,
+              coverRelativePath: _coverRelativePath,
               definitionIds: _definitionIds.toList(growable: false),
               setIds: _setIds.toList(growable: false),
             ),
@@ -194,6 +303,73 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+}
+
+class _SelectableMemberTile extends StatelessWidget {
+  const _SelectableMemberTile({
+    required this.name,
+    required this.subtitle,
+    required this.coverRelativePath,
+    required this.selected,
+    required this.isCover,
+    required this.enabled,
+    required this.onChanged,
+    required this.onSetCover,
+    super.key,
+  });
+
+  final String name;
+  final String subtitle;
+  final String? coverRelativePath;
+  final bool selected;
+  final bool isCover;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+  final VoidCallback? onSetCover;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(context.tokens.spaceSm),
+      child: Row(
+        children: <Widget>[
+          SizedBox(
+            width: 72,
+            height: 52,
+            child: coverRelativePath == null
+                ? CardImage.placeholder(semanticLabel: '$name封面')
+                : CardImage.managed(
+                    relativePath: coverRelativePath!,
+                    semanticLabel: '$name封面',
+                  ),
+          ),
+          SizedBox(width: context.tokens.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(name, maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          if (selected && onSetCover != null)
+            IconButton(
+              tooltip: isCover ? '当前封面' : '设为封面',
+              onPressed: enabled ? onSetCover : null,
+              icon: Icon(
+                isCover ? Icons.star : Icons.star_border,
+                color: isCover ? Theme.of(context).colorScheme.primary : null,
+              ),
+            ),
+          Checkbox(
+            value: selected,
+            onChanged: enabled ? (value) => onChanged(value ?? false) : null,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -228,9 +404,11 @@ class _EmptySelection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: context.tokens.spaceMd),
-      child: Text(label),
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(context.tokens.spaceMd),
+        child: Text(label),
+      ),
     );
   }
 }

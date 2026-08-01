@@ -26,7 +26,7 @@ import '../widgets/card_location_field.dart';
 import '../widgets/optional_date_field.dart';
 import '../widgets/reserved_card_metadata_fields.dart';
 
-/// 新建卡片表单。资料和图片都可留空，之后可在详情页继续补充。
+/// 新建卡片表单。名称和城市必填，其余资料可在保存后继续补充。
 class CreateCardScreen extends ConsumerStatefulWidget {
   const CreateCardScreen({this.copyFromCardItemId, super.key});
 
@@ -390,7 +390,7 @@ class _CreateCardForm extends ConsumerWidget {
           SizedBox(height: tokens.spaceMd),
           _CardTextField(
             key: const Key('card-name-field'),
-            label: '名称（可选）',
+            label: '名称 *',
             initialValue: state.name,
             errorText: state.fieldErrors[CardField.name],
             onChanged: controller.updateName,
@@ -398,6 +398,7 @@ class _CreateCardForm extends ConsumerWidget {
           ),
           SizedBox(height: tokens.spaceMd),
           CardLocationField(
+            label: '城市 *',
             value: state.city,
             errorText: state.fieldErrors[CardField.city],
             enabled: !state.isSaving,
@@ -413,7 +414,7 @@ class _CreateCardForm extends ConsumerWidget {
           ),
           SizedBox(height: tokens.spaceMd),
           OptionalDateField(
-            label: '发行日期（可选）',
+            label: '发行日期',
             value: _dateFromPartialText(state.issuedAtText),
             errorText: state.fieldErrors[CardField.issuedAt],
             enabled: !state.isSaving,
@@ -455,11 +456,11 @@ class _CreateCardForm extends ConsumerWidget {
           TextField(
             controller: cardTypeController,
             enabled: !state.isSaving,
-            decoration: const InputDecoration(labelText: '卡片类型（可选）'),
+            decoration: const InputDecoration(labelText: '卡片类型'),
           ),
           SizedBox(height: tokens.spaceMd),
           OptionalDateField(
-            label: '入手日期（可选）',
+            label: '入手日期',
             value: acquiredAt,
             enabled: !state.isSaving,
             onChanged: onAcquiredAtChanged,
@@ -573,7 +574,7 @@ class _DraftImagesEditor extends ConsumerWidget {
           children: <Widget>[
             Expanded(
               child: Text(
-                '正反面与其他图片（${state.images.length} 张，可选）',
+                '正反面与其他图片（${state.images.length} 张）',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),

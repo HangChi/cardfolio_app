@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
+import '../../../cards/presentation/widgets/card_image.dart';
 import '../../data/organization_providers.dart';
 import '../../domain/organization_models.dart';
 
@@ -58,7 +59,16 @@ class _SeriesTile extends StatelessWidget {
     return Card(
       child: ListTile(
         onTap: () => context.push(seriesDetailPath(series.id)),
-        leading: const CircleAvatar(child: Icon(Icons.collections_bookmark)),
+        leading: SizedBox(
+          width: 64,
+          height: 44,
+          child: series.coverRelativePath == null
+              ? CardImage.placeholder(semanticLabel: '${series.name}集卡册封面')
+              : CardImage.managed(
+                  relativePath: series.coverRelativePath!,
+                  semanticLabel: '${series.name}集卡册封面',
+                ),
+        ),
         title: Text(series.name),
         subtitle: Text('${series.cardCount} 款卡片 · ${series.setCount} 套卡'),
         trailing: const Icon(Icons.chevron_right),

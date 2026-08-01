@@ -4017,6 +4017,18 @@ class $SeriesRecordsTable extends SeriesRecords
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _coverRelativePathMeta = const VerificationMeta(
+    'coverRelativePath',
+  );
+  @override
+  late final GeneratedColumn<String> coverRelativePath =
+      GeneratedColumn<String>(
+        'cover_relative_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _versionMeta = const VerificationMeta(
     'version',
   );
@@ -4068,6 +4080,7 @@ class $SeriesRecordsTable extends SeriesRecords
     id,
     name,
     description,
+    coverRelativePath,
     version,
     createdAt,
     updatedAt,
@@ -4104,6 +4117,15 @@ class $SeriesRecordsTable extends SeriesRecords
         description.isAcceptableOrUnknown(
           data['description']!,
           _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cover_relative_path')) {
+      context.handle(
+        _coverRelativePathMeta,
+        coverRelativePath.isAcceptableOrUnknown(
+          data['cover_relative_path']!,
+          _coverRelativePathMeta,
         ),
       );
     }
@@ -4156,6 +4178,10 @@ class $SeriesRecordsTable extends SeriesRecords
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      coverRelativePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_relative_path'],
+      ),
       version: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}version'],
@@ -4185,6 +4211,7 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
   final String id;
   final String name;
   final String? description;
+  final String? coverRelativePath;
   final int version;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -4193,6 +4220,7 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
     required this.id,
     required this.name,
     this.description,
+    this.coverRelativePath,
     required this.version,
     required this.createdAt,
     required this.updatedAt,
@@ -4205,6 +4233,9 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || coverRelativePath != null) {
+      map['cover_relative_path'] = Variable<String>(coverRelativePath);
     }
     map['version'] = Variable<int>(version);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -4222,6 +4253,9 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      coverRelativePath: coverRelativePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverRelativePath),
       version: Value(version),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -4240,6 +4274,9 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       description: serializer.fromJson<String?>(json['description']),
+      coverRelativePath: serializer.fromJson<String?>(
+        json['coverRelativePath'],
+      ),
       version: serializer.fromJson<int>(json['version']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -4253,6 +4290,7 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'description': serializer.toJson<String?>(description),
+      'coverRelativePath': serializer.toJson<String?>(coverRelativePath),
       'version': serializer.toJson<int>(version),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -4264,6 +4302,7 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
     String? id,
     String? name,
     Value<String?> description = const Value.absent(),
+    Value<String?> coverRelativePath = const Value.absent(),
     int? version,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -4272,6 +4311,9 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
     id: id ?? this.id,
     name: name ?? this.name,
     description: description.present ? description.value : this.description,
+    coverRelativePath: coverRelativePath.present
+        ? coverRelativePath.value
+        : this.coverRelativePath,
     version: version ?? this.version,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -4284,6 +4326,9 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      coverRelativePath: data.coverRelativePath.present
+          ? data.coverRelativePath.value
+          : this.coverRelativePath,
       version: data.version.present ? data.version.value : this.version,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -4297,6 +4342,7 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('description: $description, ')
+          ..write('coverRelativePath: $coverRelativePath, ')
           ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -4310,6 +4356,7 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
     id,
     name,
     description,
+    coverRelativePath,
     version,
     createdAt,
     updatedAt,
@@ -4322,6 +4369,7 @@ class SeriesRecord extends DataClass implements Insertable<SeriesRecord> {
           other.id == this.id &&
           other.name == this.name &&
           other.description == this.description &&
+          other.coverRelativePath == this.coverRelativePath &&
           other.version == this.version &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -4332,6 +4380,7 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
   final Value<String> id;
   final Value<String> name;
   final Value<String?> description;
+  final Value<String?> coverRelativePath;
   final Value<int> version;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -4341,6 +4390,7 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.description = const Value.absent(),
+    this.coverRelativePath = const Value.absent(),
     this.version = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4351,6 +4401,7 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
     required String id,
     required String name,
     this.description = const Value.absent(),
+    this.coverRelativePath = const Value.absent(),
     this.version = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -4364,6 +4415,7 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? description,
+    Expression<String>? coverRelativePath,
     Expression<int>? version,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -4374,6 +4426,7 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (description != null) 'description': description,
+      if (coverRelativePath != null) 'cover_relative_path': coverRelativePath,
       if (version != null) 'version': version,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4386,6 +4439,7 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
     Value<String>? id,
     Value<String>? name,
     Value<String?>? description,
+    Value<String?>? coverRelativePath,
     Value<int>? version,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -4396,6 +4450,7 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
+      coverRelativePath: coverRelativePath ?? this.coverRelativePath,
       version: version ?? this.version,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4415,6 +4470,9 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
+    }
+    if (coverRelativePath.present) {
+      map['cover_relative_path'] = Variable<String>(coverRelativePath.value);
     }
     if (version.present) {
       map['version'] = Variable<int>(version.value);
@@ -4440,6 +4498,7 @@ class SeriesRecordsCompanion extends UpdateCompanion<SeriesRecord> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('description: $description, ')
+          ..write('coverRelativePath: $coverRelativePath, ')
           ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -14621,6 +14680,7 @@ typedef $$SeriesRecordsTableCreateCompanionBuilder =
       required String id,
       required String name,
       Value<String?> description,
+      Value<String?> coverRelativePath,
       Value<int> version,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -14632,6 +14692,7 @@ typedef $$SeriesRecordsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<String?> description,
+      Value<String?> coverRelativePath,
       Value<int> version,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -14705,6 +14766,11 @@ class $$SeriesRecordsTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverRelativePath => $composableBuilder(
+    column: $table.coverRelativePath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14803,6 +14869,11 @@ class $$SeriesRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get coverRelativePath => $composableBuilder(
+    column: $table.coverRelativePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get version => $composableBuilder(
     column: $table.version,
     builder: (column) => ColumnOrderings(column),
@@ -14841,6 +14912,11 @@ class $$SeriesRecordsTableAnnotationComposer
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverRelativePath => $composableBuilder(
+    column: $table.coverRelativePath,
     builder: (column) => column,
   );
 
@@ -14938,6 +15014,7 @@ class $$SeriesRecordsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String?> coverRelativePath = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -14947,6 +15024,7 @@ class $$SeriesRecordsTableTableManager
                 id: id,
                 name: name,
                 description: description,
+                coverRelativePath: coverRelativePath,
                 version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -14958,6 +15036,7 @@ class $$SeriesRecordsTableTableManager
                 required String id,
                 required String name,
                 Value<String?> description = const Value.absent(),
+                Value<String?> coverRelativePath = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -14967,6 +15046,7 @@ class $$SeriesRecordsTableTableManager
                 id: id,
                 name: name,
                 description: description,
+                coverRelativePath: coverRelativePath,
                 version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

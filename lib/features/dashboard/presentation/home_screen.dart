@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_router.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../purchases/domain/purchase_models.dart';
+import '../../cards/presentation/widgets/card_image.dart';
 import '../data/dashboard_providers.dart';
 import '../domain/dashboard_models.dart';
 
@@ -16,9 +17,10 @@ class HomeScreen extends ConsumerWidget {
     final dashboard = ref.watch(homeDashboardProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('首页')),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.small(
         key: const Key('home-create-card'),
         tooltip: '录入卡片',
+        shape: const CircleBorder(),
         onPressed: () => context.push(createCardPath),
         child: const Icon(Icons.add),
       ),
@@ -45,11 +47,11 @@ class _HomeContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: <Widget>[
-        Text('收藏概览', style: Theme.of(context).textTheme.titleLarge),
+        Text('我的收藏', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
-            final columns = constraints.maxWidth >= 640 ? 3 : 2;
+            final columns = constraints.maxWidth >= 640 ? 4 : 2;
             return GridView.count(
               crossAxisCount: columns,
               shrinkWrap: true,
@@ -58,11 +60,30 @@ class _HomeContent extends StatelessWidget {
               mainAxisSpacing: 8,
               crossAxisSpacing: 8,
               children: <Widget>[
-                _MetricCard(label: '实体卡', value: '${data.entityCount}'),
-                _MetricCard(label: '款式', value: '${data.definitionCount}'),
-                _MetricCard(label: '套卡', value: '${data.setCount}'),
-                _MetricCard(label: '已集齐', value: '${data.completedSetCount}'),
-                _MetricCard(label: '本月新增', value: '${data.monthAddedCount}'),
+                _MetricCard(
+                  label: '卡片',
+                  value: '${data.entityCount}',
+                  icon: Icons.credit_card_outlined,
+                  onTap: () => context.go(libraryTabPath('cards')),
+                ),
+                _MetricCard(
+                  label: '套卡',
+                  value: '${data.setCount}',
+                  icon: Icons.view_carousel_outlined,
+                  onTap: () => context.go(libraryTabPath('sets')),
+                ),
+                _MetricCard(
+                  label: '集卡册',
+                  value: '${data.seriesCount}',
+                  icon: Icons.collections_bookmark_outlined,
+                  onTap: () => context.go(libraryTabPath('series')),
+                ),
+                _MetricCard(
+                  label: '本月新增',
+                  value: '${data.monthAddedCount}',
+                  icon: Icons.calendar_month_outlined,
+                  onTap: () => context.go(libraryTabPath('cards')),
+                ),
               ],
             );
           },
@@ -96,7 +117,16 @@ class _HomeContent extends StatelessWidget {
           for (final card in data.recentCards)
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const CircleAvatar(child: Icon(Icons.credit_card)),
+              leading: SizedBox(
+                width: 64,
+                height: 44,
+                child: card.coverRelativePath == null
+                    ? CardImage.placeholder(semanticLabel: '${card.name}封面')
+                    : CardImage.managed(
+                        relativePath: card.coverRelativePath!,
+                        semanticLabel: '${card.name}封面',
+                      ),
+              ),
               title: Text(card.name),
               subtitle: Text('数量 ${card.quantity}'),
               trailing: const Icon(Icons.chevron_right),
@@ -140,23 +170,46 @@ class _HomeContent extends StatelessWidget {
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.label, required this.value});
+  const _MetricCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.onTap,
+  });
 
   final String label;
   final String value;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(value, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 4),
-            Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: <Widget>[
+              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      value,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 18),
+            ],
+          ),
         ),
       ),
     );

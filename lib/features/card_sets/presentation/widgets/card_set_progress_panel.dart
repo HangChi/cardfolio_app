@@ -72,7 +72,7 @@ class CardSetProgressPanel extends StatelessWidget {
                     ),
                     _StatusPill(
                       icon: Icons.content_copy_outlined,
-                      label: '重复成员 ${progress.duplicateMemberCount}',
+                      label: '重复卡片 ${progress.duplicateMemberCount} 张',
                     ),
                   ],
                 ),

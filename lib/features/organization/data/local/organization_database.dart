@@ -201,6 +201,7 @@ extension OrganizationDatabase on AppDatabase {
             id: request.id,
             name: request.name,
             description: Value(request.description),
+            coverRelativePath: Value(request.coverRelativePath),
             createdAt: now,
             updatedAt: now,
           ),
@@ -213,6 +214,7 @@ extension OrganizationDatabase on AppDatabase {
           SeriesRecordsCompanion(
             name: Value(request.name),
             description: Value(request.description),
+            coverRelativePath: Value(request.coverRelativePath),
             updatedAt: Value(now),
             version: Value(existing.version + 1),
           ),

@@ -33,6 +33,7 @@ Stream<List<QueryRow>> _dashboardSignal(AppDatabase db) {
           db.cardImages,
           db.cardSets,
           db.cardSetMembers,
+          db.seriesRecords,
           db.tags,
           db.cardTags,
           db.purchases,
@@ -72,8 +73,15 @@ WHERE ci.deleted_at IS NULL
       .getSingle();
   final cards = await _loadDashboardCards(db);
   final sets = await _loadDashboardSets(db);
+  final seriesCount = await db
+      .customSelect(
+        'SELECT COUNT(*) AS series_count FROM series_records '
+        'WHERE deleted_at IS NULL',
+      )
+      .getSingle()
+      .then((row) => row.read<int>('series_count'));
   final costTotals = await _loadCostTotals(db, options);
-  final recentCards = cards.take(5).toList(growable: false);
+  final recentCards = cards.take(10).toList(growable: false);
   final pendingCards = cards
       .where((card) => card.needsCompletion)
       .take(5)
@@ -95,6 +103,7 @@ WHERE ci.deleted_at IS NULL
     entityCount: counts.read<int>('entity_count'),
     definitionCount: counts.read<int>('definition_count'),
     setCount: sets.length,
+    seriesCount: seriesCount,
     completedSetCount: sets
         .where((set) => set.status == DashboardSetStatus.complete)
         .length,
@@ -113,7 +122,6 @@ Future<StatisticsSnapshot> _loadStatistics(
   final distributions = <StatisticDimension, List<StatisticBucket>>{};
   for (final (dimension, expression) in <(StatisticDimension, String)>[
     (StatisticDimension.issuedYear, "SUBSTR(cd.issued_at, 1, 4)"),
-    (StatisticDimension.city, 'cd.city'),
     (StatisticDimension.issuer, 'cd.issuer'),
     (StatisticDimension.cardType, 'cd.card_type'),
   ]) {
@@ -139,6 +147,41 @@ ORDER BY bucket_count DESC, bucket_key COLLATE NOCASE ASC
       ),
     );
   }
+
+  final cityRows = await db.customSelect('''
+SELECT cd.city AS city, SUM(ci.quantity) AS bucket_count
+FROM card_items ci
+JOIN card_definitions cd ON cd.id = ci.definition_id
+WHERE ci.deleted_at IS NULL
+  AND cd.deleted_at IS NULL
+  AND cd.city IS NOT NULL
+  AND TRIM(cd.city) != ''
+GROUP BY cd.city
+''').get();
+  final cityCounts = <String, int>{};
+  for (final row in cityRows) {
+    final city = _cityLevel(row.read<String>('city'));
+    cityCounts.update(
+      city,
+      (count) => count + row.read<int>('bucket_count'),
+      ifAbsent: () => row.read<int>('bucket_count'),
+    );
+  }
+  final cityEntries = cityCounts.entries.toList()
+    ..sort((left, right) {
+      final count = right.value.compareTo(left.value);
+      return count != 0 ? count : left.key.compareTo(right.key);
+    });
+  distributions[StatisticDimension.city] = List<StatisticBucket>.unmodifiable(
+    cityEntries.map(
+      (entry) => StatisticBucket.card(
+        dimension: StatisticDimension.city,
+        key: entry.key,
+        label: entry.key,
+        count: entry.value,
+      ),
+    ),
+  );
 
   final tagRows = await db.customSelect('''
 SELECT t.id AS bucket_key, t.name AS bucket_label,
@@ -229,6 +272,7 @@ SELECT
   cs.id AS set_id,
   cs.name AS set_name,
   cs.count_known AS count_known,
+  cs.expected_count AS expected_count,
   cs.updated_at AS updated_at,
   COUNT(CASE WHEN csm.required = 1 THEN 1 END) AS required_count,
   COALESCE(SUM(
@@ -260,7 +304,9 @@ ORDER BY cs.updated_at DESC, cs.id ASC
   return rows
       .map((row) {
         final countKnown = row.read<int>('count_known') == 1;
-        final requiredCount = row.read<int>('required_count');
+        final requiredCount = countKnown
+            ? row.readNullable<int>('expected_count') ?? 0
+            : row.read<int>('required_count');
         final ownedCount = row.read<int>('owned_required_count');
         final status = !countKnown
             ? DashboardSetStatus.unknown
@@ -350,3 +396,12 @@ ORDER BY purchased_at ASC, currency ASC, id ASC
 
 DateTime _timestamp(int seconds) =>
     DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+
+String _cityLevel(String value) {
+  final parts = value
+      .split(' / ')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList(growable: false);
+  return parts.length <= 2 ? parts.join(' / ') : parts.take(2).join(' / ');
+}

@@ -29,7 +29,7 @@ class ReservedCardMetadataFields extends StatelessWidget {
           enabled: enabled,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(labelText: '藏品实例备注（可选）'),
+          decoration: const InputDecoration(labelText: '藏品实例备注'),
         ),
         const SizedBox(height: 12),
         Row(
@@ -39,7 +39,7 @@ class ReservedCardMetadataFields extends StatelessWidget {
                 controller: issueQuantityController,
                 enabled: enabled,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '发行数量（可选）'),
+                decoration: const InputDecoration(labelText: '发行数量'),
               ),
             ),
             const SizedBox(width: 12),
@@ -50,7 +50,7 @@ class ReservedCardMetadataFields extends StatelessWidget {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(labelText: '发售价/元（可选）'),
+                decoration: const InputDecoration(labelText: '发售价/元'),
               ),
             ),
           ],

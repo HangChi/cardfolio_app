@@ -226,6 +226,7 @@ final class SaveSeriesRequest {
     required this.id,
     required this.name,
     this.description,
+    this.coverRelativePath,
     this.definitionIds = const <String>[],
     this.setIds = const <String>[],
     this.isNormalized = false,
@@ -236,6 +237,7 @@ final class SaveSeriesRequest {
   final String id;
   final String name;
   final String? description;
+  final String? coverRelativePath;
   final List<String> definitionIds;
   final List<String> setIds;
   final bool isNormalized;
@@ -248,6 +250,11 @@ final class SaveSeriesRequest {
       description: _optional(
         description,
         maxLength: maxDescriptionLength,
+        field: OrganizationField.series,
+      ),
+      coverRelativePath: _optional(
+        coverRelativePath,
+        maxLength: 1000,
         field: OrganizationField.series,
       ),
       definitionIds: List<String>.unmodifiable(
@@ -512,11 +519,13 @@ final class SeriesSummary {
     required this.createdAt,
     required this.updatedAt,
     this.description,
+    this.coverRelativePath,
   });
 
   final String id;
   final String name;
   final String? description;
+  final String? coverRelativePath;
   final int cardCount;
   final int setCount;
   final DateTime createdAt;
@@ -546,11 +555,13 @@ final class SeriesDetail {
     required this.cards,
     required this.sets,
     this.description,
+    this.coverRelativePath,
   });
 
   final String id;
   final String name;
   final String? description;
+  final String? coverRelativePath;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<SeriesMemberSummary> cards;

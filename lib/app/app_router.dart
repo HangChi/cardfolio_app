@@ -43,6 +43,8 @@ const String onboardingPath = '/onboarding';
 const String appSettingsPath = '/app-settings';
 const String csvExportPath = '/csv-export';
 
+String libraryTabPath(String tab) => '$libraryPath?tab=$tab';
+
 @immutable
 final class ImageEditorRouteArgs {
   const ImageEditorRouteArgs({
@@ -80,7 +82,20 @@ GoRouter createAppRouter({String initialLocation = homePath}) {
             AppShell(navigationShell: navigationShell),
         branches: <StatefulShellBranch>[
           _branch(homePath, const HomeScreen()),
-          _branch(libraryPath, const CardLibraryScreen()),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: libraryPath,
+                builder: (context, state) => CardLibraryScreen(
+                  initialTabIndex: switch (state.uri.queryParameters['tab']) {
+                    'sets' => 1,
+                    'series' => 2,
+                    _ => 0,
+                  },
+                ),
+              ),
+            ],
+          ),
           _branch(capturePath, const CaptureEntryScreen()),
           _branch(statsPath, const StatisticsScreen()),
           _branch(profilePath, const ProfileScreen()),

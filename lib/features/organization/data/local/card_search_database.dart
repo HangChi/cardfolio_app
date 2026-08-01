@@ -42,8 +42,11 @@ extension CardSearchDatabase on AppDatabase {
     }
     final city = normalized.city;
     if (city != null) {
-      where.add('LOWER(cd.city) = LOWER(?)');
+      where.add(
+        "(LOWER(cd.city) = LOWER(?) OR LOWER(cd.city) LIKE LOWER(?) ESCAPE '\\')",
+      );
       variables.add(Variable<String>(city));
+      variables.add(Variable<String>('${_escapeLike(city)} / %'));
     }
     final issuer = normalized.issuer;
     if (issuer != null) {

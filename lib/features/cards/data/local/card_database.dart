@@ -239,6 +239,8 @@ class SeriesRecords extends Table {
 
   TextColumn get description => text().nullable()();
 
+  TextColumn get coverRelativePath => text().nullable()();
+
   IntColumn get version => integer()
       .withDefault(const Constant(1))
       // ignore: recursive_getters, Drift 的 check() 按设计引用列自身。
@@ -690,7 +692,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -755,6 +757,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.syncOutbox);
         await m.createTable(schema.syncConflicts);
         await _createSyncIndexes();
+      },
+      from7To8: (m, schema) async {
+        await m.addColumn(
+          schema.seriesRecords,
+          schema.seriesRecords.coverRelativePath,
+        );
       },
     ),
     beforeOpen: (details) async {

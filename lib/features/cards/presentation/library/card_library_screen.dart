@@ -19,7 +19,9 @@ import '../widgets/card_image.dart';
 
 /// 卡片、套卡与集卡册的统一收藏入口。
 class CardLibraryScreen extends ConsumerStatefulWidget {
-  const CardLibraryScreen({super.key});
+  const CardLibraryScreen({this.initialTabIndex = 0, super.key});
+
+  final int initialTabIndex;
 
   @override
   ConsumerState<CardLibraryScreen> createState() => _CardLibraryScreenState();
@@ -184,7 +186,9 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
 
     return SafeArea(
       child: DefaultTabController(
+        key: ValueKey<int>(widget.initialTabIndex),
         length: 3,
+        initialIndex: widget.initialTabIndex,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -749,9 +753,18 @@ class _CardList extends StatelessWidget {
         tokens.spaceLg,
         tokens.spaceLg,
       ),
-      itemCount: items.length,
+      itemCount: items.length + 1,
       separatorBuilder: (context, index) => SizedBox(height: tokens.spaceMd),
-      itemBuilder: (context, index) => _CardTile(card: items[index]),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return OutlinedButton.icon(
+            onPressed: () => context.push(createCardPath),
+            icon: const Icon(Icons.add),
+            label: const Text('新建卡片'),
+          );
+        }
+        return _CardTile(card: items[index - 1]);
+      },
     );
   }
 }

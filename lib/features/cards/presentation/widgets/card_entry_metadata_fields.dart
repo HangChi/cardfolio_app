@@ -47,7 +47,7 @@ class CardEntryMetadataFields extends StatelessWidget {
           children: <Widget>[
             Expanded(
               child: Text(
-                '卡片标签（可选）',
+                '卡片标签',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -71,7 +71,7 @@ class CardEntryMetadataFields extends StatelessWidget {
             onSelected: onTagSelected,
           ),
         const SizedBox(height: 16),
-        Text('加入套卡（可选）', style: Theme.of(context).textTheme.titleMedium),
+        Text('加入套卡', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         if (cardSets.isEmpty)
           Text('暂无套卡', style: Theme.of(context).textTheme.bodySmall)
@@ -85,7 +85,7 @@ class CardEntryMetadataFields extends StatelessWidget {
             onSelected: onSetSelected,
           ),
         const SizedBox(height: 16),
-        Text('加入卡册（可选）', style: Theme.of(context).textTheme.titleMedium),
+        Text('加入卡册', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         if (albums.isEmpty)
           Text('暂无卡册', style: Theme.of(context).textTheme.bodySmall)

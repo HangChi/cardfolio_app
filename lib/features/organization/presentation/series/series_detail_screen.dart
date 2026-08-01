@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../cards/presentation/widgets/card_image.dart';
 import '../../data/organization_providers.dart';
 import '../../domain/organization_models.dart';
 
@@ -72,6 +73,16 @@ class _SeriesDetailBody extends ConsumerWidget {
           context.tokens.spaceXl,
         ),
         children: <Widget>[
+          SizedBox(
+            height: 200,
+            child: series.coverRelativePath == null
+                ? CardImage.placeholder(semanticLabel: '${series.name}集卡册封面')
+                : CardImage.managed(
+                    relativePath: series.coverRelativePath!,
+                    semanticLabel: '${series.name}集卡册封面',
+                  ),
+          ),
+          SizedBox(height: context.tokens.spaceMd),
           if (series.description != null) ...<Widget>[
             Text(
               series.description!,
@@ -154,7 +165,16 @@ class _MemberSection extends StatelessWidget {
           for (final item in items)
             Card(
               child: ListTile(
-                leading: const Icon(Icons.bookmark_border),
+                leading: SizedBox(
+                  width: 72,
+                  height: 52,
+                  child: item.coverRelativePath == null
+                      ? CardImage.placeholder(semanticLabel: '${item.name}预览图')
+                      : CardImage.managed(
+                          relativePath: item.coverRelativePath!,
+                          semanticLabel: '${item.name}预览图',
+                        ),
+                ),
                 title: Text(item.name),
               ),
             ),

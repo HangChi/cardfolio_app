@@ -7,7 +7,7 @@ final class CardLocationField extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.enabled = true,
-    this.label = '城市（可选）',
+    this.label = '城市',
     this.errorText,
     super.key,
   });
@@ -37,15 +37,12 @@ final class CardLocationField extends StatelessWidget {
         isEmpty: value.trim().isEmpty,
         decoration: InputDecoration(
           labelText: label,
+          hintText: '请选择中国地区或填写国家和城市',
           errorText: errorText,
           suffixIcon: const Icon(Icons.arrow_drop_down),
           enabled: enabled,
         ),
-        child: Text(
-          value.trim().isEmpty ? '请选择中国地区或手动填写国外城市' : value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
     );
   }
@@ -102,10 +99,14 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       Navigator.pop(context, _manual.text.trim());
       return;
     }
-    if (_province == null || _city == null || _district == null) return;
+    if (_province == null || _city == null) return;
     Navigator.pop(
       context,
-      '${_province!.name} / ${_city!.name} / ${_district!.name}',
+      <String>[
+        _province!.name,
+        _city!.name,
+        if (_district != null) _district!.name,
+      ].join(' / '),
     );
   }
 
@@ -186,7 +187,10 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
               DropdownButtonFormField<ChinaRegionNode>(
                 key: ValueKey<String?>('district-${_city?.code}'),
                 initialValue: _district,
-                decoration: const InputDecoration(labelText: '县 / 区'),
+                decoration: const InputDecoration(
+                  labelText: '县 / 区',
+                  hintText: '可不选',
+                ),
                 isExpanded: true,
                 items: <DropdownMenuItem<ChinaRegionNode>>[
                   for (final value
@@ -202,9 +206,7 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
             FilledButton(
               onPressed: _overseas
                   ? _finish
-                  : (_province != null && _city != null && _district != null
-                        ? _finish
-                        : null),
+                  : (_province != null && _city != null ? _finish : null),
               child: const Text('确定'),
             ),
             TextButton(

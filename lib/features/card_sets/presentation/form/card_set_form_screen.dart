@@ -154,7 +154,7 @@ class _CardSetFormBodyState extends ConsumerState<_CardSetFormBody> {
               Card(
                 child: SwitchListTile(
                   key: const Key('set-count-known'),
-                  title: const Text('成员总数已知'),
+                  title: const Text('整套张数已知'),
                   subtitle: Text(_countKnown ? '显示完成度和集齐状态' : '只显示已拥有款式数'),
                   value: _countKnown,
                   onChanged: _saving
@@ -169,7 +169,7 @@ class _CardSetFormBodyState extends ConsumerState<_CardSetFormBody> {
                   controller: _expectedCount,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: '预计成员数 *',
+                    labelText: '整套张数 *',
                     hintText: '例如：4',
                   ),
                 ),

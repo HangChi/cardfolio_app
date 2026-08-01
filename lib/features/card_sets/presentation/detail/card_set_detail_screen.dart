@@ -6,6 +6,7 @@ import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
 import '../../../cards/data/card_providers.dart';
+import '../../../cards/presentation/widgets/card_image.dart';
 import '../../data/card_set_providers.dart';
 import '../../domain/card_set_models.dart';
 import '../widgets/card_set_progress_panel.dart';
@@ -68,6 +69,7 @@ class _CardSetDetailScreenState extends ConsumerState<CardSetDetailScreen> {
                 set: set,
                 busy: _busy,
                 onAdd: () => _showAddOptions(set),
+                onSetCover: () => _showCoverPicker(set),
                 onMemberAction: (member, action) =>
                     _handleMemberAction(set, member, action),
               ),
@@ -106,6 +108,59 @@ class _CardSetDetailScreenState extends ConsumerState<CardSetDetailScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showCoverPicker(CardSetDetail set) async {
+    final candidates = set.members
+        .where((member) => member.coverImageId != null)
+        .toList(growable: false);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: candidates.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('成员还没有可用的卡片封面。'),
+              )
+            : ListView.builder(
+                shrinkWrap: true,
+                itemCount: candidates.length,
+                itemBuilder: (context, index) {
+                  final member = candidates[index];
+                  return ListTile(
+                    leading: SizedBox(
+                      width: 64,
+                      height: 44,
+                      child: member.coverRelativePath == null
+                          ? CardImage.placeholder(
+                              semanticLabel: '${member.name}封面',
+                            )
+                          : CardImage.managed(
+                              relativePath: member.coverRelativePath!,
+                              semanticLabel: '${member.name}封面',
+                            ),
+                    ),
+                    title: Text(member.name),
+                    trailing: member.coverImageId == set.coverImageId
+                        ? const Icon(Icons.check_circle)
+                        : null,
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _run(
+                        () => ref
+                            .read(cardSetRepositoryProvider)
+                            .setCover(
+                              setId: set.id,
+                              imageId: member.coverImageId!,
+                            ),
+                      );
+                    },
+                  );
+                },
+              ),
       ),
     );
   }
@@ -450,12 +505,14 @@ class _DetailBody extends StatelessWidget {
     required this.set,
     required this.busy,
     required this.onAdd,
+    required this.onSetCover,
     required this.onMemberAction,
   });
 
   final CardSetDetail set;
   final bool busy;
   final VoidCallback onAdd;
+  final VoidCallback onSetCover;
   final void Function(CardSetMemberDetail, _MemberAction) onMemberAction;
 
   @override
@@ -476,6 +533,36 @@ class _DetailBody extends StatelessWidget {
                 Text(
                   set.name,
                   style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                SizedBox(height: tokens.spaceMd),
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: busy ? null : onSetCover,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        SizedBox(
+                          height: 180,
+                          child: set.coverRelativePath == null
+                              ? CardImage.placeholder(
+                                  semanticLabel: '${set.name}套卡封面',
+                                )
+                              : CardImage.managed(
+                                  relativePath: set.coverRelativePath!,
+                                  semanticLabel: '${set.name}套卡封面',
+                                ),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.image_outlined),
+                          title: Text(
+                            set.coverRelativePath == null ? '设置套卡封面' : '更换套卡封面',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 if (set.issueInfo case final issue?) ...<Widget>[
                   SizedBox(height: tokens.spaceSm),
@@ -552,7 +639,7 @@ class _MemberTrackTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final status = member.isDuplicate
-        ? '重复 ${member.ownedQuantity} 张'
+        ? '已拥有 ${member.ownedQuantity} 张 · 重复 ${member.ownedQuantity - 1} 张'
         : member.isOwned
         ? '已拥有'
         : '缺失';
@@ -560,107 +647,81 @@ class _MemberTrackTile extends StatelessWidget {
     return Semantics(
       container: true,
       label: '${member.name}，${member.required ? '必需成员' : '可选成员'}，$status',
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            SizedBox(
-              width: 32,
-              child: Column(
-                children: <Widget>[
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: isFirst ? Colors.transparent : AppColors.outline,
-                    ),
-                  ),
-                  Icon(
-                    member.isOwned
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    color: statusColor,
-                  ),
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: isLast ? Colors.transparent : AppColors.outline,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: tokens.spaceSm),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(bottom: tokens.spaceMd),
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(tokens.spaceMd),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                member.name,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              SizedBox(height: tokens.spaceXs),
-                              Wrap(
-                                spacing: tokens.spaceSm,
-                                runSpacing: tokens.spaceXs,
-                                children: <Widget>[
-                                  Text(member.memberNo ?? '未编号'),
-                                  Text(member.required ? '必需' : '可选'),
-                                  Text(
-                                    status,
-                                    style: TextStyle(color: statusColor),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: tokens.spaceMd),
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(tokens.spaceMd),
+            child: Row(
+              children: <Widget>[
+                SizedBox(
+                  width: 96,
+                  height: 68,
+                  child: member.coverRelativePath == null
+                      ? CardImage.placeholder(
+                          semanticLabel: '${member.name}卡片封面',
+                        )
+                      : CardImage.managed(
+                          relativePath: member.coverRelativePath!,
+                          semanticLabel: '${member.name}卡片封面',
                         ),
-                        PopupMenuButton<_MemberAction>(
-                          enabled: !busy,
-                          tooltip: '管理${member.name}',
-                          onSelected: onAction,
-                          itemBuilder: (context) =>
-                              <PopupMenuEntry<_MemberAction>>[
-                                const PopupMenuItem(
-                                  value: _MemberAction.edit,
-                                  child: Text('编辑编号与必需性'),
-                                ),
-                                PopupMenuItem(
-                                  value: _MemberAction.moveUp,
-                                  enabled: !isFirst,
-                                  child: const Text('前移'),
-                                ),
-                                PopupMenuItem(
-                                  value: _MemberAction.moveDown,
-                                  enabled: !isLast,
-                                  child: const Text('后移'),
-                                ),
-                                if (member.coverImageId != null)
-                                  const PopupMenuItem(
-                                    value: _MemberAction.cover,
-                                    child: Text('设为套卡封面'),
-                                  ),
-                                const PopupMenuDivider(),
-                                const PopupMenuItem(
-                                  value: _MemberAction.remove,
-                                  child: Text('移除成员'),
-                                ),
-                              ],
-                        ),
-                      ],
-                    ),
+                ),
+                SizedBox(width: tokens.spaceMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        member.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      SizedBox(height: tokens.spaceXs),
+                      Text(
+                        '${member.memberNo ?? '未编号'} · '
+                        '${member.required ? '必需' : '可选'}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      SizedBox(height: tokens.spaceXs),
+                      Text(status, style: TextStyle(color: statusColor)),
+                    ],
                   ),
                 ),
-              ),
+                PopupMenuButton<_MemberAction>(
+                  enabled: !busy,
+                  tooltip: '管理${member.name}',
+                  onSelected: onAction,
+                  itemBuilder: (context) => <PopupMenuEntry<_MemberAction>>[
+                    const PopupMenuItem(
+                      value: _MemberAction.edit,
+                      child: Text('编辑编号与必需性'),
+                    ),
+                    PopupMenuItem(
+                      value: _MemberAction.moveUp,
+                      enabled: !isFirst,
+                      child: const Text('前移'),
+                    ),
+                    PopupMenuItem(
+                      value: _MemberAction.moveDown,
+                      enabled: !isLast,
+                      child: const Text('后移'),
+                    ),
+                    if (member.coverImageId != null)
+                      const PopupMenuItem(
+                        value: _MemberAction.cover,
+                        child: Text('设为套卡封面'),
+                      ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: _MemberAction.remove,
+                      child: Text('移除成员'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

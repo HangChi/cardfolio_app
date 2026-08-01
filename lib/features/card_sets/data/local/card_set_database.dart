@@ -6,9 +6,7 @@ import '../../../cards/data/local/card_database.dart';
 import '../../domain/card_set_models.dart';
 
 extension CardSetDatabase on AppDatabase {
-  Stream<List<CardSetMembership>> watchCardSetMemberships(
-    String definitionId,
-  ) {
+  Stream<List<CardSetMembership>> watchCardSetMemberships(String definitionId) {
     final query = select(cardSetMembers)
       ..where(
         (member) =>
@@ -20,12 +18,7 @@ extension CardSetDatabase on AppDatabase {
       ]);
     return query.watch().map(
       (rows) => rows
-          .map(
-            (row) => CardSetMembership(
-              setId: row.setId,
-              memberId: row.id,
-            ),
-          )
+          .map((row) => CardSetMembership(setId: row.setId, memberId: row.id))
           .toList(growable: false),
     );
   }
@@ -128,7 +121,7 @@ extension CardSetDatabase on AppDatabase {
         request.id,
       ).then((members) => members.length);
       if (request.countKnown && request.expectedCount! < memberCount) {
-        throw StateError('预计成员数不能少于当前成员数。');
+        throw StateError('整套张数不能少于当前成员数。');
       }
       final changed =
           await (update(
@@ -157,7 +150,7 @@ extension CardSetDatabase on AppDatabase {
       if (set == null) throw StateError('套卡不存在。');
       final currentMembers = await _activeCardSetMembers(this, request.setId);
       if (set.countKnown && currentMembers.length >= (set.expectedCount ?? 0)) {
-        throw StateError('成员数已达到预计总数，请先调整套卡资料。');
+        throw StateError('成员数已达到整套张数，请先调整套卡资料。');
       }
 
       final duplicate =
@@ -508,8 +501,11 @@ final class _CardSetAggregate {
   final String? coverRelativePath;
   final List<CardSetMemberDetail> members;
 
-  CardSetProgress get progress =>
-      CardSetProgress.calculate(countKnown: set.countKnown, members: members);
+  CardSetProgress get progress => CardSetProgress.calculate(
+    countKnown: set.countKnown,
+    expectedCount: set.expectedCount,
+    members: members,
+  );
 
   CardSetSummary toSummary() {
     return CardSetSummary(

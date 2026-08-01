@@ -63,6 +63,7 @@ class OptionalDateField extends StatelessWidget {
       helpText: label,
       cancelText: '取消',
       confirmText: '确定',
+      locale: const Locale('zh', 'CN'),
     );
     if (selected != null) onChanged(DateUtils.dateOnly(selected));
   }

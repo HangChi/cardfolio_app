@@ -230,6 +230,7 @@ final class CardSetProgress {
 
   factory CardSetProgress.calculate({
     required bool countKnown,
+    int? expectedCount,
     required List<CardSetMemberDetail> members,
   }) {
     final ownedMemberCount = members.where((member) => member.isOwned).length;
@@ -240,9 +241,11 @@ final class CardSetProgress {
         .where((member) => member.isOwned)
         .length;
     final requiredMemberCount = requiredMembers.length;
-    final duplicateMemberCount = members
-        .where((member) => member.isDuplicate)
-        .length;
+    final duplicateMemberCount = members.fold<int>(
+      0,
+      (total, member) =>
+          total + (member.ownedQuantity > 1 ? member.ownedQuantity - 1 : 0),
+    );
 
     if (!countKnown) {
       return CardSetProgress(
@@ -256,18 +259,16 @@ final class CardSetProgress {
       );
     }
 
-    final hasRequiredMembers = requiredMemberCount > 0;
+    final totalCount = expectedCount ?? requiredMemberCount;
+    final hasRequiredMembers = totalCount > 0;
     return CardSetProgress(
       ownedMemberCount: ownedMemberCount,
       ownedRequiredCount: ownedRequiredCount,
-      requiredMemberCount: requiredMemberCount,
-      missingRequiredCount: requiredMemberCount - ownedRequiredCount,
+      requiredMemberCount: totalCount,
+      missingRequiredCount: totalCount - ownedRequiredCount,
       duplicateMemberCount: duplicateMemberCount,
-      fraction: hasRequiredMembers
-          ? ownedRequiredCount / requiredMemberCount
-          : 0,
-      isComplete:
-          hasRequiredMembers && ownedRequiredCount == requiredMemberCount,
+      fraction: hasRequiredMembers ? ownedRequiredCount / totalCount : 0,
+      isComplete: hasRequiredMembers && ownedRequiredCount == totalCount,
     );
   }
 
@@ -388,7 +389,7 @@ int? _expectedCount(bool countKnown, int? expectedCount) {
   if (expectedCount == null || expectedCount < 1) {
     throw const CardSetValidationFailure(
       CardSetField.expectedCount,
-      '预计成员数必须大于 0。',
+      '整套张数必须大于 0。',
     );
   }
   return expectedCount;

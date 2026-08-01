@@ -49,6 +49,7 @@ SELECT
   s.id,
   s.name,
   s.description,
+  s.cover_relative_path,
   s.created_at,
   s.updated_at,
   (
@@ -81,6 +82,9 @@ ORDER BY s.updated_at DESC, s.id ASC
               id: row.read<String>('id'),
               name: row.read<String>('name'),
               description: row.readNullable<String>('description'),
+              coverRelativePath: row.readNullable<String>(
+                'cover_relative_path',
+              ),
               cardCount: row.read<int>('card_count'),
               setCount: row.read<int>('set_count'),
               createdAt: _timestamp(row.read<int>('created_at')),
@@ -116,6 +120,7 @@ ORDER BY s.updated_at DESC, s.id ASC
         id: series.id,
         name: series.name,
         description: series.description,
+        coverRelativePath: series.coverRelativePath,
         createdAt: series.createdAt.toUtc(),
         updatedAt: series.updatedAt.toUtc(),
         cards: cards,
@@ -406,7 +411,8 @@ Future<List<SeriesSummary>> _cardSeries(
   final rows = await db
       .customSelect(
         '''
-SELECT s.id, s.name, s.description, s.created_at, s.updated_at
+SELECT s.id, s.name, s.description, s.cover_relative_path,
+       s.created_at, s.updated_at
 FROM series_cards sc
 JOIN series_records s ON s.id = sc.series_id
 WHERE sc.definition_id = ? AND s.deleted_at IS NULL
@@ -421,6 +427,7 @@ ORDER BY s.updated_at DESC, s.id ASC
           id: row.read<String>('id'),
           name: row.read<String>('name'),
           description: row.readNullable<String>('description'),
+          coverRelativePath: row.readNullable<String>('cover_relative_path'),
           cardCount: 0,
           setCount: 0,
           createdAt: _timestamp(row.read<int>('created_at')),

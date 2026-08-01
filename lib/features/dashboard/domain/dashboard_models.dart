@@ -84,6 +84,7 @@ final class HomeDashboard {
     required this.entityCount,
     required this.definitionCount,
     required this.setCount,
+    this.seriesCount = 0,
     required this.completedSetCount,
     required this.monthAddedCount,
     required this.costTotals,
@@ -96,6 +97,7 @@ final class HomeDashboard {
     : entityCount = 0,
       definitionCount = 0,
       setCount = 0,
+      seriesCount = 0,
       completedSetCount = 0,
       monthAddedCount = 0,
       costTotals = const <CostTotal>[],
@@ -106,6 +108,7 @@ final class HomeDashboard {
   final int entityCount;
   final int definitionCount;
   final int setCount;
+  final int seriesCount;
   final int completedSetCount;
   final int monthAddedCount;
   final List<CostTotal> costTotals;
@@ -113,7 +116,11 @@ final class HomeDashboard {
   final List<DashboardSet> nearlyCompleteSets;
   final List<DashboardCard> needsCompletionCards;
 
-  bool get isEmpty => entityCount == 0 && setCount == 0 && costTotals.isEmpty;
+  bool get isEmpty =>
+      entityCount == 0 &&
+      setCount == 0 &&
+      seriesCount == 0 &&
+      costTotals.isEmpty;
 }
 
 @immutable
