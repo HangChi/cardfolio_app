@@ -199,7 +199,7 @@ class _WeekdayHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: <Widget>[
         for (final label in <String>['周一', '周二', '周三', '周四', '周五', '周六', '周日'])
           Expanded(child: Center(child: Text(label))),
