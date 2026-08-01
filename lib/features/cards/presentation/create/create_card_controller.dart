@@ -221,6 +221,20 @@ class CreateCardController extends Notifier<CreateCardState> {
     );
   }
 
+  /// 丢弃一张尚未保存的草稿图片；用于取消刚拍照片的裁切流程。
+  void discardImage(String imageId) {
+    if (state.isSaving) return;
+    final images = state.images
+        .where((image) => image.id != imageId)
+        .toList(growable: false);
+    if (images.length == state.images.length) return;
+    state = state.copyWith(
+      phase: images.isEmpty ? CreateCardPhase.idle : CreateCardPhase.editing,
+      images: List<DraftCardImage>.unmodifiable(images),
+      clearFailure: true,
+    );
+  }
+
   void moveImage(String imageId, int delta) {
     if (state.isSaving || delta == 0) return;
     final from = state.images.indexWhere((image) => image.id == imageId);

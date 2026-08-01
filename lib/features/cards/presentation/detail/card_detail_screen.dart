@@ -14,6 +14,7 @@ import '../../../purchases/domain/purchase_models.dart';
 import '../../../recycle_bin/data/recycle_bin_providers.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
+import '../../domain/image_processing.dart';
 import '../widgets/card_image.dart';
 import '../widgets/card_image_kind_label.dart';
 
@@ -131,11 +132,64 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
   Future<void> _addImages() async {
     final remaining = CreateCardRequest.maxImages - card.images.length;
     if (remaining <= 0) return;
-    late final List<SelectedGalleryImage> selections;
+    final source = await showModalBottomSheet<_DetailImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('拍摄'),
+              subtitle: const Text('拍摄后进入裁切与增强'),
+              onTap: () => context.pop(_DetailImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () => context.pop(_DetailImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    late final List<PendingCardImage> pendingImages;
     try {
-      selections = await ref
-          .read(galleryPickerProvider)
-          .pickMany(limit: remaining);
+      final generator = ref.read(idGeneratorProvider);
+      if (source == _DetailImageSource.gallery) {
+        final selections = await ref
+            .read(galleryPickerProvider)
+            .pickMany(limit: remaining);
+        pendingImages = <PendingCardImage>[
+          for (final selection in selections)
+            PendingCardImage(
+              id: generator.newId(),
+              sourcePath: selection.path,
+            ),
+        ];
+      } else {
+        final captured = await ref.read(cameraCaptureProvider).capture();
+        if (captured == null || !mounted) return;
+        final imageId = generator.newId();
+        final processed = await context.push<ProcessedImage>(
+          imageEditorPath,
+          extra: ImageEditorRouteArgs(
+            sourcePath: captured.path,
+            outputId: imageId,
+          ),
+        );
+        if (processed == null) return;
+        pendingImages = <PendingCardImage>[
+          PendingCardImage(
+            id: imageId,
+            sourcePath: captured.path,
+            derivedSourcePath: processed.path,
+          ),
+        ];
+      }
     } on AppFailure catch (failure) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -144,21 +198,14 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       }
       return;
     }
-    if (selections.isEmpty || !mounted) return;
-    final generator = ref.read(idGeneratorProvider);
+    if (pendingImages.isEmpty || !mounted) return;
     await _run(
       () => ref
           .read(cardRepositoryProvider)
           .addImages(
             AddCardImagesRequest(
               cardItemId: card.cardItemId,
-              images: <PendingCardImage>[
-                for (final selection in selections)
-                  PendingCardImage(
-                    id: generator.newId(),
-                    sourcePath: selection.path,
-                  ),
-              ],
+              images: pendingImages,
             ),
           ),
     );
@@ -486,29 +533,20 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           ),
         ),
         SizedBox(height: tokens.spaceSm),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => context.push(copyCardPath(card.cardItemId)),
-                icon: const Icon(Icons.content_copy_outlined),
-                label: const Text('复制资料建卡'),
-              ),
-            ),
-            SizedBox(width: tokens.spaceSm),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => context.push(editCardPath(card.cardItemId)),
-                icon: const Icon(Icons.payments_outlined),
-                label: const Text('记录入手成本'),
-              ),
-            ),
-          ],
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => context.push(copyCardPath(card.cardItemId)),
+            icon: const Icon(Icons.content_copy_outlined),
+            label: const Text('复制资料建卡'),
+          ),
         ),
       ],
     );
   }
 }
+
+enum _DetailImageSource { camera, gallery }
 
 class _OrganizationSummary extends ConsumerWidget {
   const _OrganizationSummary({required this.cardItemId});

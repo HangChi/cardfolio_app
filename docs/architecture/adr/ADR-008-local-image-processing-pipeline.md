@@ -11,7 +11,7 @@ Feature 009 需要 Android/iOS 相机拍摄、连续录入、边缘建议、手�
 
 ## 决策
 
-- 使用 Flutter 官方 `image_picker` 1.2.3 打开系统相机，由控制器重复调用形成连续拍摄；
+- 使用 Flutter 官方 `image_picker` 1.2.3 打开系统相机，每次用户点击拍摄时调用一次，并在编辑页逐张追加；
 - 使用 MIT 许可的纯 Dart `image` 4.9.1 解码、EXIF 归一化、透视、增强和 JPEG 编码；
 - CPU 密集处理通过 `Isolate.run` 在 worker isolate 执行；
 - 自动边缘只产生建议四角，低于 0.55 置信度使用内缩四角并要求手动确认；

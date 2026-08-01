@@ -523,6 +523,58 @@ class _DraftImagesEditor extends ConsumerWidget {
 
   final CreateCardState state;
 
+  Future<void> _addImages(BuildContext context, WidgetRef ref) async {
+    final source = await showModalBottomSheet<_DraftImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('拍摄'),
+              subtitle: const Text('拍摄后进入裁切与增强'),
+              onTap: () => context.pop(_DraftImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () => context.pop(_DraftImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !context.mounted) return;
+
+    final controller = ref.read(createCardControllerProvider.notifier);
+    if (source == _DraftImageSource.gallery) {
+      if (state.images.isEmpty) {
+        await controller.pickImage();
+      } else {
+        await controller.addImages();
+      }
+      return;
+    }
+
+    final captured = await controller.captureImage(append: state.hasImage);
+    if (!captured || !context.mounted) return;
+    final image = ref.read(createCardControllerProvider).images.last;
+    final result = await context.push<ProcessedImage>(
+      imageEditorPath,
+      extra: ImageEditorRouteArgs(
+        sourcePath: image.selection.path,
+        outputId: image.id,
+      ),
+    );
+    if (result == null) {
+      controller.discardImage(image.id);
+      return;
+    }
+    controller.applyProcessedImage(image.id, result.path);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
@@ -543,10 +595,8 @@ class _DraftImagesEditor extends ConsumerWidget {
                   state.isSaving ||
                       state.images.length >= CreateCardRequest.maxImages
                   ? null
-                  : state.images.isEmpty
-                  ? controller.pickImage
-                  : controller.addImages,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
+                  : () => _addImages(context, ref),
+              icon: const Icon(Icons.add_a_photo_outlined),
               label: const Text('添加图片'),
             ),
           ],
@@ -554,8 +604,8 @@ class _DraftImagesEditor extends ConsumerWidget {
         SizedBox(height: tokens.spaceSm),
         if (state.images.isEmpty)
           OutlinedButton.icon(
-            onPressed: state.isSaving ? null : controller.pickImage,
-            icon: const Icon(Icons.add_photo_alternate_outlined),
+            onPressed: state.isSaving ? null : () => _addImages(context, ref),
+            icon: const Icon(Icons.add_a_photo_outlined),
             label: const Text('添加正面或背面'),
           )
         else
@@ -689,6 +739,8 @@ class _DraftImagesEditor extends ConsumerWidget {
     );
   }
 }
+
+enum _DraftImageSource { camera, gallery }
 
 class _CardTextField extends StatelessWidget {
   const _CardTextField({

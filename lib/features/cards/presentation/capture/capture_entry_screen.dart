@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
+import '../../domain/image_processing.dart';
 import '../create/create_card_controller.dart';
 
-/// Feature 001 的采集方式入口；仅相册导入可执行。
+/// 卡片采集方式入口。
 class CaptureEntryScreen extends ConsumerStatefulWidget {
   const CaptureEntryScreen({super.key});
 
@@ -22,10 +23,10 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
   }
 
   Future<void> _recoverLostCapture() async {
-    final recovered = await ref
-        .read(createCardControllerProvider.notifier)
-        .recoverLostCapture();
-    if (mounted && recovered) context.push(createCardPath);
+    final controller = ref.read(createCardControllerProvider.notifier);
+    final recovered = await controller.recoverLostCapture();
+    if (!mounted || !recovered) return;
+    await _editLatestCapture();
   }
 
   Future<void> _pickFromGallery(BuildContext context) async {
@@ -47,17 +48,12 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
     }
   }
 
-  Future<void> _capture(
-    BuildContext context, {
-    required bool continuous,
-  }) async {
+  Future<void> _capture(BuildContext context) async {
     final controller = ref.read(createCardControllerProvider.notifier);
-    final captured = continuous
-        ? await controller.captureContinuously()
-        : await controller.captureImage();
+    final captured = await controller.captureImage();
     if (!context.mounted) return;
     if (captured) {
-      context.push(createCardPath);
+      await _editLatestCapture();
       return;
     }
     final failure = ref.read(createCardControllerProvider).failure;
@@ -66,6 +62,27 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
     }
+  }
+
+  Future<void> _editLatestCapture() async {
+    final controller = ref.read(createCardControllerProvider.notifier);
+    final state = ref.read(createCardControllerProvider);
+    if (state.images.isEmpty || !mounted) return;
+    final image = state.images.last;
+    final result = await context.push<ProcessedImage>(
+      imageEditorPath,
+      extra: ImageEditorRouteArgs(
+        sourcePath: image.selection.path,
+        outputId: image.id,
+      ),
+    );
+    if (!mounted) return;
+    if (result == null) {
+      controller.discardImage(image.id);
+      return;
+    }
+    controller.applyProcessedImage(image.id, result.path);
+    context.push(createCardPath);
   }
 
   @override
@@ -95,17 +112,9 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
           _CaptureOption(
             icon: Icons.center_focus_strong_outlined,
             title: '拍摄单张卡',
-            subtitle: '自动识别边缘并校正',
+            subtitle: '拍摄正面、背面与细节，逐张裁切',
             enabled: true,
-            onTap: () => _capture(context, continuous: false),
-          ),
-          SizedBox(height: tokens.spaceMd),
-          _CaptureOption(
-            icon: Icons.view_stream_outlined,
-            title: '单卡多图连拍',
-            subtitle: '为同一张卡连续拍摄正面、背面与细节',
-            enabled: true,
-            onTap: () => _capture(context, continuous: true),
+            onTap: () => _capture(context),
           ),
           SizedBox(height: tokens.spaceMd),
           _CaptureOption(
@@ -141,7 +150,7 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
                   ),
                 ),
                 SizedBox(height: 8),
-                Text('拍摄时才会申请相机权限；若不可用，仍可从相册导入。'),
+                Text('每次拍摄后可裁切与增强，并能在编辑页继续拍摄；若相机不可用，仍可从相册导入。'),
               ],
             ),
           ),

@@ -9,7 +9,7 @@ CameraCapture
 ```
 
 `null` 表示用户取消，不是错误。平台异常转换为 `CameraAccessFailure`，领域层不得暴露
-`XFile` 或 `PlatformException`。连续拍摄由控制器重复调用 `capture()`，不自建取景器。
+`XFile` 或 `PlatformException`。每次用户点击拍摄时调用一次 `capture()`；同一单卡可在编辑页重复添加，不自建取景器。
 
 ## 图片处理
 

@@ -18,6 +18,7 @@ import '../../../purchases/data/purchase_providers.dart';
 import '../../../purchases/domain/purchase_models.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
+import '../../domain/image_processing.dart';
 import '../widgets/card_image.dart';
 import '../widgets/card_entry_metadata_fields.dart';
 import '../widgets/optional_date_field.dart';
@@ -165,18 +166,36 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
 
     try {
       final String? path;
+      String? derivedPath;
       if (source == _ImageSourceChoice.gallery) {
         final images = await ref.read(galleryPickerProvider).pickMany(limit: 1);
         path = images.isEmpty ? null : images.first.path;
       } else {
-        path = (await ref.read(cameraCaptureProvider).capture())?.path;
+        final captured = await ref.read(cameraCaptureProvider).capture();
+        path = captured?.path;
+        if (path != null && mounted) {
+          final outputId = side == CardImageKind.front
+              ? draft.ids.imageId
+              : draft.backImageId;
+          final processed = await context.push<ProcessedImage>(
+            imageEditorPath,
+            extra: ImageEditorRouteArgs(
+              sourcePath: path,
+              outputId: outputId,
+            ),
+          );
+          if (processed == null) return;
+          derivedPath = processed.path;
+        }
       }
       if (path == null || !mounted) return;
       setState(() {
         if (side == CardImageKind.front) {
           draft.frontPath = path;
+          draft.frontDerivedPath = derivedPath;
         } else {
           draft.backPath = path;
+          draft.backDerivedPath = derivedPath;
         }
       });
       _schedulePersist();
@@ -200,18 +219,23 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
         final front = draft.frontPath;
         final back = draft.backPath;
         final primaryPath = front ?? back ?? '';
+        final primaryDerivedPath = front != null
+            ? draft.frontDerivedPath
+            : draft.backDerivedPath;
         final primaryKind = front != null
             ? CardImageKind.front
             : CardImageKind.back;
         final request = CreateCardRequest(
           ids: draft.ids,
           sourceImagePath: primaryPath,
+          derivedSourceImagePath: primaryDerivedPath,
           primaryImageKind: primaryKind,
           additionalImages: <PendingCardImage>[
             if (front != null && back != null)
               PendingCardImage(
                 id: draft.backImageId,
                 sourcePath: back,
+                derivedSourcePath: draft.backDerivedPath,
                 kind: CardImageKind.back,
               ),
           ],
@@ -574,7 +598,7 @@ class _BatchDraftCard extends StatelessWidget {
                 Expanded(
                   child: _SideImage(
                     label: '正面（可选）',
-                    path: draft.frontPath,
+                    path: draft.frontDerivedPath ?? draft.frontPath,
                     enabled: enabled && !draft.saved && !draft.confirmed,
                     onPressed: onChooseFront,
                   ),
@@ -583,7 +607,7 @@ class _BatchDraftCard extends StatelessWidget {
                 Expanded(
                   child: _SideImage(
                     label: '背面（可选）',
-                    path: draft.backPath,
+                    path: draft.backDerivedPath ?? draft.backPath,
                     enabled: enabled && !draft.saved && !draft.confirmed,
                     onPressed: onChooseBack,
                   ),
@@ -754,6 +778,8 @@ final class _BatchCardDraft {
     draft.shipping.text = json['shipping'] as String? ?? '';
     draft.frontPath = json['frontPath'] as String?;
     draft.backPath = json['backPath'] as String?;
+    draft.frontDerivedPath = json['frontDerivedPath'] as String?;
+    draft.backDerivedPath = json['backDerivedPath'] as String?;
     draft.issuedAt = DateTime.tryParse(json['issuedAt'] as String? ?? '');
     draft.confirmed = json['confirmed'] as bool? ?? false;
     draft.tagIds.addAll(
@@ -776,6 +802,8 @@ final class _BatchCardDraft {
   final Set<String> setIds = <String>{};
   String? frontPath;
   String? backPath;
+  String? frontDerivedPath;
+  String? backDerivedPath;
   DateTime? issuedAt;
   bool saved = false;
   bool confirmed = false;
@@ -791,6 +819,8 @@ final class _BatchCardDraft {
     'shipping': shipping.text,
     'frontPath': frontPath,
     'backPath': backPath,
+    'frontDerivedPath': frontDerivedPath,
+    'backDerivedPath': backDerivedPath,
     'issuedAt': issuedAt?.toIso8601String(),
     'confirmed': confirmed,
     'tagIds': tagIds.toList(growable: false),

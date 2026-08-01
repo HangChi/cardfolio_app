@@ -6,7 +6,7 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <application
-        android:label="cardfolio_app"
+        android:label="卡迹"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
