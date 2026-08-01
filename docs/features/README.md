@@ -1,18 +1,28 @@
 # Feature 文档索引
 
-| Feature | 名称 | 依赖 | 文档状态 |
-|---:|---|---|---|
-| 001 | [本地创建卡片闭环](001-local-card-creation/spec.md) | M0 | 九件套已完成，可评审 |
-| 002 | [多图与封面](002-multi-image-management/README.md) | 001 | 实现完成，待设备验收 |
-| 003 | [套卡与完成度](003-card-set-progress/README.md) | 001、002 | 实现完成，待设备验收 |
-| 004 | [标签、系列与筛选](004-tags-series-and-filters/README.md) | 001 | 实现完成，自动化通过，待设备验收 |
-| 005 | [购买记录与累计花费](005-purchases-and-costs/README.md) | 001、003 | 实现完成，自动化通过，待设备验收 |
-| 006 | [首页与统计查询](006-dashboard-and-statistics/README.md) | 003、004、005 | 实现完成，自动化通过，待设备验收 |
-| 007 | [回收站与永久删除](007-recycle-bin/README.md) | 001–005 | 实现完成，自动化通过，待设备验收 |
-| 008 | [导出、导入与迁移](008-import-export-and-migration/README.md) | 001–007 | 实现完成，自动化通过，待设备验收 |
-| 009 | [相机与图片处理](009-camera-and-image-processing/README.md) | 002 | 实现完成，自动化通过，待设备验收 |
-| 010 | [账号与本地优先同步](010-account-and-local-first-sync/README.md) | 001–008 | 客户端与服务端基线完成，自动化通过，待部署/双设备验收 |
-| 增强 | [卡片编辑、集卡册与批量录入](../superpowers/specs/2026-07-29-card-editing-album-batch-entry-design.md) | 001、002、004、009 | 实现完成，待设备验收 |
+更新日期：2026-08-01
 
-新 Feature 进入开发前，先满足对应目录的 Definition of Ready，再建立规格、验收、
-契约、数据、UX、错误、测试矩阵、计划和任务九件套。
+| Feature | 名称 | 当前实现状态 | 尚需验证/部署 |
+|---:|---|---|---|
+| 001 | [本地创建卡片闭环](001-local-card-creation/spec.md) | 已实现；新建时名称、城市和数量校验；支持无图后补、编辑与复制资料 | 真机相册、强停重启、无障碍 |
+| 002 | [多图与封面](002-multi-image-management/README.md) | 已实现；最多 20 图、用途、顺序、封面、添加/编辑/删除 | 大图、低存储、真实图库 |
+| 003 | [套卡与完成度](003-card-set-progress/README.md) | 已实现；整套张数、封面、成员、已拥有/缺失/重复张数 | 真机布局、读屏、恢复一致性 |
+| 004 | [标签、集卡册与筛选](004-tags-series-and-filters/README.md) | 已实现；`series_*` 表作为集卡册兼容存储；常用筛选 UI 与成本排序已移除 | 大数据查询、筛选组合设备验收 |
+| 005 | [成本账本](005-purchases-and-costs/README.md) | 底层账本保留；当前入口改为在卡片新建/编辑中记录人民币卡片金额与运费 | 历史账本兼容、金额编辑与删除口径 |
+| 006 | [首页、统计与消费日历](006-dashboard-and-statistics/README.md) | 已实现；固定总卡片/总花费、六维分布、月趋势、日期明细和下钻 | 月边界、退款、窄屏和大字体 |
+| 007 | [回收站与永久删除](007-recycle-bin/README.md) | 已实现；级联可见性、恢复、7/30/90 天清理、图片清理重试 | 真实文件失败恢复与长期保留期 |
+| 008 | [ZIP 备份、恢复与迁移](008-import-export-and-migration/README.md) | 已实现；校验、空库恢复、仅新增合并、冲突预览；另有 CSV 导出 | 大文件、跨版本和真实往返 |
+| 009 | [相机与图片处理](009-camera-and-image-processing/README.md) | 已实现；拍照后先进入资料页，主动编辑时使用系统裁剪、旋转和增强；原图不覆盖 | Android/iOS 真机、HEIC、12MP 性能 |
+| 010 | [账号与本地优先同步](010-account-and-local-first-sync/README.md) | 客户端与 Supabase 参考迁移已实现；未配置端点时纯本地 | 部署 REST 网关、RLS、双设备、监控和回滚 |
+
+## 已落地的跨 Feature 增强
+
+- 卡片完整编辑、无图后补、人民币成本、标签/套卡/集卡册归属。
+- 多卡批量录入、共享资料、逐卡确认、草稿跨进程恢复。
+- 首次启动引导、应用设置、主题、存储/权限信息和诊断开关。
+- UTF-8 BOM CSV 导出、Android ML Kit OCR、iOS Vision OCR、内置/远程交通卡资料库。
+- 亮暗主题、宽屏侧边导航、统一状态组件和 Android 双击返回退出。
+- 本月入手筛选、消费日历、删除一致性和卡片详情无叠加图集。
+
+历史九件套用于追溯最初范围和测试设计；后续增强的最终行为以当前代码、
+[开发日志](../engineering/development-log.md) 和 [README](../../README.md) 为准。

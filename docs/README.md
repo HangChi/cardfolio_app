@@ -1,86 +1,48 @@
 # Cardfolio 文档中心
 
-状态：M1 本地卡片闭环实现中
-更新日期：2026-07-29
+状态：客户端功能基线完成，设备验收与生产同步部署待完成
+更新日期：2026-08-01
 
 ## 从这里开始
 
-1. [产品需求文档](product/卡迹App_PRD_v1.0.md)
-2. [产品路线图](product/roadmap.md)
-3. [Feature 索引](features/README.md)
-4. [架构总览](architecture/overview.md)
-5. [需求追踪矩阵](quality/requirements-traceability.md)
+1. [项目 README](../README.md)：功能范围、运行、构建与手工冒烟。
+2. [产品需求文档](product/卡迹App_PRD_v1.0.md)：最初产品目标和需求编号。
+3. [当前路线图](product/roadmap.md)：已完成范围、剩余发布门禁和后续方向。
+4. [Feature 索引](features/README.md)：Feature 001–010 与后续增强的当前状态。
+5. [架构总览](architecture/overview.md)：运行时分层、依赖方向与启动流程。
+6. [数据库模型](architecture/database-schema.md)：当前 schema v8、表关系和迁移策略。
+7. [开发日志](engineering/development-log.md)：按日期记录的实现演进。
+8. [需求追踪矩阵](quality/requirements-traceability.md)：需求、实现和验证证据。
 
-## 产品
+## 文档分区
 
-- [PRD v1.0](product/卡迹App_PRD_v1.0.md)
-- [路线图](product/roadmap.md)
-- [术语表](product/glossary.md)
-- [业务规则](product/business-rules.md)
+| 分区 | 内容 |
+|---|---|
+| [product](product/) | PRD、路线图、词汇表、业务规则 |
+| [design](design/) | 设计系统、导航、Figma 交付与品牌资源 |
+| [architecture](architecture/) | 总体架构、领域模型、数据库、图片、错误处理、ADR |
+| [features](features/) | Feature 001–010 的规格、验收、契约、数据、UX、错误和测试矩阵 |
+| [engineering](engineering/) | 开发指南、Git 约定、开发日志 |
+| [quality](quality/) | 测试策略、测试数据、性能、兼容性、追踪矩阵和发布清单 |
+| [security](security/) | 权限、隐私、数据保护、数据处理清单和威胁模型 |
+| [operations](operations/) | 环境、CI/CD、可观测性、备份、发布和回滚 |
+| [superpowers](superpowers/) | 已执行的历史设计规格与实施计划，不代表当前 UI 一定仍保持原方案 |
 
-## 设计
+## 当前实现边界
 
-- [Figma 设计交付基线](design/figma-handoff.md)
-- [设计系统基线](design/design-system.md)
-- [导航与信息架构](design/navigation.md)
-
-## 架构
-
-- [架构总览](architecture/overview.md)
-- [领域模型](architecture/domain-model.md)
-- [数据库 Schema](architecture/database-schema.md)
-- [图片存储](architecture/image-storage.md)
-- [错误处理](architecture/error-handling.md)
-- [架构决策记录](architecture/adr/README.md)
-
-## Feature
-
-- [Feature 总索引](features/README.md)
-- [Feature 001 九件套](features/001-local-card-creation/spec.md)
-- [Feature 002 九件套](features/002-multi-image-management/spec.md)
-- Feature 003–010 已建立九件套并完成客户端实现；Feature 010 的生产部署与双设备验收单独保留发布门禁。
-
-## 工程
-
-- [开发指南](engineering/development-guide.md)
-- [Git 协作约定](engineering/git-conventions.md)
-- [开发日志](engineering/development-log.md)
-
-## 质量
-
-- [测试策略](quality/test-strategy.md)
-- [测试数据指南](quality/test-data-guide.md)
-- [性能计划](quality/performance-plan.md)
-- [设备兼容性矩阵](quality/device-compatibility-matrix.md)
-- [需求追踪矩阵](quality/requirements-traceability.md)
-- [发布检查清单](quality/release-checklist.md)
-
-## 安全
-
-- [隐私设计](security/privacy-design.md)
-- [权限策略](security/permission-policy.md)
-- [数据保护](security/data-protection.md)
-- [威胁模型](security/threat-model.md)
-
-## 运维与发布
-
-- [CI/CD](operations/ci-cd.md)
-- [环境与配置](operations/environments.md)
-- [可观测性](operations/observability.md)
-- [备份与恢复](operations/backup-and-recovery.md)
-- [发布流程](operations/release-process.md)
-- [回滚计划](operations/rollback-plan.md)
+- 本地客户端已覆盖卡片、多图、套卡、集卡册、标签、自定义字段、筛选、人民币成本、
+  首页/统计/消费日历、回收站、ZIP 备份、CSV 导出、相机、图片编辑、OCR、引导、主题
+  和可选账号同步客户端。
+- Drift 数据库当前为 schema v8；本地数据库和 App 私有图片目录始终是本地事实来源。
+- 生产 REST 同步服务、Supabase 迁移落地、真实双设备同步、商店发布和完整设备矩阵仍是
+  发布门禁，不能由宿主机测试结果替代。
+- 历史 Feature 规格描述的是当时冻结范围。若与当前代码冲突，以本页、架构文档、开发
+  日志和当前代码为准，并在后续需求评审中回写 PRD。
 
 ## 文档治理
 
-- PRD 和业务规则发生变化时，同步更新路线图、Feature 规格和追踪矩阵。
-- 架构决定发生变化时新增或替代 ADR，不静默改写历史决定。
-- 每个 Feature 进入开发前完成九件套并满足 Definition of Ready。
-- 合并实现时更新对应测试证据；未执行的测试不得标记通过。
-- 发布后文档与代码使用同一版本标签归档。
-
-## 当前边界
-
-Feature 001–010 已完成本地建卡、多图、套卡、整理、购买、统计、回收站、可验证备份、
-系统相机、本地图片处理、可选账号与本地优先同步的客户端自动化闭环。设备验收仍待
-执行；Feature 010 的实际 REST 服务部署、双设备验证和发布治理不计为本地客户端已完成。
+- 改变用户行为时，至少更新 README、Feature 索引、开发日志和受影响的规范文档。
+- 改变数据库或跨 Feature 规则时，更新数据库文档、业务规则、迁移快照和追踪矩阵。
+- 架构决定发生变化时新增或替代 ADR，不静默改写已执行的历史计划。
+- 只有本轮实际执行并观察到通过的验证，才能写成“通过”；设备验收必须注明设备和日期。
+- `docs/local/` 专用于本机个人资料，已由 `.gitignore` 排除，不得暂存或推送。

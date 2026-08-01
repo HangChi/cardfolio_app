@@ -2,6 +2,14 @@
 
 *产品需求文档（PRD）*
 
+> [!IMPORTANT]
+> 本文保留 v1.0 初始需求和编号，用于产品追溯。2026-08-01 的当前实现已发生范围收敛：
+> “系列”在界面中改称“集卡册”；拍照后不强制裁剪；图片编辑使用系统相册式裁剪并保留
+> 原图；独立购买入口改为卡片内人民币金额与运费；常用筛选和入手成本排序已移除；新增
+> 批量草稿恢复、OCR/资料库、CSV、亮暗主题和消费日历。最终实现口径见
+> [项目 README](../../README.md)、[Feature 索引](../features/README.md) 和
+> [业务规则](business-rules.md)。
+
 | 高效录入 | 专业管理 | 清晰统计 |
 |---|---|---|
 | 拍摄 · 裁切 · 增强 · 模板 | 单卡 · 套卡 · 系列 · 标签 | 数量 · 成本 · 进度 · 分布 |
@@ -23,8 +31,8 @@ App 展示名：卡迹
 英文品牌名：Cardfolio
 Git 仓库名：cardfolio
 Flutter 项目名：cardfolio_app
-Android applicationId：com.yourbrand.cardfolio
-iOS Bundle ID：com.yourbrand.cardfolio
+Android applicationId：com.songhangchi.cardfolio_app
+iOS Bundle ID：当前 Runner 工程配置值（发布前需与签名账号确认）
 
 
 

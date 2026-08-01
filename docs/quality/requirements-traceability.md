@@ -1,23 +1,27 @@
 # 需求追踪矩阵
 
+更新日期：2026-08-01
+说明：历史测试矩阵记录各 Feature 首次交付证据；后续 UI/口径变更需在当前 HEAD 重新执行
+回归和设备验收，不能直接沿用旧“通过”结论。
+
 ## 1. 功能需求
 
 | 需求 | Feature | 主要验证 |
 |---|---:|---|
-| FR-ONB-001..002 | 001、010 | 首启/阶段状态 Widget；账号上线后的引导验收 |
+| FR-ONB-001..002 | 设置增强、010 | 三屏首次引导、跳过/完成持久化、重新查看引导；账号上线后的设备验收 |
 | FR-ACC-001..002 | 010 | `rest_account_sync_remote_test.dart`、`secure_session_store_test.dart`、`account_sync_repository_impl_test.dart` 与 `profile_screen_test.dart`：账号、退出保留、删除选择和令牌生命周期 |
 | FR-IMG-001 | 001、002 | 相册取消/成功；多选 |
-| FR-IMG-002..005 | 009 | [Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md)：相机接口、连续草稿、边缘/四角、透视增强、模板与 Widget 自动化；设备验收待执行 |
+| FR-IMG-002..005 | 009、图片编辑重做 | 相机接口、主动系统裁剪/旋转、亮度/对比度/清晰度、原图保留；历史四角/透视自动化仅作演进证据，当前设备验收待执行 |
 | FR-IMG-006..007 | 002、009 | 多图顺序/封面及 [Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md) 的原图/派生图关联与补偿 |
 | FR-CARD-001..005 | 001、004、007、卡片编辑增强 | 创建、可选字段编辑、正反面、查询、删除；见[卡片编辑与批量录入设计](../superpowers/specs/2026-07-29-card-editing-album-batch-entry-design.md) |
 | FR-SET-001..003 | 003 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md)：关系、完成度与 Widget 自动化通过；设备验收待执行 |
 | FR-SER-001 | 004、集卡册语义增强 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T06：卡片/套卡多对多关联；用户界面以“集卡册”呈现且不提供标签；设备验收待执行 |
 | FR-TAG-001..002 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T03..T05、T10：标签管理、合并、影响预览与组合筛选自动化通过 |
 | FR-CF-001 | 004 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T07..T08：三类字段、原子保存、删除影响和值保留自动化通过 |
-| FR-PUR-001..004 | 005 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) T01..T11：精确金额、分摊、退款、多币种、删除审计与成本排序自动化通过；设备验收待执行 |
-| FR-SCH-001..004 | 004、006 | [Feature 004 测试矩阵](../features/004-tags-series-and-filters/test-matrix.md) T09..T14 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T01、T09：搜索、组合筛选、稳定排序、共享统计下钻与 10,000 款式性能通过 |
-| FR-HOME-001..002 | 006 | [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T02..T03、T05..T08：摘要口径、软删除、多币种、响应式查询和页面状态自动化通过；设备验收待执行 |
-| FR-STAT-001..002 | 006 | [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T01、T03..T07、T09..T10：六维聚合、成本趋势与共享查询下钻自动化通过；设备验收待执行 |
+| FR-PUR-001..004 | 005、卡片成本增强 | 底层精确金额/分摊/退款/多币种测试为兼容证据；当前 UI 为每卡 CNY 金额+运费稳定 upsert，独立购买入口和成本排序已移除 |
+| FR-SCH-001..004 | 004、006 | 搜索、组合筛选、稳定排序和统计下钻；入手日期月边界、重复卡、删除恢复需按当前 HEAD 复验；常用筛选 UI 已移除 |
+| FR-HOME-001..002 | 006、首页增强 | 卡片/套卡/集卡册/本月新增、最近 10 条、人民币总花费和下钻；软删除、月边界和设备状态待复验 |
+| FR-STAT-001..002 | 006、消费日历增强 | 固定总卡片/总花费、六维聚合、成本趋势、月历日明细和共享查询下钻；设备验收待执行 |
 | FR-DATA-001..002 | 008 | [Feature 008 测试矩阵](../features/008-import-export-and-migration/test-matrix.md) T01..T11：全实体 ZIP 往返、校验和、安全限制、原子导入、合并与 UI 自动化通过；设备验收待执行 |
 | FR-DATA-003 | 007 | [Feature 007 测试矩阵](../features/007-recycle-bin/test-matrix.md) T02..T10：软删除、恢复、永久删除、保留期和文件清理重试自动化通过；设备验收待执行 |
 | FR-SYNC-001..003 | 010 | [Feature 010 测试矩阵](../features/010-account-and-local-first-sync/test-matrix.md) T01..T10：开关、离线队列、重放、游标、附件与冲突副本 |
@@ -28,8 +32,8 @@
 |---|---:|---|
 | BR-CARD-001..004 | 001、003、004 | 款式/藏品身份、数量、字段语义 |
 | BR-SET-001..005 | 003、006、007 | [Feature 003 测试矩阵](../features/003-card-set-progress/test-matrix.md) 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T03、T09：完成度、重复、删除与统计下钻口径自动化通过；恢复属于 Feature 007 |
-| BR-COST-001..006 | 005、006、008 | [Feature 005 测试矩阵](../features/005-purchases-and-costs/test-matrix.md) 与 [Feature 006 测试矩阵](../features/006-dashboard-and-statistics/test-matrix.md) T05：购买事实、费用口径、分摊、原币种和调整自动化通过 |
-| BR-IMG-001..003 | 001、002、008、009 | [Feature 009 测试矩阵](../features/009-camera-and-image-processing/test-matrix.md)：原图不变、派生引用、取消/失败清理；软删和永久删除沿用 Feature 007 |
+| BR-COST-001..006 | 005、006、008 | 账本兼容旧分摊/退款/多币种；当前入口固定 CNY，每卡稳定成本记录；活跃收藏净额、删除恢复和消费日历需复验 |
+| BR-IMG-001..003 | 001、002、008、009 | 原图不变、系统裁剪派生引用、JPEG 直通、取消/失败清理；软删、封面引用清理和永久删除沿用 Feature 007 |
 | BR-DEL-001..002 | 007 | [Feature 007 测试矩阵](../features/007-recycle-bin/test-matrix.md) T02..T07：默认查询排除、关联恢复、影响预览与依赖顺序自动化通过 |
 | BR-SYNC-001..004 | 010 | `sync_models_test.dart`、`sync_local_store_test.dart`、`account_sync_repository_impl_test.dart`：本地优先、版本、幂等、同字段及删除冲突 |
 

@@ -20,6 +20,9 @@ migrate_working_dir/
 .idea/
 .claude/
 
+# 仅供本机个人使用的项目资料（changelog、实现详解等）
+/docs/local/
+
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
