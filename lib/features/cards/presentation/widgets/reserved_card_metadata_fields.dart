@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 
-import 'card_condition_field.dart';
-
 class ReservedCardMetadataFields extends StatelessWidget {
   const ReservedCardMetadataFields({
-    required this.conditionController,
-    required this.itemNotesController,
     required this.issueQuantityController,
     required this.issuePriceController,
     this.enabled = true,
     super.key,
   });
 
-  final TextEditingController conditionController;
-  final TextEditingController itemNotesController;
   final TextEditingController issueQuantityController;
   final TextEditingController issuePriceController;
   final bool enabled;
@@ -22,16 +16,6 @@ class ReservedCardMetadataFields extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        CardConditionField(controller: conditionController, enabled: enabled),
-        const SizedBox(height: 12),
-        TextField(
-          controller: itemNotesController,
-          enabled: enabled,
-          minLines: 2,
-          maxLines: 4,
-          decoration: const InputDecoration(labelText: '藏品实例备注'),
-        ),
-        const SizedBox(height: 12),
         Row(
           children: <Widget>[
             Expanded(

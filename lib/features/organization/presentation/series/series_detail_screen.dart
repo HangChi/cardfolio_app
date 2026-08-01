@@ -101,11 +101,13 @@ class _SeriesDetailBody extends ConsumerWidget {
           _MemberSection(
             title: '卡片 · ${series.cards.length}',
             items: series.cards,
+            isCard: true,
           ),
           SizedBox(height: context.tokens.spaceLg),
           _MemberSection(
             title: '套卡 · ${series.sets.length}',
             items: series.sets,
+            isCard: false,
           ),
         ],
       ),
@@ -147,10 +149,15 @@ class _SeriesDetailBody extends ConsumerWidget {
 }
 
 class _MemberSection extends StatelessWidget {
-  const _MemberSection({required this.title, required this.items});
+  const _MemberSection({
+    required this.title,
+    required this.items,
+    required this.isCard,
+  });
 
   final String title;
   final List<SeriesMemberSummary> items;
+  final bool isCard;
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +172,11 @@ class _MemberSection extends StatelessWidget {
           for (final item in items)
             Card(
               child: ListTile(
+                onTap: isCard
+                    ? item.cardItemId == null
+                          ? null
+                          : () => context.push(cardDetailPath(item.cardItemId!))
+                    : () => context.push(cardSetDetailPath(item.id)),
                 leading: SizedBox(
                   width: 72,
                   height: 52,
@@ -176,6 +188,7 @@ class _MemberSection extends StatelessWidget {
                         ),
                 ),
                 title: Text(item.name),
+                trailing: const Icon(Icons.chevron_right),
               ),
             ),
       ],

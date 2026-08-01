@@ -43,6 +43,35 @@ final class CardLibraryQueryController extends Notifier<CardLibraryQuery> {
   }
 
   void clearAll() => state = const CardLibraryQuery();
+
+  void retainAvailableFacets(CardFilterFacets facets) {
+    final cardType = facets.cardTypes.contains(state.cardType)
+        ? state.cardType
+        : null;
+    final city = state.city == null ? null : cityFilterLevel(state.city!);
+    final availableCity = facets.cities.contains(city) ? city : null;
+    final year = facets.years.contains(state.year) ? state.year : null;
+    final tagIds = state.tagIds
+        .where((id) => facets.tags.any((tag) => tag.id == id))
+        .toList(growable: false);
+    if (cardType == state.cardType &&
+        availableCity == state.city &&
+        year == state.year &&
+        tagIds.length == state.tagIds.length) {
+      return;
+    }
+    state = state
+        .copyWith(
+          cardType: cardType,
+          clearCardType: cardType == null,
+          city: availableCity,
+          clearCity: availableCity == null,
+          year: year,
+          clearYear: year == null,
+          tagIds: tagIds,
+        )
+        .normalized();
+  }
 }
 
 final StreamProvider<List<OrganizedCardSummary>> organizedCardListProvider =

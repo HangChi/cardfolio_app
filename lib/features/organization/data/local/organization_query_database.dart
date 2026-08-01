@@ -231,12 +231,26 @@ SELECT
   0 AS created_at,
   0 AS updated_at
 FROM card_definitions
-WHERE deleted_at IS NULL AND card_type IS NOT NULL AND card_type <> ''
+WHERE deleted_at IS NULL
+  AND card_type IS NOT NULL
+  AND card_type <> ''
+  AND EXISTS (
+    SELECT 1 FROM card_items ci
+    WHERE ci.definition_id = card_definitions.id
+      AND ci.deleted_at IS NULL
+  )
 GROUP BY card_type
 UNION ALL
 SELECT 'city', city, NULL, 0, 0, 0
 FROM card_definitions
-WHERE deleted_at IS NULL AND city IS NOT NULL AND city <> ''
+WHERE deleted_at IS NULL
+  AND city IS NOT NULL
+  AND city <> ''
+  AND EXISTS (
+    SELECT 1 FROM card_items ci
+    WHERE ci.definition_id = card_definitions.id
+      AND ci.deleted_at IS NULL
+  )
 GROUP BY city
 UNION ALL
 SELECT 'year', substr(issued_at, 1, 4), NULL, 0, 0, 0
@@ -244,6 +258,11 @@ FROM card_definitions
 WHERE deleted_at IS NULL
   AND issued_at IS NOT NULL
   AND length(issued_at) >= 4
+  AND EXISTS (
+    SELECT 1 FROM card_items ci
+    WHERE ci.definition_id = card_definitions.id
+      AND ci.deleted_at IS NULL
+  )
 GROUP BY substr(issued_at, 1, 4)
 UNION ALL
 SELECT
@@ -254,14 +273,20 @@ SELECT
   t.created_at,
   t.updated_at
 FROM tags t
-LEFT JOIN card_tags ct ON ct.tag_id = t.id
-LEFT JOIN card_definitions cd
+JOIN card_tags ct ON ct.tag_id = t.id
+JOIN card_definitions cd
   ON cd.id = ct.definition_id AND cd.deleted_at IS NULL
 WHERE t.deleted_at IS NULL
+  AND EXISTS (
+    SELECT 1 FROM card_items ci
+    WHERE ci.definition_id = cd.id
+      AND ci.deleted_at IS NULL
+  )
 GROUP BY t.id
 ''',
       readsFrom: <ResultSetImplementation<Table, Object?>>{
         cardDefinitions,
+        cardItems,
         tags,
         cardTags,
       },
@@ -277,7 +302,7 @@ GROUP BY t.id
           case 'card_type':
             cardTypes.add(value);
           case 'city':
-            cities.add(value);
+            cities.add(cityFilterLevel(value));
           case 'year':
             final year = int.tryParse(value);
             if (year != null) years.add(year);
@@ -318,6 +343,14 @@ SELECT
   cd.id,
   cd.name,
   (
+    SELECT ci.id
+    FROM card_items ci
+    WHERE ci.definition_id = cd.id
+      AND ci.deleted_at IS NULL
+    ORDER BY ci.created_at ASC, ci.id ASC
+    LIMIT 1
+  ) AS card_item_id,
+  (
     SELECT COALESCE(ci_cover.derived_relative_path, ci_cover.relative_path)
     FROM card_items ci
     JOIN card_images ci_cover ON ci_cover.card_item_id = ci.id
@@ -340,6 +373,7 @@ ORDER BY cd.name COLLATE NOCASE ASC, cd.id ASC
         (row) => SeriesMemberSummary(
           id: row.read<String>('id'),
           name: row.read<String>('name'),
+          cardItemId: row.readNullable<String>('card_item_id'),
           coverRelativePath: row.readNullable<String>('cover_path'),
         ),
       )

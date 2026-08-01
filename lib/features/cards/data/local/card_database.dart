@@ -1327,11 +1327,19 @@ class AppDatabase extends _$AppDatabase {
       ]);
 
     final rows = await query.get();
-    return rows.expand((row) sync* {
+    final paths = rows.expand((row) sync* {
       yield row.read(cardImages.relativePath)!;
       final derived = row.read(cardImages.derivedRelativePath);
       if (derived != null) yield derived;
     }).toSet();
+    final seriesCovers = selectOnly(seriesRecords)
+      ..addColumns(<Expression<Object>>[seriesRecords.coverRelativePath])
+      ..where(seriesRecords.coverRelativePath.isNotNull());
+    for (final row in await seriesCovers.get()) {
+      final cover = row.read(seriesRecords.coverRelativePath);
+      if (cover != null) paths.add(cover);
+    }
+    return paths;
   }
 
   Future<int> countDefinitions() => _countRows(cardDefinitions);

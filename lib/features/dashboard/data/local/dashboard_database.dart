@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../cards/data/local/card_database.dart';
+import '../../../organization/domain/organization_models.dart';
 import '../../../purchases/domain/purchase_models.dart';
 import '../../domain/dashboard_models.dart';
 
@@ -37,6 +38,7 @@ Stream<List<QueryRow>> _dashboardSignal(AppDatabase db) {
           db.tags,
           db.cardTags,
           db.purchases,
+          db.purchaseItems,
         },
       )
       .watch();
@@ -160,7 +162,7 @@ GROUP BY cd.city
 ''').get();
   final cityCounts = <String, int>{};
   for (final row in cityRows) {
-    final city = _cityLevel(row.read<String>('city'));
+    final city = cityFilterLevel(row.read<String>('city'));
     cityCounts.update(
       city,
       (count) => count + row.read<int>('bucket_count'),
@@ -332,15 +334,16 @@ Future<List<CostTotal>> _loadCostTotals(
   AppDatabase db,
   CostDisplayOptions options,
 ) async {
-  final shipping = options.includeShipping ? 'shipping_minor' : '0';
-  final fees = options.includeFees ? 'fees_minor' : '0';
+  final shipping = options.includeShipping ? 'p.shipping_minor' : '0';
+  final fees = options.includeFees ? 'p.fees_minor' : '0';
   final rows = await db.customSelect('''
-SELECT currency,
-       COALESCE(SUM(amount_minor + $shipping + $fees), 0) AS total_minor,
+SELECT p.currency,
+       COALESCE(SUM(p.amount_minor + $shipping + $fees), 0) AS total_minor,
        COUNT(*) AS purchase_count
-FROM purchases
-GROUP BY currency
-ORDER BY currency ASC
+FROM purchases p
+WHERE $_activePurchasePredicate
+GROUP BY p.currency
+ORDER BY p.currency ASC
 ''').get();
   return rows
       .map(
@@ -358,9 +361,14 @@ Future<List<CostTrendPoint>> _loadCostTrend(
   CostDisplayOptions options,
 ) async {
   final rows = await db.customSelect('''
-SELECT purchased_at, currency, amount_minor, shipping_minor, fees_minor
-FROM purchases
-ORDER BY purchased_at ASC, currency ASC, id ASC
+SELECT p.purchased_at,
+       p.currency,
+       p.amount_minor,
+       p.shipping_minor,
+       p.fees_minor
+FROM purchases p
+WHERE $_activePurchasePredicate
+ORDER BY p.purchased_at ASC, p.currency ASC, p.id ASC
 ''').get();
   final totals = <(int, int, String), int>{};
   final counts = <(int, int, String), int>{};
@@ -397,11 +405,33 @@ ORDER BY purchased_at ASC, currency ASC, id ASC
 DateTime _timestamp(int seconds) =>
     DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
 
-String _cityLevel(String value) {
-  final parts = value
-      .split(' / ')
-      .map((part) => part.trim())
-      .where((part) => part.isNotEmpty)
-      .toList(growable: false);
-  return parts.length <= 2 ? parts.join(' / ') : parts.take(2).join(' / ');
-}
+const String _activePurchasePredicate = '''
+EXISTS (
+  SELECT 1
+  FROM purchase_items pi
+  WHERE pi.purchase_id = COALESCE(p.adjustment_of_id, p.id)
+    AND (
+      (
+        pi.target_type = 'card'
+        AND EXISTS (
+          SELECT 1
+          FROM card_items ci
+          JOIN card_definitions cd ON cd.id = ci.definition_id
+          WHERE ci.id = pi.target_id
+            AND ci.deleted_at IS NULL
+            AND cd.deleted_at IS NULL
+        )
+      )
+      OR
+      (
+        pi.target_type = 'cardSet'
+        AND EXISTS (
+          SELECT 1
+          FROM card_sets cs
+          WHERE cs.id = pi.target_id
+            AND cs.deleted_at IS NULL
+        )
+      )
+    )
+)
+''';

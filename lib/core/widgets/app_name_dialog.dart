@@ -61,7 +61,7 @@ class _AppNameDialogState extends State<_AppNameDialog> {
         controller: _controller,
         autofocus: true,
         maxLength: widget.maxLength,
-        decoration: InputDecoration(labelText: widget.fieldLabel),
+        decoration: InputDecoration(labelText: '${widget.fieldLabel} *'),
         onSubmitted: (_) => _submit(),
       ),
       actions: <Widget>[

@@ -12,10 +12,9 @@ import '../../../purchases/data/purchase_providers.dart';
 import '../../../purchases/domain/purchase_models.dart';
 import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
-import '../../domain/card_autofill.dart';
 import '../../domain/reserved_card_metadata.dart';
+import '../widgets/card_condition_field.dart';
 import '../widgets/card_entry_metadata_fields.dart';
-import '../widgets/card_autofill_button.dart';
 import '../widgets/card_location_field.dart';
 import '../widgets/optional_date_field.dart';
 import '../widgets/reserved_card_metadata_fields.dart';
@@ -224,25 +223,6 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
     }
   }
 
-  void _applyAutofill(CardAutofillSuggestion suggestion) {
-    setState(() {
-      if (suggestion.name != null) _name.text = suggestion.name!;
-      if (suggestion.city != null) _city.text = suggestion.city!;
-      if (suggestion.issuer != null) _issuer.text = suggestion.issuer!;
-      if (suggestion.code != null) _code.text = suggestion.code!;
-      if (suggestion.issuedAt != null) {
-        _issuedAt = PartialDate.tryParse(suggestion.issuedAt);
-      }
-      if (suggestion.cardType != null) _cardType.text = suggestion.cardType!;
-      if (suggestion.issueQuantity != null) {
-        _issueQuantity.text = suggestion.issueQuantity.toString();
-      }
-      if (suggestion.issuePrice != null) {
-        _issuePrice.text = suggestion.issuePrice!;
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final card = ref.watch(cardDetailProvider(widget.cardItemId));
@@ -296,7 +276,6 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
                     membershipValues,
                   );
                   return _form(
-                    cardValue,
                     tags.value ?? const <TagSummary>[],
                     cardSets.value ?? const <CardSetSummary>[],
                     albums.value ?? const <SeriesSummary>[],
@@ -324,7 +303,6 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
   );
 
   Widget _form(
-    CardDetail card,
     List<TagSummary> tags,
     List<CardSetSummary> cardSets,
     List<SeriesSummary> albums,
@@ -338,20 +316,8 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
         tokens.spaceXl,
       ),
       children: <Widget>[
-        if (card.cover != null) ...<Widget>[
-          CardAutofillButton(
-            imagePath: ref
-                .read(managedImageStoreProvider)
-                .resolve(
-                  card.cover!.derivedRelativePath ?? card.cover!.relativePath,
-                )
-                .path,
-            onApply: _applyAutofill,
-          ),
-          SizedBox(height: tokens.spaceLg),
-        ],
         _sectionTitle('基础资料'),
-        _textField(_name, '名称（可选）'),
+        _textField(_name, '名称'),
         _gap(),
         CardLocationField(
           value: _city.text,
@@ -359,10 +325,10 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
           onChanged: (value) => setState(() => _city.text = value),
         ),
         _gap(),
-        _textField(_issuer, '发行机构（可选）'),
+        _textField(_issuer, '发行机构'),
         _gap(),
         OptionalDateField(
-          label: '发行日期（可选）',
+          label: '发行日期',
           value: _partialDateValue(_issuedAt),
           enabled: !_saving,
           onChanged: (value) => setState(
@@ -372,30 +338,22 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
           ),
         ),
         _gap(),
-        _textField(_code, '编号（可选）'),
+        _textField(_code, '编号'),
         _gap(),
-        _textField(
-          _quantity,
-          '数量（可选，默认 1）',
-          keyboardType: TextInputType.number,
-        ),
-        _gap(),
-        _textField(_notes, '备注（可选）', minLines: 3, maxLines: 6),
+        _textField(_notes, '备注', minLines: 3, maxLines: 6),
         SizedBox(height: tokens.spaceLg),
         _sectionTitle('藏品与发行信息'),
         ReservedCardMetadataFields(
-          conditionController: _condition,
-          itemNotesController: _itemNotes,
           issueQuantityController: _issueQuantity,
           issuePriceController: _issuePrice,
           enabled: !_saving,
         ),
         SizedBox(height: tokens.spaceLg),
         _sectionTitle('整理信息'),
-        _textField(_cardType, '卡片类型（可选）'),
+        _textField(_cardType, '卡片类型'),
         _gap(),
         OptionalDateField(
-          label: '入手日期（可选）',
+          label: '入手日期',
           value: _acquiredAt,
           enabled: !_saving,
           onChanged: (value) => setState(() => _acquiredAt = value),
@@ -430,6 +388,10 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
         ),
         SizedBox(height: tokens.spaceLg),
         _sectionTitle('入手成本'),
+        _textField(_quantity, '数量（默认 1）', keyboardType: TextInputType.number),
+        _gap(),
+        CardConditionField(controller: _condition, enabled: !_saving),
+        _gap(),
         Text(
           '只记录人民币；两项都清空后不再计入累计花费。',
           style: Theme.of(context).textTheme.bodySmall,

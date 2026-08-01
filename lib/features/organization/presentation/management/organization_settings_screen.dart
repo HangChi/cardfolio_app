@@ -51,10 +51,15 @@ class OrganizationSettingsScreen extends ConsumerWidget {
           _SectionHeader(
             title: '标签',
             description: '轻量标记卡片，可用于搜索和组合筛选。',
-            action: FilledButton.tonalIcon(
+            action: TextButton.icon(
               key: const Key('add-tag'),
               onPressed: () => _createTag(context, ref),
-              icon: const Icon(Icons.add),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+              icon: const Icon(Icons.add, size: 18),
               label: const Text('新建标签'),
             ),
           ),
@@ -105,10 +110,15 @@ class OrganizationSettingsScreen extends ConsumerWidget {
           _SectionHeader(
             title: '自定义字段',
             description: '给卡片补充文本、数字或日期资料。',
-            action: FilledButton.tonalIcon(
+            action: TextButton.icon(
               key: const Key('add-custom-field'),
               onPressed: () => _createField(context, ref),
-              icon: const Icon(Icons.add),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+              icon: const Icon(Icons.add, size: 18),
               label: const Text('新建字段'),
             ),
           ),
@@ -198,7 +208,7 @@ Future<void> _createField(BuildContext context, WidgetRef ref) async {
                 key: const Key('name-input'),
                 controller: controller,
                 autofocus: true,
-                decoration: const InputDecoration(labelText: '字段名称'),
+                decoration: const InputDecoration(labelText: '字段名称 *'),
               ),
               SizedBox(height: context.tokens.spaceMd),
               Wrap(
@@ -439,7 +449,7 @@ Future<String?> _nameDialog(
         controller: controller,
         autofocus: true,
         maxLength: 100,
-        decoration: const InputDecoration(labelText: '名称'),
+        decoration: const InputDecoration(labelText: '名称 *'),
       ),
       actions: <Widget>[
         TextButton(

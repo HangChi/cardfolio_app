@@ -646,7 +646,7 @@ class _MemberTrackTile extends StatelessWidget {
     final statusColor = member.isOwned ? AppColors.primary : AppColors.warning;
     return Semantics(
       container: true,
-      label: '${member.name}，${member.required ? '必需成员' : '可选成员'}，$status',
+      label: '${member.name}，${member.required ? '必需成员' : '非必需成员'}，$status',
       child: Padding(
         padding: EdgeInsets.only(bottom: tokens.spaceMd),
         child: Card(
@@ -680,7 +680,7 @@ class _MemberTrackTile extends StatelessWidget {
                       SizedBox(height: tokens.spaceXs),
                       Text(
                         '${member.memberNo ?? '未编号'} · '
-                        '${member.required ? '必需' : '可选'}',
+                        '${member.required ? '必需' : '非必需'}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       SizedBox(height: tokens.spaceXs),

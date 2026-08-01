@@ -1,3 +1,4 @@
+import '../../../core/errors/app_failure.dart';
 import '../../../core/id/id_generator.dart';
 import '../../organization/domain/organization_models.dart';
 import '../../organization/domain/organization_repository.dart';
@@ -52,10 +53,12 @@ Future<List<CustomFieldValueInput>> mergeReservedCardMetadata({
   required List<CustomFieldValueInput> existingValues,
   required ReservedCardMetadata metadata,
 }) async {
+  final latestDefinitions = await repository.watchFieldDefinitions().first;
   final byName = <String, CustomFieldDefinition>{
     for (final definition in definitions) definition.name: definition,
+    for (final definition in latestDefinitions) definition.name: definition,
   };
-  final reservedIds = definitions
+  final reservedIds = byName.values
       .where((definition) => _reservedNames.contains(definition.name))
       .map((definition) => definition.id)
       .toSet();
@@ -63,10 +66,17 @@ Future<List<CustomFieldValueInput>> mergeReservedCardMetadata({
     for (final value in existingValues)
       if (!reservedIds.contains(value.fieldId)) value,
   ];
-
   Future<String> ensure(String name, CustomFieldType type) async {
     final existing = byName[name];
-    if (existing != null) return existing.id;
+    if (existing != null) {
+      if (existing.fieldType != type) {
+        throw OrganizationValidationFailure(
+          OrganizationField.customField,
+          '“$name”字段类型不正确，请在整理设置中调整。',
+        );
+      }
+      return existing.id;
+    }
     final id = idGenerator.newId();
     await repository.createField(
       CreateCustomFieldRequest(id: id, name: name, fieldType: type),

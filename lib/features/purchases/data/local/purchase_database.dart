@@ -225,34 +225,34 @@ extension PurchaseDatabase on AppDatabase {
   }
 
   Stream<CostSummary> watchPurchaseCostSummary(CostDisplayOptions options) {
-    return select(purchases).watch().map((rows) {
-      final totals = <String, int>{};
-      final counts = <String, int>{};
-      for (final row in rows) {
-        final total =
-            row.amountMinor +
-            (options.includeShipping ? row.shippingMinor : 0) +
-            (options.includeFees ? row.feesMinor : 0);
-        totals.update(
-          row.currency,
-          (current) => current + total,
-          ifAbsent: () => total,
-        );
-        counts.update(
-          row.currency,
-          (current) => current + 1,
-          ifAbsent: () => 1,
-        );
-      }
-      final currencies = totals.keys.toList()..sort();
+    final shipping = options.includeShipping ? 'p.shipping_minor' : '0';
+    final fees = options.includeFees ? 'p.fees_minor' : '0';
+    return customSelect(
+      '''
+SELECT p.currency,
+       COALESCE(SUM(p.amount_minor + $shipping + $fees), 0) AS total_minor,
+       COUNT(*) AS purchase_count
+FROM purchases p
+WHERE $_activePurchasePredicate
+GROUP BY p.currency
+ORDER BY p.currency ASC
+''',
+      readsFrom: <ResultSetImplementation<Table, Object?>>{
+        purchases,
+        purchaseItems,
+        cardItems,
+        cardDefinitions,
+        cardSets,
+      },
+    ).watch().map((rows) {
       return CostSummary(
         options: options,
         totals: List<CostTotal>.unmodifiable(
-          currencies.map(
-            (currency) => CostTotal(
-              currency: currency,
-              minorUnits: totals[currency]!,
-              purchaseCount: counts[currency]!,
+          rows.map(
+            (row) => CostTotal(
+              currency: row.read<String>('currency'),
+              minorUnits: row.read<int>('total_minor'),
+              purchaseCount: row.read<int>('purchase_count'),
             ),
           ),
         ),
@@ -342,3 +342,34 @@ extension PurchaseDatabase on AppDatabase {
     }
   }
 }
+
+const String _activePurchasePredicate = '''
+EXISTS (
+  SELECT 1
+  FROM purchase_items pi
+  WHERE pi.purchase_id = COALESCE(p.adjustment_of_id, p.id)
+    AND (
+      (
+        pi.target_type = 'card'
+        AND EXISTS (
+          SELECT 1
+          FROM card_items ci
+          JOIN card_definitions cd ON cd.id = ci.definition_id
+          WHERE ci.id = pi.target_id
+            AND ci.deleted_at IS NULL
+            AND cd.deleted_at IS NULL
+        )
+      )
+      OR
+      (
+        pi.target_type = 'cardSet'
+        AND EXISTS (
+          SELECT 1
+          FROM card_sets cs
+          WHERE cs.id = pi.target_id
+            AND cs.deleted_at IS NULL
+        )
+      )
+    )
+)
+''';

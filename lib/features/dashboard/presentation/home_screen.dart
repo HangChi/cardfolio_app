@@ -105,6 +105,8 @@ class _HomeContent extends StatelessWidget {
                                 '${CurrencyAmount(minorUnits: total.minorUnits, currency: total.currency).formatted}',
                     ),
                     subtitle: Text('${total.purchaseCount} 笔成本记录'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.go(statsPath),
                   ),
               ],
             ),

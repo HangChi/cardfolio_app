@@ -24,8 +24,16 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
   final _definitionIds = <String>{};
   final _setIds = <String>{};
   String? _coverRelativePath;
+  late final String _seriesId;
   bool _initialized = false;
   bool _saving = false;
+  bool _coverBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _seriesId = widget.seriesId ?? ref.read(idGeneratorProvider).newId();
+  }
 
   @override
   void dispose() {
@@ -87,22 +95,20 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                               ),
                       ),
                       ListTile(
-                        leading: const Icon(Icons.photo_library_outlined),
+                        onTap: _saving || _coverBusy ? null : _openCoverMenu,
+                        leading: _coverBusy
+                            ? const SizedBox.square(
+                                dimension: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.add_a_photo_outlined),
                         title: Text(
                           _coverRelativePath == null ? '选择集卡册封面' : '已设置集卡册封面',
                         ),
-                        subtitle: const Text('在下方已选卡片或套卡中点击封面按钮'),
-                        trailing: _coverRelativePath == null
-                            ? null
-                            : IconButton(
-                                tooltip: '清除封面',
-                                onPressed: _saving
-                                    ? null
-                                    : () => setState(
-                                        () => _coverRelativePath = null,
-                                      ),
-                                icon: const Icon(Icons.close),
-                              ),
+                        subtitle: const Text('支持拍摄、从相册选择，或使用下方成员封面'),
+                        trailing: const Icon(Icons.chevron_right),
                       ),
                     ],
                   ),
@@ -155,7 +161,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                                       _coverRelativePath != null &&
                                       _coverRelativePath ==
                                           items[index].coverRelativePath,
-                                  enabled: !_saving,
+                                  enabled: !_saving && !_coverBusy,
                                   onChanged: (selected) => _changeSelection(
                                     ids: _definitionIds,
                                     id: items[index].definitionId,
@@ -165,9 +171,8 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                                   onSetCover:
                                       items[index].coverRelativePath == null
                                       ? null
-                                      : () => setState(
-                                          () => _coverRelativePath =
-                                              items[index].coverRelativePath,
+                                      : () => _setCover(
+                                          items[index].coverRelativePath,
                                         ),
                                 ),
                               ],
@@ -210,7 +215,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                                       _coverRelativePath != null &&
                                       _coverRelativePath ==
                                           items[index].coverRelativePath,
-                                  enabled: !_saving,
+                                  enabled: !_saving && !_coverBusy,
                                   onChanged: (selected) => _changeSelection(
                                     ids: _setIds,
                                     id: items[index].id,
@@ -220,9 +225,8 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                                   onSetCover:
                                       items[index].coverRelativePath == null
                                       ? null
-                                      : () => setState(
-                                          () => _coverRelativePath =
-                                              items[index].coverRelativePath,
+                                      : () => _setCover(
+                                          items[index].coverRelativePath,
                                         ),
                                 ),
                               ],
@@ -233,7 +237,7 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
                 SizedBox(height: tokens.spaceXl),
                 FilledButton(
                   key: const Key('save-series'),
-                  onPressed: _saving ? null : _save,
+                  onPressed: _saving || _coverBusy ? null : _save,
                   child: _saving
                       ? const SizedBox.square(
                           dimension: 20,
@@ -264,6 +268,97 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
     });
   }
 
+  Future<void> _openCoverMenu() async {
+    final action = await showModalBottomSheet<_CoverAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('拍摄封面'),
+              onTap: () => Navigator.pop(sheetContext, _CoverAction.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () => Navigator.pop(sheetContext, _CoverAction.gallery),
+            ),
+            if (_coverRelativePath != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('清除封面'),
+                onTap: () => Navigator.pop(sheetContext, _CoverAction.clear),
+              ),
+            const ListTile(
+              leading: Icon(Icons.star_border),
+              title: Text('也可以使用下方已选卡片或套卡的封面'),
+            ),
+          ],
+        ),
+      ),
+    );
+    switch (action) {
+      case _CoverAction.camera:
+        await _captureCover();
+      case _CoverAction.gallery:
+        await _pickCover();
+      case _CoverAction.clear:
+        _setCover(null);
+      case null:
+        break;
+    }
+  }
+
+  Future<void> _captureCover() async {
+    setState(() => _coverBusy = true);
+    try {
+      final captured = await ref.read(cameraCaptureProvider).capture();
+      if (captured != null) await _importCover(captured.path);
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
+    } finally {
+      if (mounted) setState(() => _coverBusy = false);
+    }
+  }
+
+  Future<void> _pickCover() async {
+    setState(() => _coverBusy = true);
+    try {
+      final selected = await ref.read(galleryPickerProvider).pickMany(limit: 1);
+      if (selected.isNotEmpty) await _importCover(selected.first.path);
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
+    } finally {
+      if (mounted) setState(() => _coverBusy = false);
+    }
+  }
+
+  Future<void> _importCover(String sourcePath) async {
+    final managed = await ref
+        .read(managedImageStoreProvider)
+        .importImage(
+          sourcePath: sourcePath,
+          cardItemId: 'series-$_seriesId',
+          imageId: ref.read(idGeneratorProvider).newId(),
+        );
+    _setCover(managed.relativePath);
+  }
+
+  void _setCover(String? relativePath) {
+    if (!mounted) return;
+    setState(() => _coverRelativePath = relativePath);
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   void _initialize(SeriesDetail? detail) {
     if (_initialized) return;
     _initialized = true;
@@ -278,12 +373,11 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      final id = widget.seriesId ?? ref.read(idGeneratorProvider).newId();
       await ref
           .read(organizationRepositoryProvider)
           .saveSeries(
             SaveSeriesRequest(
-              id: id,
+              id: _seriesId,
               name: _nameController.text,
               description: _descriptionController.text,
               coverRelativePath: _coverRelativePath,
@@ -305,6 +399,8 @@ class _SeriesFormScreenState extends ConsumerState<SeriesFormScreen> {
     }
   }
 }
+
+enum _CoverAction { camera, gallery, clear }
 
 class _SelectableMemberTile extends StatelessWidget {
   const _SelectableMemberTile({

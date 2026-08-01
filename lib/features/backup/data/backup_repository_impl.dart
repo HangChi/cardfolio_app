@@ -260,6 +260,10 @@ final class BackupRepositoryImpl implements BackupRepository {
         }
       }
     }
+    for (final row in snapshot.rows('seriesRecords')) {
+      final cover = row['coverRelativePath'];
+      if (cover is String && cover.isNotEmpty) paths.add(cover);
+    }
 
     final result = <_ExportImage>[];
     final sortedPaths = paths.toList()..sort();
@@ -592,6 +596,10 @@ Set<String> _snapshotImagePaths(BackupSnapshot snapshot) {
         throw const BackupValidationFailure('备份图片路径重复或无效。');
       }
     }
+  }
+  for (final row in snapshot.rows('seriesRecords')) {
+    final cover = row['coverRelativePath'];
+    if (cover is String && cover.isNotEmpty) paths.add(cover);
   }
   return paths;
 }

@@ -15,6 +15,15 @@ enum SortDirection { ascending, descending }
 
 enum CustomFieldType { text, number, date }
 
+String cityFilterLevel(String value) {
+  final parts = value
+      .split(' / ')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList(growable: false);
+  return parts.length <= 2 ? parts.join(' / ') : parts.take(2).join(' / ');
+}
+
 @immutable
 final class CardLibraryQuery {
   const CardLibraryQuery({
@@ -537,11 +546,13 @@ final class SeriesMemberSummary {
   const SeriesMemberSummary({
     required this.id,
     required this.name,
+    this.cardItemId,
     this.coverRelativePath,
   });
 
   final String id;
   final String name;
+  final String? cardItemId;
   final String? coverRelativePath;
 }
 

@@ -183,6 +183,14 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
     final facets = ref.watch(cardFilterFacetsProvider);
     final query = ref.watch(cardLibraryQueryProvider);
     final tokens = context.tokens;
+    if (facets.value case final availableFacets?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(cardLibraryQueryProvider.notifier)
+            .retainAvailableFacets(availableFacets);
+      });
+    }
 
     return SafeArea(
       child: DefaultTabController(
@@ -364,14 +372,33 @@ class _FilterSheet extends StatefulWidget {
 }
 
 class _FilterSheetState extends State<_FilterSheet> {
-  late String? _cardType = widget.initialQuery.cardType;
-  late String? _city = widget.initialQuery.city;
-  late int? _year = widget.initialQuery.year;
-  late final Set<String> _tagIds = widget.initialQuery.tagIds.toSet();
+  late String? _cardType;
+  late String? _city;
+  late int? _year;
+  late final Set<String> _tagIds;
   late TagMatchMode _tagMode = widget.initialQuery.tagMatchMode;
   late SetMembershipFilter _membership = widget.initialQuery.setMembership;
   late bool? _duplicate = widget.initialQuery.duplicate;
   late bool? _needsCompletion = widget.initialQuery.needsCompletion;
+
+  @override
+  void initState() {
+    super.initState();
+    _cardType = widget.facets.cardTypes.contains(widget.initialQuery.cardType)
+        ? widget.initialQuery.cardType
+        : null;
+    final initialCity = widget.initialQuery.city == null
+        ? null
+        : cityFilterLevel(widget.initialQuery.city!);
+    _city = widget.facets.cities.contains(initialCity) ? initialCity : null;
+    _year = widget.facets.years.contains(widget.initialQuery.year)
+        ? widget.initialQuery.year
+        : null;
+    final availableTagIds = widget.facets.tags.map((tag) => tag.id).toSet();
+    _tagIds = widget.initialQuery.tagIds
+        .where(availableTagIds.contains)
+        .toSet();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -560,7 +587,7 @@ class _DropdownFilter<T extends Object> extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: context.tokens.spaceMd),
       child: DropdownButtonFormField<T>(
-        initialValue: value,
+        initialValue: values.contains(value) ? value : null,
         decoration: InputDecoration(labelText: label),
         items: <DropdownMenuItem<T>>[
           DropdownMenuItem<T>(value: null, child: const Text('不限')),

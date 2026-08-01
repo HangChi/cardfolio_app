@@ -59,7 +59,7 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
           ).textTheme.titleMedium?.copyWith(color: AppColors.primary),
         ),
         SizedBox(height: context.tokens.spaceXs),
-        const Text('无需账号也能创建、浏览、编辑、统计和导出；登录只用于可选云同步。'),
+        const Text('无需账号也能创建、浏览、编辑、统计和导出；登录仅用于云同步。'),
         SizedBox(height: context.tokens.spaceMd),
         TextField(
           key: const Key('account-email'),
@@ -67,7 +67,7 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
           enabled: !_busy,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const <String>[AutofillHints.email],
-          decoration: const InputDecoration(labelText: '邮箱'),
+          decoration: const InputDecoration(labelText: '邮箱 *'),
         ),
         SizedBox(height: context.tokens.spaceSm),
         TextField(
@@ -76,7 +76,7 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
           enabled: !_busy,
           obscureText: true,
           autofillHints: const <String>[AutofillHints.password],
-          decoration: const InputDecoration(labelText: '密码（至少 8 位）'),
+          decoration: const InputDecoration(labelText: '密码 *（至少 8 位）'),
         ),
         SizedBox(height: context.tokens.spaceMd),
         Wrap(

@@ -33,13 +33,10 @@ class SeriesCollectionView extends ConsumerWidget {
                   SizedBox(height: context.tokens.spaceSm),
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.tonalIcon(
-                      onPressed: () => context.push(createSeriesPath),
-                      icon: const Icon(Icons.add),
-                      label: const Text('新建集卡册'),
-                    ),
+                  return OutlinedButton.icon(
+                    onPressed: () => context.push(createSeriesPath),
+                    icon: const Icon(Icons.add),
+                    label: const Text('新建集卡册'),
                   );
                 }
                 return _SeriesTile(series: items[index - 1]);

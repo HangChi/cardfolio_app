@@ -406,7 +406,7 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
           CardLocationField(
             value: _sharedCity.text,
             enabled: !_saving,
-            label: '城市（共用，可选）',
+            label: '城市（共用）',
             onChanged: (value) {
               setState(() => _sharedCity.text = value);
               _schedulePersist();
@@ -417,18 +417,18 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
             controller: _sharedIssuer,
             enabled: !_saving,
             onChanged: (_) => _schedulePersist(),
-            decoration: const InputDecoration(labelText: '发行机构（共用，可选）'),
+            decoration: const InputDecoration(labelText: '发行机构（共用）'),
           ),
           SizedBox(height: tokens.spaceSm),
           TextField(
             controller: _sharedCardType,
             enabled: !_saving,
             onChanged: (_) => _schedulePersist(),
-            decoration: const InputDecoration(labelText: '卡片类型（共用，可选）'),
+            decoration: const InputDecoration(labelText: '卡片类型（共用）'),
           ),
           SizedBox(height: tokens.spaceSm),
           OptionalDateField(
-            label: '入手日期（共用，可选）',
+            label: '入手日期（共用）',
             value: _sharedAcquiredAt,
             enabled: !_saving,
             onChanged: (value) {
@@ -617,7 +617,7 @@ class _BatchDraftCard extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: _SideImage(
-                    label: '正面（可选）',
+                    label: '正面',
                     path: draft.frontDerivedPath ?? draft.frontPath,
                     enabled: enabled && !draft.saved && !draft.confirmed,
                     onPressed: onChooseFront,
@@ -627,7 +627,7 @@ class _BatchDraftCard extends StatelessWidget {
                 SizedBox(width: tokens.spaceMd),
                 Expanded(
                   child: _SideImage(
-                    label: '背面（可选）',
+                    label: '背面',
                     path: draft.backDerivedPath ?? draft.backPath,
                     enabled: enabled && !draft.saved && !draft.confirmed,
                     onPressed: onChooseBack,
@@ -641,11 +641,11 @@ class _BatchDraftCard extends StatelessWidget {
               controller: draft.name,
               enabled: enabled && !draft.saved && !draft.confirmed,
               onChanged: (_) => onChanged(),
-              decoration: const InputDecoration(labelText: '名称（可选）'),
+              decoration: const InputDecoration(labelText: '名称'),
             ),
             SizedBox(height: tokens.spaceMd),
             OptionalDateField(
-              label: '发行日期（可选）',
+              label: '发行日期',
               value: draft.issuedAt,
               enabled: enabled && !draft.saved && !draft.confirmed,
               onChanged: (value) {
@@ -658,7 +658,7 @@ class _BatchDraftCard extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    '卡片标签（可选）',
+                    '卡片标签',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
@@ -695,7 +695,7 @@ class _BatchDraftCard extends StatelessWidget {
                 ],
               ),
             SizedBox(height: tokens.spaceMd),
-            Text('加入套卡（可选）', style: Theme.of(context).textTheme.titleSmall),
+            Text('加入套卡', style: Theme.of(context).textTheme.titleSmall),
             SizedBox(height: tokens.spaceSm),
             if (cardSets.isEmpty)
               Text('暂无套卡', style: Theme.of(context).textTheme.bodySmall)
@@ -783,7 +783,7 @@ class _SideImage extends StatelessWidget {
                       left: 8,
                       top: 8,
                       child: Chip(
-                        label: Text(label.replaceAll('（可选）', '')),
+                        label: Text(label),
                         visualDensity: VisualDensity.compact,
                       ),
                     ),

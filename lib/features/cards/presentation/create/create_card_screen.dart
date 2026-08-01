@@ -19,6 +19,7 @@ import '../../domain/image_processing.dart';
 import 'create_card_controller.dart';
 import 'create_card_state.dart';
 import '../widgets/card_image.dart';
+import '../widgets/card_condition_field.dart';
 import '../widgets/card_entry_metadata_fields.dart';
 import '../widgets/card_autofill_button.dart';
 import '../widgets/card_image_kind_label.dart';
@@ -293,7 +294,6 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
           selectedSets: _selectedSets,
           selectedAlbums: _selectedAlbums,
           conditionController: _condition,
-          itemNotesController: _itemNotes,
           issueQuantityController: _issueQuantity,
           issuePriceController: _issuePrice,
           cardTypeController: _cardType,
@@ -321,7 +321,6 @@ class _CreateCardForm extends ConsumerWidget {
     required this.selectedSets,
     required this.selectedAlbums,
     required this.conditionController,
-    required this.itemNotesController,
     required this.issueQuantityController,
     required this.issuePriceController,
     required this.cardTypeController,
@@ -343,7 +342,6 @@ class _CreateCardForm extends ConsumerWidget {
   final Set<String> selectedSets;
   final Set<String> selectedAlbums;
   final TextEditingController conditionController;
-  final TextEditingController itemNotesController;
   final TextEditingController issueQuantityController;
   final TextEditingController issuePriceController;
   final TextEditingController cardTypeController;
@@ -444,8 +442,6 @@ class _CreateCardForm extends ConsumerWidget {
           Text('藏品与发行信息', style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: tokens.spaceMd),
           ReservedCardMetadataFields(
-            conditionController: conditionController,
-            itemNotesController: itemNotesController,
             issueQuantityController: issueQuantityController,
             issuePriceController: issuePriceController,
             enabled: !state.isSaving,
@@ -493,6 +489,11 @@ class _CreateCardForm extends ConsumerWidget {
           ),
           SizedBox(height: tokens.spaceLg),
           Text('入手成本', style: Theme.of(context).textTheme.titleLarge),
+          SizedBox(height: tokens.spaceMd),
+          CardConditionField(
+            controller: conditionController,
+            enabled: !state.isSaving,
+          ),
           SizedBox(height: tokens.spaceSm),
           Text(
             '只记录人民币；两项都留空时不计入累计花费。',
