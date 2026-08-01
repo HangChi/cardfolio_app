@@ -179,6 +179,42 @@ void main() {
     );
   });
 
+  group('SaveCardEntryCostRequest.normalized', () {
+    test(
+      'normalizes the target id and preserves the acquisition calendar day',
+      () {
+        final result = SaveCardEntryCostRequest(
+          cardItemId: ' item-1 ',
+          amountMinor: 5000,
+          shippingMinor: 200,
+          purchasedAt: DateTime(2026, 7, 28, 23, 45),
+        ).normalized();
+
+        expect(result.cardItemId, 'item-1');
+        expect(result.purchasedAt, DateTime.utc(2026, 7, 28));
+        expect(result.amountMinor, 5000);
+        expect(result.shippingMinor, 200);
+      },
+    );
+
+    test('rejects a negative card-entry amount', () {
+      expect(
+        () => const SaveCardEntryCostRequest(
+          cardItemId: 'item-1',
+          amountMinor: -1,
+          shippingMinor: 0,
+        ).normalized(),
+        throwsA(
+          isA<PurchaseValidationFailure>().having(
+            (failure) => failure.field,
+            'field',
+            PurchaseField.amount,
+          ),
+        ),
+      );
+    });
+  });
+
   group('adjustments and totals', () {
     test('normalizes a positive refund request without mutating its sign', () {
       final result = CreateAdjustmentRequest(

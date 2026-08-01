@@ -3,6 +3,7 @@ import 'package:cardfolio_app/features/card_sets/data/local/card_set_database.da
 import 'package:cardfolio_app/features/cards/data/local/card_database.dart';
 import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/organization/data/local/organization_database.dart';
+import 'package:cardfolio_app/features/organization/data/local/organization_query_database.dart';
 import 'package:cardfolio_app/features/organization/domain/organization_models.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
@@ -254,6 +255,47 @@ void main() {
       expect(await db.select(db.seriesSets).get(), hasLength(2));
     },
   );
+
+  test('series detail groups set members and exposes the set cover', () async {
+    await insertCard('1');
+    await insertSet('1');
+    await db.addCardSetMember(
+      request: const AddCardSetMemberRequest.existing(
+        id: 'member-1',
+        setId: 'set-1',
+        definitionId: 'definition-1',
+      ).normalized(),
+      now: now,
+    );
+    await db.setCardSetStandaloneCover(
+      setId: 'set-1',
+      relativePath: 'originals/set-set-1/cover.jpg',
+      now: now,
+    );
+    await db.saveOrganizationSeries(
+      request: const SaveSeriesRequest(
+        id: 'series-1',
+        name: '系列 1',
+        definitionIds: <String>['definition-1'],
+        setIds: <String>['set-1'],
+      ).normalized(),
+      now: now,
+    );
+
+    final detail = await db.watchOrganizationSeriesDetail('series-1').first;
+
+    expect(detail, isNotNull);
+    expect(detail!.setGroups, hasLength(1));
+    expect(detail.setGroups.single.set.id, 'set-1');
+    expect(
+      detail.setGroups.single.set.coverRelativePath,
+      'originals/set-set-1/cover.jpg',
+    );
+    expect(detail.setGroups.single.cards.map((card) => card.id), <String>[
+      'definition-1',
+    ]);
+    expect(detail.setGroups.single.cards.single.cardItemId, 'item-1');
+  });
 
   test('field deletion reports impact and preserves hidden values', () async {
     await insertCard('1');

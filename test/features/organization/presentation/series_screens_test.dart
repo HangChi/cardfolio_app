@@ -122,7 +122,7 @@ void main() {
     await _disposeApp(tester);
   });
 
-  testWidgets('series detail separates cards and sets without completion', (
+  testWidgets('series detail groups sets and leaves unrelated cards separate', (
     tester,
   ) async {
     await db.saveOrganizationSeries(
@@ -143,8 +143,9 @@ void main() {
 
     expect(find.text('东京系列'), findsOneWidget);
     expect(find.text('集卡册用于收纳卡片和套卡，不计算完成度。'), findsOneWidget);
-    expect(find.text('卡片 · 1'), findsOneWidget);
-    expect(find.text('套卡 · 1'), findsOneWidget);
+    expect(find.text('目录'), findsOneWidget);
+    expect(find.text('0 张已拥有卡片'), findsOneWidget);
+    expect(find.text('其他卡片 · 1'), findsOneWidget);
     expect(find.text('樱花卡'), findsOneWidget);
     expect(find.text('四季套卡'), findsOneWidget);
     await _disposeApp(tester);

@@ -144,4 +144,11 @@ final class _DetailRepository implements CardRepository {
     required String imageId,
     required CardImageKind kind,
   }) async {}
+
+  @override
+  Future<void> updateImageEdit({
+    required String cardItemId,
+    required String imageId,
+    required String derivedSourcePath,
+  }) async {}
 }

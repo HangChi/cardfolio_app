@@ -93,6 +93,73 @@ void main() {
   });
 
   test(
+    'card-entry cost uses and retains the acquisition calendar day',
+    () async {
+      await insertCard(id: 'card-1', name: '樱花纪念卡');
+      final acquiredAt = DateTime(2026, 6, 15, 20, 30);
+
+      await db.saveCardEntryCost(
+        request: SaveCardEntryCostRequest(
+          cardItemId: 'card-1',
+          amountMinor: 5000,
+          shippingMinor: 200,
+          purchasedAt: acquiredAt,
+        ),
+        now: now,
+      );
+
+      var stored = await db.select(db.purchases).getSingle();
+      expect(stored.id, cardEntryCostPurchaseId('card-1'));
+      expect(stored.purchasedAt.toUtc(), DateTime.utc(2026, 6, 15));
+      expect(stored.amountMinor, 5000);
+      expect(stored.shippingMinor, 200);
+      final originalVersion = stored.version;
+
+      await db.saveCardEntryCost(
+        request: const SaveCardEntryCostRequest(
+          cardItemId: 'card-1',
+          amountMinor: 6000,
+          shippingMinor: 300,
+        ),
+        now: now.add(const Duration(days: 1)),
+      );
+
+      stored = await db.select(db.purchases).getSingle();
+      expect(stored.purchasedAt.toUtc(), DateTime.utc(2026, 6, 15));
+      expect(stored.amountMinor, 6000);
+      expect(stored.shippingMinor, 300);
+      expect(stored.version, originalVersion + 1);
+    },
+  );
+
+  test(
+    'zero card-entry cost removes both the ledger row and its target',
+    () async {
+      await insertCard(id: 'card-1', name: '樱花纪念卡');
+      await db.saveCardEntryCost(
+        request: const SaveCardEntryCostRequest(
+          cardItemId: 'card-1',
+          amountMinor: 5000,
+          shippingMinor: 0,
+        ),
+        now: now,
+      );
+
+      await db.saveCardEntryCost(
+        request: const SaveCardEntryCostRequest(
+          cardItemId: 'card-1',
+          amountMinor: 0,
+          shippingMinor: 0,
+        ),
+        now: now.add(const Duration(minutes: 1)),
+      );
+
+      expect(await db.select(db.purchases).get(), isEmpty);
+      expect(await db.select(db.purchaseItems).get(), isEmpty);
+    },
+  );
+
+  test(
     'saves purchase targets atomically and allocations do not add cost',
     () async {
       await insertCard(id: 'card-1', name: '樱花纪念卡');

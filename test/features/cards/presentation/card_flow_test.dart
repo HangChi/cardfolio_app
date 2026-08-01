@@ -172,6 +172,13 @@ class _FakeCardRepository implements CardRepository {
   }) async {}
 
   @override
+  Future<void> updateImageEdit({
+    required String cardItemId,
+    required String imageId,
+    required String derivedSourcePath,
+  }) async {}
+
+  @override
   Future<Set<String>> referencedImagePaths() async => const <String>{};
 
   @override
@@ -343,7 +350,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('新建卡片'), findsOneWidget);
-    expect(find.text('正反面与其他图片（1 张，可选）'), findsOneWidget);
+    expect(find.text('正反面与其他图片（1 张）'), findsOneWidget);
   });
 
   testWidgets('continuous capture keeps confirmed images and stops on cancel', (
@@ -363,7 +370,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('新建卡片'), findsOneWidget);
-    expect(find.text('正反面与其他图片（2 张，可选）'), findsOneWidget);
+    expect(find.text('正反面与其他图片（2 张）'), findsOneWidget);
   });
 
   testWidgets('blank card name saves as 未命名卡片', (tester) async {

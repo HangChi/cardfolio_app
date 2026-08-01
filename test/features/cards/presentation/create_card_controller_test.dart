@@ -140,6 +140,13 @@ class FakeCardRepository implements CardRepository {
   }) async {}
 
   @override
+  Future<void> updateImageEdit({
+    required String cardItemId,
+    required String imageId,
+    required String derivedSourcePath,
+  }) async {}
+
+  @override
   Stream<List<CardSummary>> watchCards() =>
       Stream<List<CardSummary>>.value(const <CardSummary>[]);
 
@@ -597,4 +604,26 @@ void main() {
       expect(state().fieldErrors[CardField.issuedAt], isNull);
     });
   });
+
+  test(
+    'starting a copy draft discards source images, ids, and edited fields',
+    () async {
+      container = buildContainer();
+      await controller().pickImage();
+      controller()
+        ..updateName('原卡副本')
+        ..updateCity('上海')
+        ..updateIssuedAt('2026-07');
+
+      controller().startCopyDraft();
+
+      expect(state().phase, CreateCardPhase.idle);
+      expect(state().images, isEmpty);
+      expect(state().ids, isNull);
+      expect(state().name, isEmpty);
+      expect(state().city, isEmpty);
+      expect(state().issuedAtText, isEmpty);
+      expect(state().failure, isNull);
+    },
+  );
 }

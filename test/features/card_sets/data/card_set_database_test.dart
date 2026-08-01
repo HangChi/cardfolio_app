@@ -298,6 +298,74 @@ void main() {
     expect(storedSet.version, versionBeforeRemoval.version + 1);
   });
 
+  test('a standalone cover overrides and can outlive a member cover', () async {
+    await createSet(expectedCount: 1);
+    await db.insertCardGraph(ownedCard(suffix: '1', name: '春'));
+    await db.addCardSetMember(
+      request: const AddCardSetMemberRequest.existing(
+        id: 'member-1',
+        setId: 'set-1',
+        definitionId: 'definition-1',
+      ).normalized(),
+      now: now,
+    );
+    await db.setCardSetCover(setId: 'set-1', imageId: 'image-1', now: now);
+    final before = await (db.select(
+      db.cardSets,
+    )..where((set) => set.id.equals('set-1'))).getSingle();
+
+    await db.setCardSetStandaloneCover(
+      setId: 'set-1',
+      relativePath: 'originals/set-set-1/cover.jpg',
+      now: now.add(const Duration(minutes: 1)),
+    );
+
+    var detail = (await db.watchCardSetDetail('set-1').first)!;
+    final stored = await (db.select(
+      db.cardSets,
+    )..where((set) => set.id.equals('set-1'))).getSingle();
+    expect(detail.coverImageId, isNull);
+    expect(detail.coverRelativePath, 'originals/set-set-1/cover.jpg');
+    expect(stored.version, before.version + 1);
+
+    await db.removeCardSetMember(
+      setId: 'set-1',
+      memberId: 'member-1',
+      now: now.add(const Duration(minutes: 2)),
+    );
+    detail = (await db.watchCardSetDetail('set-1').first)!;
+    expect(detail.members, isEmpty);
+    expect(detail.coverRelativePath, 'originals/set-set-1/cover.jpg');
+  });
+
+  test('selecting a member cover replaces the standalone cover', () async {
+    await createSet(expectedCount: 1);
+    await db.insertCardGraph(ownedCard(suffix: '1', name: '春'));
+    await db.addCardSetMember(
+      request: const AddCardSetMemberRequest.existing(
+        id: 'member-1',
+        setId: 'set-1',
+        definitionId: 'definition-1',
+      ).normalized(),
+      now: now,
+    );
+    await db.setCardSetStandaloneCover(
+      setId: 'set-1',
+      relativePath: 'originals/set-set-1/cover.jpg',
+      now: now,
+    );
+
+    await db.setCardSetCover(
+      setId: 'set-1',
+      imageId: 'image-1',
+      now: now.add(const Duration(minutes: 1)),
+    );
+
+    final detail = (await db.watchCardSetDetail('set-1').first)!;
+    expect(detail.coverImageId, 'image-1');
+    expect(detail.coverRelativePath, 'originals/item-1/image-1.jpg');
+  });
+
   test(
     'candidates include active owned styles not already in the set',
     () async {

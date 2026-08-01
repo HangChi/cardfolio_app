@@ -9,6 +9,7 @@ import 'package:cardfolio_app/features/dashboard/domain/dashboard_models.dart';
 import 'package:cardfolio_app/features/recycle_bin/data/recycle_bin_providers.dart';
 import 'package:cardfolio_app/features/sync/data/sync_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -65,6 +66,13 @@ class _EmptyCardRepository implements CardRepository {
     required String cardItemId,
     required String imageId,
     required CardImageKind kind,
+  }) async {}
+
+  @override
+  Future<void> updateImageEdit({
+    required String cardItemId,
+    required String imageId,
+    required String derivedSourcePath,
   }) async {}
 
   @override
@@ -188,4 +196,39 @@ void main() {
     expect(find.text('导入与导出'), findsOneWidget);
     expect(find.text('备份、恢复或合并你的全部收藏数据。'), findsOneWidget);
   });
+
+  testWidgets(
+    'deduplicates back events and resets confirmation on navigation',
+    (tester) async {
+      var exitCalls = 0;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'SystemNavigator.pop') exitCalls++;
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+      await pumpShell(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.text('再按一次返回键退出应用'), findsOneWidget);
+      expect(exitCalls, 0);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(exitCalls, 0);
+
+      await tester.tap(find.text('首页').last);
+      await tester.pumpAndSettle();
+      expect(find.text('再按一次返回键退出应用'), findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.text('再按一次返回键退出应用'), findsOneWidget);
+      expect(exitCalls, 0);
+    },
+  );
 }

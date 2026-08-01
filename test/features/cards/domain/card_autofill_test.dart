@@ -5,6 +5,7 @@ void main() {
   test('catalog match takes precedence while OCR fills missing fields', () {
     const recognized = RecognizedCardText(
       rawText: '上海交通卡\n编号 SH-2025\n2025',
+      lines: <String>['上海交通卡', '编号 SH-2025', '2025'],
       name: '上海交通卡',
       city: '上海',
       code: 'SH-2025',

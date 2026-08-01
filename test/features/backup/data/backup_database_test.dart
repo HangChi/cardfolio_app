@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cardfolio_app/features/backup/data/backup_database.dart';
 import 'package:cardfolio_app/features/backup/domain/backup_models.dart';
+import 'package:cardfolio_app/features/card_sets/data/local/card_set_database.dart';
 import 'package:cardfolio_app/features/cards/data/local/card_database.dart';
 import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/organization/domain/organization_models.dart';
@@ -41,8 +42,13 @@ void main() {
       final definitions =
           entities['cardDefinitions']! as List<Map<String, Object?>>;
       final purchases = entities['purchases']! as List<Map<String, Object?>>;
+      final cardSets = entities['cardSets']! as List<Map<String, Object?>>;
       expect(definitions.single['createdAt'], '2026-07-01T08:00:00.000Z');
       expect(purchases.single['amountMinor'], 50000);
+      expect(
+        cardSets.single['coverRelativePath'],
+        'originals/set-$_setId/cover.jpg',
+      );
 
       final result = await target.importLogicalBackup(
         snapshot,
@@ -201,6 +207,11 @@ Future<void> _seedAllEntities(AppDatabase db) async {
           updatedAt: createdAt,
         ),
       );
+  await db.setCardSetStandaloneCover(
+    setId: _setId,
+    relativePath: 'originals/set-$_setId/cover.jpg',
+    now: createdAt,
+  );
   await db
       .into(db.cardSetMembers)
       .insert(

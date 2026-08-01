@@ -118,6 +118,13 @@ class FakeDetailRepository implements CardRepository {
   }) async {
     updatedKind = kind;
   }
+
+  @override
+  Future<void> updateImageEdit({
+    required String cardItemId,
+    required String imageId,
+    required String derivedSourcePath,
+  }) async {}
 }
 
 class FakeDetailPicker implements GalleryPicker {

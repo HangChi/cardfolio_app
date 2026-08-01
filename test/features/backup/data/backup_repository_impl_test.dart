@@ -6,6 +6,8 @@ import 'package:cardfolio_app/core/time/clock.dart';
 import 'package:cardfolio_app/features/backup/data/backup_database.dart';
 import 'package:cardfolio_app/features/backup/data/backup_repository_impl.dart';
 import 'package:cardfolio_app/features/backup/domain/backup_models.dart';
+import 'package:cardfolio_app/features/card_sets/data/local/card_set_database.dart';
+import 'package:cardfolio_app/features/card_sets/domain/card_set_models.dart';
 import 'package:cardfolio_app/features/cards/data/files/managed_image_store.dart';
 import 'package:cardfolio_app/features/cards/data/local/card_database.dart';
 import 'package:cardfolio_app/features/cards/domain/card_models.dart';
@@ -94,6 +96,48 @@ void main() {
       (await targetDb.exportLogicalBackup()).toJson(),
       (await sourceDb.exportLogicalBackup()).toJson(),
     );
+  });
+
+  test('archives and restores a standalone card-set cover file', () async {
+    const coverPath = 'originals/set-$_setId/cover.jpg';
+    const coverBytes = <int>[9, 8, 7, 6];
+    final createdAt = DateTime.utc(2026, 7, 1, 8);
+    await sourceDb.createCardSet(
+      request: const CreateCardSetRequest(
+        id: _setId,
+        name: '四季套卡',
+        countKnown: false,
+      ).normalized(),
+      now: createdAt,
+    );
+    await sourceDb.setCardSetStandaloneCover(
+      setId: _setId,
+      relativePath: coverPath,
+      now: createdAt,
+    );
+    final sourceCover = sourceImages.resolve(coverPath);
+    await sourceCover.parent.create(recursive: true);
+    await sourceCover.writeAsBytes(coverBytes, flush: true);
+    final backup = File('${root.path}/set-cover.cardfolio.zip');
+
+    final exported = await sourceRepository.exportBackup(backup);
+    final preview = await targetRepository.inspectBackup(
+      backup,
+      mode: BackupMode.emptyLibrary,
+    );
+    final imported = await targetRepository.importBackup(
+      backup,
+      mode: BackupMode.emptyLibrary,
+    );
+
+    expect(exported.imageCount, 2);
+    expect(preview.imageCount, 2);
+    expect(imported.imageCount, 2);
+    expect(
+      (await targetDb.watchCardSetDetail(_setId).first)?.coverRelativePath,
+      coverPath,
+    );
+    expect(await targetImages.resolve(coverPath).readAsBytes(), coverBytes);
   });
 
   test('tampered archive is rejected without modifying the target', () async {
@@ -203,6 +247,7 @@ void main() {
 const String _definitionId = '00000000-0000-4000-8000-000000000001';
 const String _itemId = '00000000-0000-4000-8000-000000000002';
 const String _imageId = '00000000-0000-4000-8000-000000000003';
+const String _setId = '00000000-0000-4000-8000-000000000004';
 
 Future<void> _seedCard(AppDatabase db, ManagedImageStore imageStore) async {
   final createdAt = DateTime.utc(2026, 7, 1, 8);

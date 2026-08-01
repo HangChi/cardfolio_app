@@ -358,6 +358,38 @@ void main() {
     expect(point.monthLabel, expectedMonth);
   });
 
+  test('card-entry spending follows the acquisition calendar day', () async {
+    await insertCard(suffix: 'acquired', name: '购入日卡', createdAt: now);
+    final acquiredAt = DateTime.utc(2026, 6, 30);
+    await (db.update(db.cardItems)
+          ..where((item) => item.id.equals('item-acquired')))
+        .write(CardItemsCompanion(acquiredAt: Value(acquiredAt)));
+    await db.saveCardEntryCost(
+      request: const SaveCardEntryCostRequest(
+        cardItemId: 'item-acquired',
+        amountMinor: 8800,
+        shippingMinor: 200,
+      ),
+      now: now,
+    );
+
+    final statistics = await db
+        .watchStatisticsSnapshot(const CostDisplayOptions())
+        .first;
+    final calendar = await db
+        .watchSpendingCalendarMonth(
+          month: acquiredAt,
+          options: const CostDisplayOptions(),
+        )
+        .first;
+
+    expect(statistics.costTrend.single.monthLabel, '2026-06');
+    expect(statistics.costTrend.single.minorUnits, 9000);
+    expect(calendar.days, hasLength(1));
+    expect(calendar.days.single.date, DateTime(2026, 6, 30));
+    expect(calendar.days.single.entries.single.cardItemId, 'item-acquired');
+  });
+
   test(
     'aggregates 10000 owned styles under the local P95 budget',
     () async {

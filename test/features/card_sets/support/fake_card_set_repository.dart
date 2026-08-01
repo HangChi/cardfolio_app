@@ -24,6 +24,8 @@ final class FakeCardSetRepository implements CardSetRepository {
   final List<List<String>> reordered = <List<String>>[];
   final List<String> removed = <String>[];
   final List<String?> covers = <String?>[];
+  final List<({String setId, String? relativePath})> standaloneCovers =
+      <({String setId, String? relativePath})>[];
 
   @override
   Stream<List<CardSetMembership>> watchMemberships(String definitionId) =>
@@ -88,5 +90,13 @@ final class FakeCardSetRepository implements CardSetRepository {
   @override
   Future<void> setCover({required String setId, String? imageId}) async {
     covers.add(imageId);
+  }
+
+  @override
+  Future<void> setStandaloneCover({
+    required String setId,
+    String? relativePath,
+  }) async {
+    standaloneCovers.add((setId: setId, relativePath: relativePath));
   }
 }

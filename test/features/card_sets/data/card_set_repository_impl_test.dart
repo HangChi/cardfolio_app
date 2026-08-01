@@ -156,4 +156,22 @@ void main() {
       ),
     );
   });
+
+  test('normalizes standalone cover paths and clears blank paths', () async {
+    await repository.createSet(createRequest);
+
+    await repository.setStandaloneCover(
+      setId: ' set-1 ',
+      relativePath: ' originals/set-set-1/cover.jpg ',
+    );
+
+    var detail = await repository.watchSet('set-1').first;
+    expect(detail?.coverImageId, isNull);
+    expect(detail?.coverRelativePath, 'originals/set-set-1/cover.jpg');
+
+    await repository.setStandaloneCover(setId: 'set-1', relativePath: '   ');
+
+    detail = await repository.watchSet('set-1').first;
+    expect(detail?.coverRelativePath, isNull);
+  });
 }

@@ -69,7 +69,7 @@ void main() {
     await tester.tap(find.text('从相册导入'));
     await tester.pumpAndSettle();
 
-    expect(find.text('正反面与其他图片（3 张，可选）'), findsOneWidget);
+    expect(find.text('正反面与其他图片（3 张）'), findsOneWidget);
     expect(find.text('封面'), findsOneWidget);
     expect(find.text('正面'), findsOneWidget);
     expect(find.text('背面'), findsOneWidget);

@@ -62,7 +62,7 @@ void main() {
     ),
   ];
 
-  CardSetDetail detail({bool countKnown = true}) {
+  CardSetDetail detail({bool countKnown = true, String? coverRelativePath}) {
     return CardSetDetail(
       id: 'set-1',
       name: '四季套卡',
@@ -70,6 +70,7 @@ void main() {
       expectedCount: countKnown ? 4 : null,
       createdAt: now,
       updatedAt: now,
+      coverRelativePath: coverRelativePath,
       members: members,
       progress: CardSetProgress.calculate(
         countKnown: countKnown,
@@ -139,7 +140,7 @@ void main() {
     await tester.pumpWidget(subject(repository));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('添加成员'));
+    await tester.tap(find.byTooltip('添加成员'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('定义缺失成员'));
     await tester.pumpAndSettle();
@@ -174,6 +175,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('添加成员'), findsOneWidget);
+    expect(find.byTooltip('添加成员'), findsOneWidget);
+  });
+
+  testWidgets('clears a standalone cover from the cover source sheet', (
+    tester,
+  ) async {
+    final repository = FakeCardSetRepository(
+      details: <String, CardSetDetail?>{
+        'set-1': detail(coverRelativePath: 'covers/set-1.jpg'),
+      },
+    );
+
+    await tester.pumpWidget(subject(repository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('四季套卡套卡封面，点击更换'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清除封面'));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.standaloneCovers,
+      <({String setId, String? relativePath})>[
+        (setId: 'set-1', relativePath: null),
+      ],
+    );
   });
 }
