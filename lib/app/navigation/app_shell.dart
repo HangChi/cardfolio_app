@@ -45,18 +45,25 @@ class AppDestination {
 }
 
 /// 承载五入口分支的导航壳。每个分支保留自己的导航栈。
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  static const Duration _exitConfirmationWindow = Duration(seconds: 2);
+
+  DateTime? _lastBackPressedAt;
+
+  @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) SystemNavigator.pop();
-      },
+      onPopInvokedWithResult: _handlePop,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final useRail = constraints.maxWidth >= 720;
@@ -66,7 +73,7 @@ class AppShell extends StatelessWidget {
                 child: Row(
                   children: <Widget>[
                     NavigationRail(
-                      selectedIndex: navigationShell.currentIndex,
+                      selectedIndex: widget.navigationShell.currentIndex,
                       labelType: NavigationRailLabelType.all,
                       groupAlignment: -0.72,
                       leading: const Padding(
@@ -87,18 +94,18 @@ class AppShell extends StatelessWidget {
                       width: 1,
                       color: Theme.of(context).colorScheme.outlineVariant,
                     ),
-                    Expanded(child: navigationShell),
+                    Expanded(child: widget.navigationShell),
                   ],
                 ),
               ),
             );
           }
           return Scaffold(
-            body: navigationShell,
+            body: widget.navigationShell,
             bottomNavigationBar: SafeArea(
               top: false,
               child: NavigationBar(
-                selectedIndex: navigationShell.currentIndex,
+                selectedIndex: widget.navigationShell.currentIndex,
                 onDestinationSelected: _goToBranch,
                 destinations: <Widget>[
                   for (var index = 0; index < appDestinations.length; index++)
@@ -117,10 +124,35 @@ class AppShell extends StatelessWidget {
     );
   }
 
+  void _handlePop(bool didPop, Object? result) {
+    if (didPop) return;
+
+    final now = DateTime.now();
+    final lastBackPressedAt = _lastBackPressedAt;
+    if (lastBackPressedAt != null &&
+        now.difference(lastBackPressedAt) <= _exitConfirmationWindow) {
+      _lastBackPressedAt = null;
+      SystemNavigator.pop();
+      return;
+    }
+
+    _lastBackPressedAt = now;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('再按一次返回键退出应用'),
+          duration: _exitConfirmationWindow,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
   void _goToBranch(int index) {
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 }
