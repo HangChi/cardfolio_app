@@ -137,6 +137,7 @@ extension RecycleBinDatabase on AppDatabase {
         for (final image in images)
           if (image.derivedRelativePath != null) image.derivedRelativePath!,
       };
+      await _clearSeriesCoverReferences(this, paths, queuedAt.toUtc());
       for (final path in paths) {
         await into(fileCleanupQueueEntries).insert(
           FileCleanupQueueEntriesCompanion.insert(
@@ -263,3 +264,25 @@ extension RecycleBinDatabase on AppDatabase {
 
 DateTime _timestamp(int seconds) =>
     DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+
+Future<void> _clearSeriesCoverReferences(
+  AppDatabase db,
+  Set<String> paths,
+  DateTime updatedAt,
+) async {
+  if (paths.isEmpty) return;
+  final coveringSeries = await (db.select(
+    db.seriesRecords,
+  )..where((series) => series.coverRelativePath.isIn(paths))).get();
+  for (final series in coveringSeries) {
+    await (db.update(
+      db.seriesRecords,
+    )..where((entry) => entry.id.equals(series.id))).write(
+      SeriesRecordsCompanion(
+        coverRelativePath: const Value<String?>(null),
+        updatedAt: Value(updatedAt),
+        version: Value(series.version + 1),
+      ),
+    );
+  }
+}

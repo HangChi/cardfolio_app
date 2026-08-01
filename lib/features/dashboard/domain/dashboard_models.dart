@@ -200,18 +200,81 @@ final class CostTrendPoint {
 }
 
 @immutable
+final class SpendingCalendarEntry {
+  const SpendingCalendarEntry({
+    required this.purchaseId,
+    required this.date,
+    required this.label,
+    required this.minorUnits,
+    this.cardItemId,
+  });
+
+  final String purchaseId;
+  final DateTime date;
+  final String label;
+  final int minorUnits;
+  final String? cardItemId;
+}
+
+@immutable
+final class SpendingDaySummary {
+  const SpendingDaySummary({
+    required this.date,
+    required this.minorUnits,
+    required this.entries,
+  });
+
+  final DateTime date;
+  final int minorUnits;
+  final List<SpendingCalendarEntry> entries;
+
+  int get purchaseCount => entries.length;
+}
+
+@immutable
+final class SpendingCalendarMonth {
+  const SpendingCalendarMonth({required this.month, required this.days});
+
+  final DateTime month;
+  final List<SpendingDaySummary> days;
+
+  int get totalMinorUnits =>
+      days.fold<int>(0, (total, day) => total + day.minorUnits);
+
+  int get purchaseCount =>
+      days.fold<int>(0, (total, day) => total + day.purchaseCount);
+
+  SpendingDaySummary? dayFor(DateTime date) {
+    for (final day in days) {
+      if (day.date.year == date.year &&
+          day.date.month == date.month &&
+          day.date.day == date.day) {
+        return day;
+      }
+    }
+    return null;
+  }
+}
+
+@immutable
 final class StatisticsSnapshot {
   const StatisticsSnapshot({
     required this.distributions,
     required this.costTrend,
+    this.totalCardCount = 0,
+    this.totalCostMinor = 0,
   });
 
   const StatisticsSnapshot.empty()
     : distributions = const <StatisticDimension, List<StatisticBucket>>{},
-      costTrend = const <CostTrendPoint>[];
+      costTrend = const <CostTrendPoint>[],
+      totalCardCount = 0,
+      totalCostMinor = 0;
 
   final Map<StatisticDimension, List<StatisticBucket>> distributions;
   final List<CostTrendPoint> costTrend;
+  final int totalCardCount;
+  final int totalCostMinor;
 
   List<StatisticBucket> bucketsFor(StatisticDimension dimension) =>
       distributions[dimension] ?? const <StatisticBucket>[];

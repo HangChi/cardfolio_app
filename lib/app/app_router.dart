@@ -14,6 +14,7 @@ import '../features/cards/presentation/edit/image_editor_screen.dart';
 import '../features/cards/presentation/edit/edit_card_screen.dart';
 import '../features/cards/presentation/library/card_library_screen.dart';
 import '../features/dashboard/presentation/home_screen.dart';
+import '../features/dashboard/presentation/spending_calendar_screen.dart';
 import '../features/dashboard/presentation/statistics_screen.dart';
 import '../features/export/presentation/csv_export_screen.dart';
 import '../features/organization/presentation/card/card_organization_screen.dart';
@@ -30,6 +31,7 @@ const String homePath = '/home';
 const String libraryPath = '/library';
 const String capturePath = '/capture';
 const String statsPath = '/stats';
+const String spendingCalendarPath = '/spending-calendar';
 const String profilePath = '/profile';
 const String createCardPath = '/cards/new';
 const String batchCardEntryPath = '/cards/batch';
@@ -44,6 +46,9 @@ const String appSettingsPath = '/app-settings';
 const String csvExportPath = '/csv-export';
 
 String libraryTabPath(String tab) => '$libraryPath?tab=$tab';
+
+String spendingCalendarMonthPath(DateTime month) =>
+    '$spendingCalendarPath?year=${month.year}&month=${month.month}';
 
 @immutable
 final class ImageEditorRouteArgs {
@@ -176,6 +181,19 @@ GoRouter createAppRouter({String initialLocation = homePath}) {
       GoRoute(
         path: csvExportPath,
         builder: (context, state) => const CsvExportScreen(),
+      ),
+      GoRoute(
+        path: spendingCalendarPath,
+        builder: (context, state) {
+          final now = DateTime.now();
+          final year = int.tryParse(state.uri.queryParameters['year'] ?? '');
+          final month = int.tryParse(state.uri.queryParameters['month'] ?? '');
+          final initialMonth =
+              year != null && month != null && month >= 1 && month <= 12
+              ? DateTime(year, month)
+              : DateTime(now.year, now.month);
+          return SpendingCalendarScreen(initialMonth: initialMonth);
+        },
       ),
       GoRoute(
         path: imageEditorPath,

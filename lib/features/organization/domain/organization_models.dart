@@ -38,6 +38,8 @@ final class CardLibraryQuery {
     this.duplicate,
     this.needsCompletion,
     this.setStatus,
+    this.acquiredFromUtc,
+    this.acquiredBeforeUtc,
     this.sortField = CardSortField.createdAt,
     this.sortDirection = SortDirection.descending,
     this.isNormalized = false,
@@ -54,6 +56,8 @@ final class CardLibraryQuery {
   final bool? duplicate;
   final bool? needsCompletion;
   final CardSetStatusFilter? setStatus;
+  final DateTime? acquiredFromUtc;
+  final DateTime? acquiredBeforeUtc;
   final CardSortField sortField;
   final SortDirection sortDirection;
   final bool isNormalized;
@@ -68,7 +72,9 @@ final class CardLibraryQuery {
       setMembership != SetMembershipFilter.any ||
       duplicate != null ||
       needsCompletion != null ||
-      setStatus != null;
+      setStatus != null ||
+      acquiredFromUtc != null ||
+      acquiredBeforeUtc != null;
 
   CardLibraryQuery normalized() {
     if (isNormalized) return this;
@@ -76,6 +82,16 @@ final class CardLibraryQuery {
       throw const OrganizationValidationFailure(
         OrganizationField.filter,
         '发行年份必须是四位年份。',
+      );
+    }
+    final acquiredFrom = acquiredFromUtc?.toUtc();
+    final acquiredBefore = acquiredBeforeUtc?.toUtc();
+    if (acquiredFrom != null &&
+        acquiredBefore != null &&
+        !acquiredFrom.isBefore(acquiredBefore)) {
+      throw const OrganizationValidationFailure(
+        OrganizationField.filter,
+        '入手日期范围无效。',
       );
     }
     return CardLibraryQuery(
@@ -90,6 +106,8 @@ final class CardLibraryQuery {
       duplicate: duplicate,
       needsCompletion: needsCompletion,
       setStatus: setStatus,
+      acquiredFromUtc: acquiredFrom,
+      acquiredBeforeUtc: acquiredBefore,
       sortField: sortField,
       sortDirection: sortDirection,
       isNormalized: true,
@@ -116,6 +134,10 @@ final class CardLibraryQuery {
     bool clearNeedsCompletion = false,
     CardSetStatusFilter? setStatus,
     bool clearSetStatus = false,
+    DateTime? acquiredFromUtc,
+    bool clearAcquiredFromUtc = false,
+    DateTime? acquiredBeforeUtc,
+    bool clearAcquiredBeforeUtc = false,
     CardSortField? sortField,
     SortDirection? sortDirection,
   }) {
@@ -133,6 +155,12 @@ final class CardLibraryQuery {
           ? null
           : needsCompletion ?? this.needsCompletion,
       setStatus: clearSetStatus ? null : setStatus ?? this.setStatus,
+      acquiredFromUtc: clearAcquiredFromUtc
+          ? null
+          : acquiredFromUtc ?? this.acquiredFromUtc,
+      acquiredBeforeUtc: clearAcquiredBeforeUtc
+          ? null
+          : acquiredBeforeUtc ?? this.acquiredBeforeUtc,
       sortField: sortField ?? this.sortField,
       sortDirection: sortDirection ?? this.sortDirection,
     );

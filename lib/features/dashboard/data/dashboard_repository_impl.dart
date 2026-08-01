@@ -6,7 +6,8 @@ import '../domain/dashboard_models.dart';
 import '../domain/dashboard_repository.dart';
 import 'local/dashboard_database.dart';
 
-final class DashboardRepositoryImpl implements DashboardRepository {
+final class DashboardRepositoryImpl
+    implements DashboardRepository, SpendingCalendarRepository {
   const DashboardRepositoryImpl({
     required AppDatabase database,
     required this.clock,
@@ -25,6 +26,16 @@ final class DashboardRepositoryImpl implements DashboardRepository {
   @override
   Stream<StatisticsSnapshot> watchStatistics(CostDisplayOptions options) {
     return _read(() => _db.watchStatisticsSnapshot(options));
+  }
+
+  @override
+  Stream<SpendingCalendarMonth> watchSpendingMonth(
+    DateTime month,
+    CostDisplayOptions options,
+  ) {
+    return _read(
+      () => _db.watchSpendingCalendarMonth(month: month, options: options),
+    );
   }
 
   Stream<T> _read<T>(Stream<T> Function() createStream) {

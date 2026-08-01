@@ -22,6 +22,20 @@ extension DashboardDatabase on AppDatabase {
       this,
     ).asyncMap((_) => _loadStatistics(this, options));
   }
+
+  Stream<SpendingCalendarMonth> watchSpendingCalendarMonth({
+    required DateTime month,
+    required CostDisplayOptions options,
+  }) {
+    final normalizedMonth = DateTime(month.year, month.month);
+    return _dashboardSignal(this).asyncMap(
+      (_) => _loadSpendingCalendarMonth(
+        this,
+        month: normalizedMonth,
+        options: options,
+      ),
+    );
+  }
 }
 
 Stream<List<QueryRow>> _dashboardSignal(AppDatabase db) {
@@ -59,7 +73,7 @@ SELECT
   COALESCE(SUM(ci.quantity), 0) AS entity_count,
   COUNT(DISTINCT ci.definition_id) AS definition_count,
   COALESCE(SUM(
-    CASE WHEN ci.created_at >= ? AND ci.created_at < ?
+    CASE WHEN ci.acquired_at >= ? AND ci.acquired_at < ?
       THEN ci.quantity ELSE 0 END
   ), 0) AS month_added_count
 FROM card_items ci
@@ -220,12 +234,26 @@ ORDER BY bucket_count DESC, bucket_label COLLATE NOCASE ASC, bucket_key ASC
             ),
       ]);
 
+  final totalCardRow = await db.customSelect('''
+SELECT COALESCE(SUM(ci.quantity), 0) AS total_card_count
+FROM card_items ci
+JOIN card_definitions cd ON cd.id = ci.definition_id
+WHERE ci.deleted_at IS NULL
+  AND cd.deleted_at IS NULL
+''').getSingle();
+  final totalCosts = await _loadCostTotals(db, options);
+
   return StatisticsSnapshot(
     distributions: Map<StatisticDimension, List<StatisticBucket>>.unmodifiable(
       distributions,
     ),
     costTrend: List<CostTrendPoint>.unmodifiable(
       await _loadCostTrend(db, options),
+    ),
+    totalCardCount: totalCardRow.read<int>('total_card_count'),
+    totalCostMinor: totalCosts.fold<int>(
+      0,
+      (total, cost) => total + cost.minorUnits,
     ),
   );
 }
@@ -360,26 +388,14 @@ Future<List<CostTrendPoint>> _loadCostTrend(
   AppDatabase db,
   CostDisplayOptions options,
 ) async {
-  final rows = await db.customSelect('''
-SELECT p.purchased_at,
-       p.currency,
-       p.amount_minor,
-       p.shipping_minor,
-       p.fees_minor
-FROM purchases p
-WHERE $_activePurchasePredicate
-ORDER BY p.purchased_at ASC, p.currency ASC, p.id ASC
-''').get();
+  final rows = await _loadActiveSpendingRows(db, options);
   final totals = <(int, int, String), int>{};
   final counts = <(int, int, String), int>{};
   for (final row in rows) {
-    final local = _timestamp(row.read<int>('purchased_at')).toLocal();
-    final currency = row.read<String>('currency');
+    final local = row.effectiveAt.toLocal();
+    final currency = row.currency;
     final key = (local.year, local.month, currency);
-    final amount =
-        row.read<int>('amount_minor') +
-        (options.includeShipping ? row.read<int>('shipping_minor') : 0) +
-        (options.includeFees ? row.read<int>('fees_minor') : 0);
+    final amount = row.minorUnits;
     totals.update(key, (current) => current + amount, ifAbsent: () => amount);
     counts.update(key, (current) => current + 1, ifAbsent: () => 1);
   }
@@ -400,6 +416,132 @@ ORDER BY p.purchased_at ASC, p.currency ASC, p.id ASC
         ),
       )
       .toList(growable: false);
+}
+
+Future<SpendingCalendarMonth> _loadSpendingCalendarMonth(
+  AppDatabase db, {
+  required DateTime month,
+  required CostDisplayOptions options,
+}) async {
+  final grouped = <DateTime, List<SpendingCalendarEntry>>{};
+  for (final row in await _loadActiveSpendingRows(db, options)) {
+    final local = row.effectiveAt.toLocal();
+    if (local.year != month.year || local.month != month.month) continue;
+    final day = DateTime(local.year, local.month, local.day);
+    grouped
+        .putIfAbsent(day, () => <SpendingCalendarEntry>[])
+        .add(
+          SpendingCalendarEntry(
+            purchaseId: row.purchaseId,
+            date: day,
+            label: row.label,
+            minorUnits: row.minorUnits,
+            cardItemId: row.cardItemId,
+          ),
+        );
+  }
+  final dates = grouped.keys.toList()..sort();
+  return SpendingCalendarMonth(
+    month: DateTime(month.year, month.month),
+    days: List<SpendingDaySummary>.unmodifiable(
+      dates.map((date) {
+        final entries = grouped[date]!
+          ..sort((left, right) => right.minorUnits.compareTo(left.minorUnits));
+        return SpendingDaySummary(
+          date: date,
+          minorUnits: entries.fold<int>(
+            0,
+            (total, entry) => total + entry.minorUnits,
+          ),
+          entries: List<SpendingCalendarEntry>.unmodifiable(entries),
+        );
+      }),
+    ),
+  );
+}
+
+Future<List<_ActiveSpendingRow>> _loadActiveSpendingRows(
+  AppDatabase db,
+  CostDisplayOptions options,
+) async {
+  final shipping = options.includeShipping ? 'p.shipping_minor' : '0';
+  final fees = options.includeFees ? 'p.fees_minor' : '0';
+  final rows = await db.customSelect('''
+SELECT
+  p.id AS purchase_id,
+  p.currency AS currency,
+  p.amount_minor + $shipping + $fees AS ledger_minor,
+  CASE
+    WHEN p.adjustment_of_id IS NULL
+      AND p.id LIKE 'card-entry-cost:%'
+    THEN COALESCE(
+      (
+        SELECT ci.acquired_at
+        FROM purchase_items date_pi
+        JOIN card_items ci
+          ON date_pi.target_type = 'card'
+          AND ci.id = date_pi.target_id
+        JOIN card_definitions cd ON cd.id = ci.definition_id
+        WHERE date_pi.purchase_id = p.id
+          AND ci.deleted_at IS NULL
+          AND cd.deleted_at IS NULL
+        LIMIT 1
+      ),
+      p.purchased_at
+    )
+    ELSE p.purchased_at
+  END AS effective_at,
+  COALESCE(
+    (
+      SELECT GROUP_CONCAT(label_pi.target_name, '、')
+      FROM purchase_items label_pi
+      WHERE label_pi.purchase_id = COALESCE(p.adjustment_of_id, p.id)
+    ),
+    CASE WHEN p.adjustment_of_id IS NULL THEN '消费记录' ELSE '退款调整' END
+  ) AS target_label,
+  (
+    SELECT CASE
+      WHEN COUNT(*) = 1 AND MIN(link_pi.target_type) = 'card'
+      THEN MIN(link_pi.target_id)
+      ELSE NULL
+    END
+    FROM purchase_items link_pi
+    WHERE link_pi.purchase_id = COALESCE(p.adjustment_of_id, p.id)
+  ) AS card_item_id
+FROM purchases p
+WHERE $_activePurchasePredicate
+ORDER BY effective_at ASC, p.id ASC
+''').get();
+  return rows
+      .map(
+        (row) => _ActiveSpendingRow(
+          purchaseId: row.read<String>('purchase_id'),
+          effectiveAt: _timestamp(row.read<int>('effective_at')),
+          currency: row.read<String>('currency'),
+          minorUnits: row.read<int>('ledger_minor'),
+          label: row.read<String>('target_label'),
+          cardItemId: row.readNullable<String>('card_item_id'),
+        ),
+      )
+      .toList(growable: false);
+}
+
+final class _ActiveSpendingRow {
+  const _ActiveSpendingRow({
+    required this.purchaseId,
+    required this.effectiveAt,
+    required this.currency,
+    required this.minorUnits,
+    required this.label,
+    this.cardItemId,
+  });
+
+  final String purchaseId;
+  final DateTime effectiveAt;
+  final String currency;
+  final int minorUnits;
+  final String label;
+  final String? cardItemId;
 }
 
 DateTime _timestamp(int seconds) =>

@@ -1218,6 +1218,13 @@ class AppDatabase extends _$AppDatabase {
       );
       if (target == null) throw StateError('图片不存在。');
 
+      if (!keepOriginal) {
+        await _clearSeriesCoversForPaths(<String>{
+          target.relativePath,
+          if (target.derivedRelativePath != null) target.derivedRelativePath!,
+        }, deletedAt);
+      }
+
       final coveringSets = await (select(
         cardSets,
       )..where((set) => set.coverImageId.equals(imageId))).get();
@@ -1313,6 +1320,27 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
     if (changed != 1) throw StateError('卡片不存在。');
+  }
+
+  Future<void> _clearSeriesCoversForPaths(
+    Set<String> paths,
+    DateTime updatedAt,
+  ) async {
+    if (paths.isEmpty) return;
+    final coveringSeries = await (select(
+      seriesRecords,
+    )..where((series) => series.coverRelativePath.isIn(paths))).get();
+    for (final series in coveringSeries) {
+      await (update(
+        seriesRecords,
+      )..where((entry) => entry.id.equals(series.id))).write(
+        SeriesRecordsCompanion(
+          coverRelativePath: const Value<String?>(null),
+          updatedAt: Value(updatedAt),
+          version: Value(series.version + 1),
+        ),
+      );
+    }
   }
 
   /// 数据库当前引用的全部图片相对路径。

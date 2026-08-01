@@ -9,7 +9,10 @@ import '../../../app/app_theme.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/app_layout.dart';
 import '../../../core/widgets/app_surface.dart';
+import '../../cards/data/card_providers.dart';
 import '../../cards/presentation/widgets/card_image.dart';
+import '../../organization/data/organization_providers.dart';
+import '../../organization/domain/organization_models.dart';
 import '../../purchases/domain/purchase_models.dart';
 import '../data/dashboard_providers.dart';
 import '../domain/dashboard_models.dart';
@@ -56,14 +59,22 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _HomeContent extends StatelessWidget {
+class _HomeContent extends ConsumerWidget {
   const _HomeContent({required this.data});
 
   final HomeDashboard data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
+    final totalCostMinor = data.costTotals.fold<int>(
+      0,
+      (total, cost) => total + cost.minorUnits,
+    );
+    final totalPurchaseCount = data.costTotals.fold<int>(
+      0,
+      (total, cost) => total + cost.purchaseCount,
+    );
     return AppContentView(
       child: ListView(
         children: <Widget>[
@@ -122,7 +133,25 @@ class _HomeContent extends StatelessWidget {
                       label: '本月新增',
                       value: '${data.monthAddedCount}',
                       icon: Icons.calendar_month_outlined,
-                      onTap: () => context.go(libraryTabPath('cards')),
+                      onTap: () {
+                        final now = ref.read(clockProvider).nowUtc().toLocal();
+                        final fromUtc = DateTime(now.year, now.month).toUtc();
+                        final beforeUtc = DateTime(
+                          now.year,
+                          now.month + 1,
+                        ).toUtc();
+                        ref
+                            .read(cardLibraryQueryProvider.notifier)
+                            .replace(
+                              CardLibraryQuery(
+                                acquiredFromUtc: fromUtc,
+                                acquiredBeforeUtc: beforeUtc,
+                                sortField: CardSortField.acquiredAt,
+                                sortDirection: SortDirection.descending,
+                              ),
+                            );
+                        context.go(libraryTabPath('cards'));
+                      },
                     ),
                   ),
                 ],
@@ -131,12 +160,12 @@ class _HomeContent extends StatelessWidget {
           ),
           SizedBox(height: tokens.spaceLg),
           AppSectionHeader(
-            title: '累计花费',
+            title: '累计消费',
             icon: Icons.payments_outlined,
-            subtitle: '按原始币种汇总，不混合换算。',
+            subtitle: '全部活跃收藏的人民币净消费。',
             action: TextButton(
-              onPressed: () => context.go(statsPath),
-              child: const Text('查看统计'),
+              onPressed: () => _openCurrentSpendingMonth(context, ref),
+              child: const Text('消费日历'),
             ),
           ),
           if (data.costTotals.isEmpty)
@@ -144,18 +173,16 @@ class _HomeContent extends StatelessWidget {
           else
             AppSurfaceCard(
               padding: EdgeInsets.zero,
-              child: Column(
-                children: <Widget>[
-                  for (
-                    var index = 0;
-                    index < data.costTotals.length;
-                    index++
-                  ) ...[
-                    _CostTile(total: data.costTotals[index]),
-                    if (index != data.costTotals.length - 1)
-                      const Divider(indent: 16, endIndent: 16),
-                  ],
-                ],
+              onTap: () => _openCurrentSpendingMonth(context, ref),
+              semanticLabel: '累计消费，${_formatCny(totalCostMinor)}',
+              child: ListTile(
+                leading: const Icon(Icons.account_balance_wallet_outlined),
+                title: Text(
+                  _formatCny(totalCostMinor),
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                subtitle: Text('$totalPurchaseCount 笔成本记录 · 已扣除退款'),
+                trailing: const Icon(Icons.chevron_right_rounded),
               ),
             ),
           SizedBox(height: tokens.spaceLg),
@@ -252,6 +279,11 @@ class _HomeContent extends StatelessWidget {
       ),
     );
   }
+
+  void _openCurrentSpendingMonth(BuildContext context, WidgetRef ref) {
+    final now = ref.read(clockProvider).nowUtc().toLocal();
+    context.push(spendingCalendarMonthPath(DateTime(now.year, now.month)));
+  }
 }
 
 class _CollectionHero extends StatelessWidget {
@@ -327,29 +359,6 @@ class _CollectionHero extends StatelessWidget {
   }
 }
 
-class _CostTile extends StatelessWidget {
-  const _CostTile({required this.total});
-
-  final CostTotal total;
-
-  @override
-  Widget build(BuildContext context) {
-    final amount = CurrencyAmount(
-      minorUnits: total.minorUnits,
-      currency: total.currency,
-    ).formatted;
-    return ListTile(
-      leading: const Icon(Icons.account_balance_wallet_outlined),
-      title: Text(
-        total.currency == 'CNY' ? '¥$amount' : '${total.currency} $amount',
-      ),
-      subtitle: Text('${total.purchaseCount} 笔成本记录'),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: () => context.go(statsPath),
-    );
-  }
-}
-
 class _RecentCardTile extends StatelessWidget {
   const _RecentCardTile({required this.card});
 
@@ -374,6 +383,14 @@ class _RecentCardTile extends StatelessWidget {
       onTap: () => context.push(cardDetailPath(card.cardItemId)),
     );
   }
+}
+
+String _formatCny(int minorUnits) {
+  final formatted = CurrencyAmount(
+    minorUnits: minorUnits.abs(),
+    currency: 'CNY',
+  ).formatted;
+  return minorUnits < 0 ? '-¥$formatted' : '¥$formatted';
 }
 
 class _EmptySection extends StatelessWidget {

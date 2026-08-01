@@ -16,8 +16,8 @@ const List<AppDestination> appDestinations = <AppDestination>[
   ),
   AppDestination(
     label: '拍摄',
-    icon: Icons.camera_outlined,
-    activeIcon: Icons.camera,
+    icon: Icons.photo_camera_outlined,
+    activeIcon: Icons.photo_camera,
   ),
   AppDestination(
     label: '统计',
@@ -103,15 +103,8 @@ class AppShell extends StatelessWidget {
                 destinations: <Widget>[
                   for (var index = 0; index < appDestinations.length; index++)
                     NavigationDestination(
-                      icon: _DestinationIcon(
-                        icon: appDestinations[index].icon,
-                        emphasized: index == 2,
-                      ),
-                      selectedIcon: _DestinationIcon(
-                        icon: appDestinations[index].activeIcon,
-                        emphasized: index == 2,
-                        selected: true,
-                      ),
+                      icon: Icon(appDestinations[index].icon),
+                      selectedIcon: Icon(appDestinations[index].activeIcon),
                       label: appDestinations[index].label,
                       tooltip: appDestinations[index].label,
                     ),
@@ -155,37 +148,6 @@ class _BrandMark extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DestinationIcon extends StatelessWidget {
-  const _DestinationIcon({
-    required this.icon,
-    required this.emphasized,
-    this.selected = false,
-  });
-
-  final IconData icon;
-  final bool emphasized;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!emphasized) return Icon(icon);
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: selected ? scheme.primary : scheme.primaryContainer,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        size: 22,
-        color: selected ? scheme.onPrimary : scheme.primary,
       ),
     );
   }

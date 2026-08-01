@@ -410,6 +410,8 @@ class _FilterSheetState extends State<_FilterSheet> {
   late SetMembershipFilter _membership = widget.initialQuery.setMembership;
   late bool? _duplicate = widget.initialQuery.duplicate;
   late bool? _needsCompletion = widget.initialQuery.needsCompletion;
+  late DateTime? _acquiredFromUtc = widget.initialQuery.acquiredFromUtc;
+  late DateTime? _acquiredBeforeUtc = widget.initialQuery.acquiredBeforeUtc;
 
   @override
   void initState() {
@@ -481,6 +483,22 @@ class _FilterSheetState extends State<_FilterSheet> {
                   values: widget.facets.years,
                   onChanged: (value) => setState(() => _year = value),
                 ),
+                if (_acquiredFromUtc != null || _acquiredBeforeUtc != null)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_month_outlined),
+                    title: Text(
+                      _acquiredRangeLabel(_acquiredFromUtc, _acquiredBeforeUtc),
+                    ),
+                    trailing: IconButton(
+                      tooltip: '清除入手日期筛选',
+                      onPressed: () => setState(() {
+                        _acquiredFromUtc = null;
+                        _acquiredBeforeUtc = null;
+                      }),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ),
                 const _FilterHeading('标签'),
                 Wrap(
                   spacing: tokens.spaceSm,
@@ -574,6 +592,8 @@ class _FilterSheetState extends State<_FilterSheet> {
       _membership = SetMembershipFilter.any;
       _duplicate = null;
       _needsCompletion = null;
+      _acquiredFromUtc = null;
+      _acquiredBeforeUtc = null;
     });
   }
 
@@ -594,6 +614,10 @@ class _FilterSheetState extends State<_FilterSheet> {
         clearDuplicate: _duplicate == null,
         needsCompletion: _needsCompletion,
         clearNeedsCompletion: _needsCompletion == null,
+        acquiredFromUtc: _acquiredFromUtc,
+        clearAcquiredFromUtc: _acquiredFromUtc == null,
+        acquiredBeforeUtc: _acquiredBeforeUtc,
+        clearAcquiredBeforeUtc: _acquiredBeforeUtc == null,
       ),
     );
   }
@@ -965,6 +989,7 @@ int _filterCount(CardLibraryQuery query) {
   if (query.setMembership != SetMembershipFilter.any) count++;
   if (query.duplicate != null) count++;
   if (query.needsCompletion != null) count++;
+  if (query.acquiredFromUtc != null || query.acquiredBeforeUtc != null) count++;
   return count;
 }
 
@@ -980,7 +1005,31 @@ List<String> _activeFilterLabels(CardLibraryQuery query) {
       _membershipLabel(query.setMembership),
     if (query.duplicate != null) query.duplicate! ? '重复卡' : '非重复卡',
     if (query.needsCompletion != null) query.needsCompletion! ? '待完善' : '已完善',
+    if (query.acquiredFromUtc != null || query.acquiredBeforeUtc != null)
+      _acquiredRangeLabel(query.acquiredFromUtc, query.acquiredBeforeUtc),
   ];
+}
+
+String _acquiredRangeLabel(DateTime? fromUtc, DateTime? beforeUtc) {
+  final from = fromUtc?.toLocal();
+  final before = beforeUtc?.toLocal();
+  if (from != null &&
+      before != null &&
+      from.day == 1 &&
+      before.day == 1 &&
+      DateTime(from.year, from.month + 1) ==
+          DateTime(before.year, before.month)) {
+    return '入手日期：${from.year}年${from.month}月';
+  }
+  String format(DateTime value) =>
+      '${value.year}-${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
+  if (from != null && before != null) {
+    final inclusiveEnd = before.subtract(const Duration(days: 1));
+    return '入手日期：${format(from)} 至 ${format(inclusiveEnd)}';
+  }
+  if (from != null) return '入手日期：${format(from)} 起';
+  return '入手日期：${format(before!)} 前';
 }
 
 String _membershipLabel(SetMembershipFilter value) => switch (value) {

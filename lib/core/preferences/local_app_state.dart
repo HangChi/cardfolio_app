@@ -165,6 +165,8 @@ Map<String, Object?> _queryToJson(CardLibraryQuery query) => <String, Object?>{
   'duplicate': query.duplicate,
   'needsCompletion': query.needsCompletion,
   'setStatus': query.setStatus?.name,
+  'acquiredFromUtc': query.acquiredFromUtc?.toIso8601String(),
+  'acquiredBeforeUtc': query.acquiredBeforeUtc?.toIso8601String(),
   'sortField': query.sortField.name,
   'sortDirection': query.sortDirection.name,
 };
@@ -203,6 +205,8 @@ CardLibraryQuery _queryFromJson(Map<String, Object?> json) {
             json['setStatus'],
             CardSetStatusFilter.unknown,
           ),
+    acquiredFromUtc: _dateTimeFromJson(json['acquiredFromUtc']),
+    acquiredBeforeUtc: _dateTimeFromJson(json['acquiredBeforeUtc']),
     sortField: enumValue(
       CardSortField.values,
       json['sortField'],
@@ -214,6 +218,11 @@ CardLibraryQuery _queryFromJson(Map<String, Object?> json) {
       SortDirection.descending,
     ),
   ).normalized();
+}
+
+DateTime? _dateTimeFromJson(Object? value) {
+  if (value is! String) return null;
+  return DateTime.tryParse(value)?.toUtc();
 }
 
 Map<String, Object?> _map(Object? value) {

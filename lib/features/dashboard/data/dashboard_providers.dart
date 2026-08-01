@@ -14,6 +14,14 @@ final Provider<DashboardRepository> dashboardRepositoryProvider =
       );
     });
 
+final Provider<SpendingCalendarRepository> spendingCalendarRepositoryProvider =
+    Provider<SpendingCalendarRepository>((ref) {
+      return DashboardRepositoryImpl(
+        database: ref.watch(appDatabaseProvider),
+        clock: ref.watch(clockProvider),
+      );
+    });
+
 final StreamProvider<HomeDashboard> homeDashboardProvider =
     StreamProvider<HomeDashboard>((ref) {
       final options = ref.watch(purchaseCostDisplayOptionsProvider);
@@ -24,4 +32,12 @@ final StreamProvider<StatisticsSnapshot> statisticsProvider =
     StreamProvider<StatisticsSnapshot>((ref) {
       final options = ref.watch(purchaseCostDisplayOptionsProvider);
       return ref.watch(dashboardRepositoryProvider).watchStatistics(options);
+    });
+
+final spendingCalendarProvider = StreamProvider.autoDispose
+    .family<SpendingCalendarMonth, DateTime>((ref, month) {
+      final options = ref.watch(purchaseCostDisplayOptionsProvider);
+      return ref
+          .watch(spendingCalendarRepositoryProvider)
+          .watchSpendingMonth(month, options);
     });

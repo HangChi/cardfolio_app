@@ -16,7 +16,13 @@ SELECT
     SELECT COUNT(*)
     FROM card_tags ct
     JOIN card_definitions cd ON cd.id = ct.definition_id
-    WHERE ct.tag_id = t.id AND cd.deleted_at IS NULL
+    WHERE ct.tag_id = t.id
+      AND cd.deleted_at IS NULL
+      AND EXISTS (
+        SELECT 1 FROM card_items active_ci
+        WHERE active_ci.definition_id = cd.id
+          AND active_ci.deleted_at IS NULL
+      )
   ) AS card_count
 FROM tags t
 WHERE t.deleted_at IS NULL
@@ -26,6 +32,7 @@ ORDER BY t.updated_at DESC, t.id ASC
         tags,
         cardTags,
         cardDefinitions,
+        cardItems,
       },
     ).watch().map(
       (rows) => rows
@@ -56,7 +63,13 @@ SELECT
     SELECT COUNT(*)
     FROM series_cards sc
     JOIN card_definitions cd ON cd.id = sc.definition_id
-    WHERE sc.series_id = s.id AND cd.deleted_at IS NULL
+    WHERE sc.series_id = s.id
+      AND cd.deleted_at IS NULL
+      AND EXISTS (
+        SELECT 1 FROM card_items active_ci
+        WHERE active_ci.definition_id = cd.id
+          AND active_ci.deleted_at IS NULL
+      )
   ) AS card_count,
   (
     SELECT COUNT(*)
@@ -73,6 +86,7 @@ ORDER BY s.updated_at DESC, s.id ASC
         seriesCards,
         seriesSets,
         cardDefinitions,
+        cardItems,
         cardSets,
       },
     ).watch().map(
@@ -142,7 +156,13 @@ SELECT
     SELECT COUNT(*)
     FROM custom_field_values fv
     JOIN card_definitions cd ON cd.id = fv.definition_id
-    WHERE fv.field_id = f.id AND cd.deleted_at IS NULL
+    WHERE fv.field_id = f.id
+      AND cd.deleted_at IS NULL
+      AND EXISTS (
+        SELECT 1 FROM card_items active_ci
+        WHERE active_ci.definition_id = cd.id
+          AND active_ci.deleted_at IS NULL
+      )
   ) AS value_count
 FROM custom_field_definitions f
 WHERE f.deleted_at IS NULL
@@ -152,6 +172,7 @@ ORDER BY f.updated_at DESC, f.id ASC
         organizationFieldDefinitions,
         organizationFieldValues,
         cardDefinitions,
+        cardItems,
       },
     ).watch().map(
       (rows) => rows
@@ -362,7 +383,13 @@ SELECT
   ) AS cover_path
 FROM series_cards sc
 JOIN card_definitions cd ON cd.id = sc.definition_id
-WHERE sc.series_id = ? AND cd.deleted_at IS NULL
+WHERE sc.series_id = ?
+  AND cd.deleted_at IS NULL
+  AND EXISTS (
+    SELECT 1 FROM card_items active_ci
+    WHERE active_ci.definition_id = cd.id
+      AND active_ci.deleted_at IS NULL
+  )
 ORDER BY cd.name COLLATE NOCASE ASC, cd.id ASC
 ''',
         variables: <Variable<Object>>[Variable<String>(seriesId)],

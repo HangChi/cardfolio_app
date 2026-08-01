@@ -221,10 +221,32 @@ extension OrganizationDatabase on AppDatabase {
         );
       }
 
+      final hiddenDefinitionRows = await customSelect(
+        '''
+SELECT sc.definition_id
+FROM series_cards sc
+WHERE sc.series_id = ?
+  AND NOT EXISTS (
+    SELECT 1
+    FROM card_items ci
+    JOIN card_definitions cd ON cd.id = ci.definition_id
+    WHERE ci.definition_id = sc.definition_id
+      AND ci.deleted_at IS NULL
+      AND cd.deleted_at IS NULL
+  )
+''',
+        variables: <Variable<Object>>[Variable<String>(request.id)],
+      ).get();
+      final preservedHiddenDefinitionIds = hiddenDefinitionRows
+          .map((row) => row.read<String>('definition_id'))
+          .toSet();
       await (delete(
         seriesCards,
       )..where((link) => link.seriesId.equals(request.id))).go();
-      for (final definitionId in request.definitionIds) {
+      for (final definitionId in <String>{
+        ...request.definitionIds,
+        ...preservedHiddenDefinitionIds,
+      }) {
         await into(seriesCards).insert(
           SeriesCardsCompanion.insert(
             seriesId: request.id,

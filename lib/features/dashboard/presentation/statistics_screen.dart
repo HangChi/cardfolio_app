@@ -51,14 +51,11 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   Widget _buildContent(StatisticsSnapshot data) {
     final tokens = context.tokens;
     final buckets = data.bucketsFor(_dimension);
-    final total = buckets.fold<int>(0, (sum, bucket) => sum + bucket.count);
     final maxCount = buckets.fold<int>(
       0,
       (current, bucket) => math.max(current, bucket.count),
     );
-    final costCurrencies = data.costTrend
-        .map((point) => point.currency)
-        .toSet();
+    final totalCost = _formatCny(data.totalCostMinor);
 
     return AppContentView(
       child: ListView(
@@ -72,25 +69,69 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
             children: <Widget>[
               Expanded(
                 child: AppMetricCard(
-                  label: '当前维度卡片',
-                  value: '$total',
+                  label: '收藏总卡片数',
+                  value: '${data.totalCardCount}',
                   icon: Icons.style_outlined,
-                  supportingText: _dimension.label,
+                  supportingText: '按实体数量汇总',
                 ),
               ),
               SizedBox(width: tokens.spaceSm),
               Expanded(
                 child: AppMetricCard(
-                  label: '花费币种',
-                  value: '${costCurrencies.length}',
+                  label: '总花费',
+                  value: totalCost,
                   icon: Icons.payments_outlined,
-                  supportingText: costCurrencies.isEmpty
-                      ? '暂无成本记录'
-                      : costCurrencies.join(' · '),
+                  supportingText: '全部时间净消费',
+                  onTap: () =>
+                      context.push(spendingCalendarMonthPath(DateTime.now())),
                 ),
               ),
             ],
           ),
+          SizedBox(height: tokens.spaceLg),
+          AppSectionHeader(
+            title: '花费趋势',
+            icon: Icons.timeline_rounded,
+            subtitle: '按入手日期统计，未填写时使用成本记录日期。',
+            action: TextButton(
+              onPressed: () =>
+                  context.push(spendingCalendarMonthPath(DateTime.now())),
+              child: const Text('消费日历'),
+            ),
+          ),
+          if (data.costTrend.isEmpty)
+            AppSurfaceCard(
+              color: context.palette.surfaceMuted,
+              child: const Row(
+                children: <Widget>[
+                  Icon(Icons.receipt_long_outlined),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('暂无花费记录。')),
+                ],
+              ),
+            )
+          else
+            AppSurfaceCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: <Widget>[
+                  for (
+                    var index = 0;
+                    index < data.costTrend.length;
+                    index++
+                  ) ...[
+                    _CostTrendTile(
+                      point: data.costTrend[index],
+                      onTap: () => context.push(
+                        spendingCalendarMonthPath(data.costTrend[index].month),
+                      ),
+                    ),
+                    if (index != data.costTrend.length - 1)
+                      const Divider(indent: 72, endIndent: 16),
+                  ],
+                ],
+              ),
+            ),
           SizedBox(height: tokens.spaceLg),
           const AppSectionHeader(
             title: '数量分布',
@@ -135,40 +176,6 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                     ),
                     if (index != buckets.length - 1)
                       const Divider(indent: 16, endIndent: 16),
-                  ],
-                ],
-              ),
-            ),
-          SizedBox(height: tokens.spaceLg),
-          const AppSectionHeader(
-            title: '花费趋势',
-            icon: Icons.timeline_rounded,
-            subtitle: '按月份与原始币种呈现，不进行汇率换算。',
-          ),
-          if (data.costTrend.isEmpty)
-            AppSurfaceCard(
-              color: context.palette.surfaceMuted,
-              child: const Row(
-                children: <Widget>[
-                  Icon(Icons.receipt_long_outlined),
-                  SizedBox(width: 12),
-                  Expanded(child: Text('暂无花费记录。')),
-                ],
-              ),
-            )
-          else
-            AppSurfaceCard(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: <Widget>[
-                  for (
-                    var index = 0;
-                    index < data.costTrend.length;
-                    index++
-                  ) ...[
-                    _CostTrendTile(point: data.costTrend[index]),
-                    if (index != data.costTrend.length - 1)
-                      const Divider(indent: 72, endIndent: 16),
                   ],
                 ],
               ),
@@ -247,9 +254,10 @@ class _BucketTile extends StatelessWidget {
 }
 
 class _CostTrendTile extends StatelessWidget {
-  const _CostTrendTile({required this.point});
+  const _CostTrendTile({required this.point, required this.onTap});
 
   final CostTrendPoint point;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -264,12 +272,28 @@ class _CostTrendTile extends StatelessWidget {
       ),
       title: Text(point.monthLabel),
       subtitle: Text('${point.purchaseCount} 笔记录'),
-      trailing: Text(
-        '${point.currency} $formatted',
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-        ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            '¥$formatted',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded, size: 20),
+        ],
       ),
+      onTap: onTap,
     );
   }
+}
+
+String _formatCny(int minorUnits) {
+  final formatted = CurrencyAmount(
+    minorUnits: minorUnits.abs(),
+    currency: 'CNY',
+  ).formatted;
+  return minorUnits < 0 ? '-¥$formatted' : '¥$formatted';
 }

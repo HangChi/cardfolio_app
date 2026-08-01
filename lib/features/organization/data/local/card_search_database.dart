@@ -119,6 +119,17 @@ extension CardSearchDatabase on AppDatabase {
       where.add(_setStatusSql(setStatus));
     }
 
+    final acquiredFromUtc = normalized.acquiredFromUtc;
+    if (acquiredFromUtc != null) {
+      where.add('ci.acquired_at >= ?');
+      variables.add(Variable<DateTime>(acquiredFromUtc));
+    }
+    final acquiredBeforeUtc = normalized.acquiredBeforeUtc;
+    if (acquiredBeforeUtc != null) {
+      where.add('ci.acquired_at < ?');
+      variables.add(Variable<DateTime>(acquiredBeforeUtc));
+    }
+
     final sql =
         '''
 SELECT

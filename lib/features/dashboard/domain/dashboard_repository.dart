@@ -6,3 +6,10 @@ abstract interface class DashboardRepository {
 
   Stream<StatisticsSnapshot> watchStatistics(CostDisplayOptions options);
 }
+
+abstract interface class SpendingCalendarRepository {
+  Stream<SpendingCalendarMonth> watchSpendingMonth(
+    DateTime month,
+    CostDisplayOptions options,
+  );
+}
