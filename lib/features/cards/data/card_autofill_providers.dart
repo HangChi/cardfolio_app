@@ -16,7 +16,7 @@ final class MethodChannelCardTextRecognizer implements CardTextRecognizer {
   Future<RecognizedCardText> recognize(String imagePath) async {
     final normalizedPath = imagePath.trim();
     if (normalizedPath.isEmpty) {
-      throw const PlatformException(code: 'invalid_path', message: '图片路径为空');
+      throw PlatformException(code: 'invalid_path', message: '图片路径为空');
     }
     final text = await _channel.invokeMethod<String>(
       'recognize',

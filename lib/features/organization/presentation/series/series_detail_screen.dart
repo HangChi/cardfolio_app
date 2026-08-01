@@ -281,21 +281,25 @@ class _MemberSection extends StatelessWidget {
             Card(
               child: ListTile(
                 onTap: isCard
-                    ? item.cardItemId == null
+                    ? items[index].cardItemId == null
                           ? null
-                          : () => context.push(cardDetailPath(item.cardItemId!))
-                    : () => context.push(cardSetDetailPath(item.id)),
+                          : () => context.push(
+                              cardDetailPath(items[index].cardItemId!),
+                            )
+                    : () => context.push(cardSetDetailPath(items[index].id)),
                 leading: SizedBox(
                   width: 72,
                   height: 52,
-                  child: item.coverRelativePath == null
-                      ? CardImage.placeholder(semanticLabel: '${item.name}预览图')
+                  child: items[index].coverRelativePath == null
+                      ? CardImage.placeholder(
+                          semanticLabel: '${items[index].name}预览图',
+                        )
                       : CardImage.managed(
-                          relativePath: item.coverRelativePath!,
-                          semanticLabel: '${item.name}预览图',
+                          relativePath: items[index].coverRelativePath!,
+                          semanticLabel: '${items[index].name}预览图',
                         ),
                 ),
-                title: Text(item.name),
+                title: Text(items[index].name),
                 trailing: const Icon(Icons.chevron_right),
               ),
             ),
