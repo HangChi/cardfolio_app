@@ -91,7 +91,9 @@ class _SeriesDetailBody extends ConsumerWidget {
             SizedBox(height: context.tokens.spaceMd),
           ],
           Card(
-            color: AppColors.primary.withValues(alpha: 0.08),
+            color: Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.72),
             child: const ListTile(
               leading: Icon(Icons.info_outline),
               title: Text('集卡册用于收纳卡片和套卡，不计算完成度。'),

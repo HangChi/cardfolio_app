@@ -486,7 +486,7 @@ class _SectionTitle extends StatelessWidget {
           description,
           style: Theme.of(
             context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+          ).textTheme.bodySmall?.copyWith(color: context.palette.textSecondary),
         ),
       ],
     );

@@ -57,24 +57,135 @@ class AppShell extends StatelessWidget {
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) SystemNavigator.pop();
       },
-      child: Scaffold(
-        body: navigationShell,
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: navigationShell.currentIndex,
-          onDestinationSelected: (index) => navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          ),
-          destinations: <Widget>[
-            for (final destination in appDestinations)
-              NavigationDestination(
-                icon: Icon(destination.icon),
-                selectedIcon: Icon(destination.activeIcon),
-                label: destination.label,
-                tooltip: destination.label,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final useRail = constraints.maxWidth >= 720;
+          if (useRail) {
+            return Scaffold(
+              body: SafeArea(
+                child: Row(
+                  children: <Widget>[
+                    NavigationRail(
+                      selectedIndex: navigationShell.currentIndex,
+                      labelType: NavigationRailLabelType.all,
+                      groupAlignment: -0.72,
+                      leading: const Padding(
+                        padding: EdgeInsets.fromLTRB(12, 12, 12, 24),
+                        child: _BrandMark(),
+                      ),
+                      onDestinationSelected: _goToBranch,
+                      destinations: <NavigationRailDestination>[
+                        for (final destination in appDestinations)
+                          NavigationRailDestination(
+                            icon: Icon(destination.icon),
+                            selectedIcon: Icon(destination.activeIcon),
+                            label: Text(destination.label),
+                          ),
+                      ],
+                    ),
+                    VerticalDivider(
+                      width: 1,
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    Expanded(child: navigationShell),
+                  ],
+                ),
               ),
-          ],
+            );
+          }
+          return Scaffold(
+            body: navigationShell,
+            bottomNavigationBar: SafeArea(
+              top: false,
+              child: NavigationBar(
+                selectedIndex: navigationShell.currentIndex,
+                onDestinationSelected: _goToBranch,
+                destinations: <Widget>[
+                  for (var index = 0; index < appDestinations.length; index++)
+                    NavigationDestination(
+                      icon: _DestinationIcon(
+                        icon: appDestinations[index].icon,
+                        emphasized: index == 2,
+                      ),
+                      selectedIcon: _DestinationIcon(
+                        icon: appDestinations[index].activeIcon,
+                        emphasized: index == 2,
+                        selected: true,
+                      ),
+                      label: appDestinations[index].label,
+                      tooltip: appDestinations[index].label,
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _goToBranch(int index) {
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
+  }
+}
+
+class _BrandMark extends StatelessWidget {
+  const _BrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: '卡迹 Cardfolio',
+      child: Container(
+        width: 48,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: scheme.primary,
+          borderRadius: BorderRadius.circular(16),
         ),
+        child: Text(
+          '卡',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: scheme.onPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DestinationIcon extends StatelessWidget {
+  const _DestinationIcon({
+    required this.icon,
+    required this.emphasized,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final bool emphasized;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!emphasized) return Icon(icon);
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: selected ? scheme.primary : scheme.primaryContainer,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        size: 22,
+        color: selected ? scheme.onPrimary : scheme.primary,
       ),
     );
   }

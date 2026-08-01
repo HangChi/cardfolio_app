@@ -24,7 +24,7 @@ class CardSetProgressPanel extends StatelessWidget {
                 '${progress.requiredMemberCount}'
           : '套卡总数未知，已拥有 ${progress.ownedMemberCount} 款',
       child: Card(
-        color: AppColors.primaryContainer,
+        color: Theme.of(context).colorScheme.primaryContainer,
         child: Padding(
           padding: EdgeInsets.all(tokens.spaceLg),
           child: Column(
@@ -44,7 +44,7 @@ class CardSetProgressPanel extends StatelessWidget {
                     Text(
                       '${(fraction * 100).round()}%',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.primary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ],
@@ -108,13 +108,14 @@ class _StatusPill extends StatelessWidget {
         vertical: context.tokens.spaceXs,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.palette.surface,
         borderRadius: BorderRadius.circular(context.tokens.radiusPill),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(icon, size: 16, color: AppColors.primary),
+          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
           SizedBox(width: context.tokens.spaceXs),
           Text(label, style: Theme.of(context).textTheme.bodySmall),
         ],

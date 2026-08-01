@@ -90,18 +90,29 @@ class _ImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Semantics(
       image: true,
       label: '$semanticLabel，图片不可用',
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.primaryContainer,
+          color: context.palette.surfaceMuted,
           borderRadius: borderRadius,
+          border: Border.all(color: scheme.outlineVariant),
         ),
-        child: const Center(
-          child: Icon(
-            Icons.image_not_supported_outlined,
-            color: AppColors.textSecondary,
+        child: Center(
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.style_outlined,
+              color: scheme.primary,
+              size: context.tokens.iconMd,
+            ),
           ),
         ),
       ),

@@ -229,9 +229,9 @@ class _Form extends StatelessWidget {
         SizedBox(height: tokens.spaceSm),
         Text(
           '把稳定资料放在这里，之后可直接搜索和筛选。',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: context.palette.textSecondary,
+          ),
         ),
         SizedBox(height: tokens.spaceLg),
         TextField(
@@ -383,9 +383,9 @@ class _GroupTitle extends StatelessWidget {
           SizedBox(height: context.tokens.spaceXs),
           Text(
             description,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: context.palette.textSecondary,
+            ),
           ),
         ],
       ),

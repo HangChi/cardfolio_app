@@ -35,13 +35,13 @@ class PhasePlaceholderScreen extends StatelessWidget {
                   vertical: tokens.spaceSm,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(tokens.radiusPill),
                 ),
                 child: Text(
                   '后续开放',
                   style: textTheme.labelLarge?.copyWith(
-                    color: AppColors.primary,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -51,7 +51,7 @@ class PhasePlaceholderScreen extends StatelessWidget {
                 description,
                 textAlign: TextAlign.center,
                 style: textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.palette.textSecondary,
                 ),
               ),
             ],

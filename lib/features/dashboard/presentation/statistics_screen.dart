@@ -1,9 +1,15 @@
+import 'dart:math' as math;
+import 'dart:ui' show FontFeature;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_router.dart';
+import '../../../app/app_theme.dart';
 import '../../../core/errors/app_failure.dart';
+import '../../../core/widgets/app_layout.dart';
+import '../../../core/widgets/app_surface.dart';
 import '../../organization/data/organization_providers.dart';
 import '../../purchases/domain/purchase_models.dart';
 import '../data/dashboard_providers.dart';
@@ -25,10 +31,17 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('统计')),
       body: statistics.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => _StatisticsError(
-          message: error is AppFailure ? error.userMessage : '首页与统计暂时无法读取，请重试。',
-          onRetry: () => ref.invalidate(statisticsProvider),
+        loading: () => const Center(
+          child: CircularProgressIndicator(semanticsLabel: '正在生成收藏统计'),
+        ),
+        error: (error, stackTrace) => AppErrorState(
+          icon: Icons.query_stats_outlined,
+          title: '统计暂时无法读取',
+          description: error is AppFailure
+              ? error.userMessage
+              : '收藏数据仍安全保存在本机，请稍后重试。',
+          actionLabel: '重试',
+          onAction: () => ref.invalidate(statisticsProvider),
         ),
         data: _buildContent,
       ),
@@ -36,63 +49,133 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   }
 
   Widget _buildContent(StatisticsSnapshot data) {
+    final tokens = context.tokens;
     final buckets = data.bucketsFor(_dimension);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: <Widget>[
-        Text('数量分布', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: <Widget>[
-            for (final dimension in StatisticDimension.values)
-              ChoiceChip(
-                label: Text(dimension.label),
-                selected: dimension == _dimension,
-                onSelected: (_) => setState(() => _dimension = dimension),
+    final total = buckets.fold<int>(0, (sum, bucket) => sum + bucket.count);
+    final maxCount = buckets.fold<int>(
+      0,
+      (current, bucket) => math.max(current, bucket.count),
+    );
+    final costCurrencies = data.costTrend
+        .map((point) => point.currency)
+        .toSet();
+
+    return AppContentView(
+      child: ListView(
+        children: <Widget>[
+          const AppPageHeader(
+            eyebrow: 'COLLECTION INSIGHTS',
+            title: '收藏统计',
+            subtitle: '从数量分布到入手成本，回顾收藏如何慢慢生长。',
+          ),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: AppMetricCard(
+                  label: '当前维度卡片',
+                  value: '$total',
+                  icon: Icons.style_outlined,
+                  supportingText: _dimension.label,
+                ),
               ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (buckets.isEmpty)
-          const _EmptyStatistics()
-        else
-          Card(
-            child: Column(
+              SizedBox(width: tokens.spaceSm),
+              Expanded(
+                child: AppMetricCard(
+                  label: '花费币种',
+                  value: '${costCurrencies.length}',
+                  icon: Icons.payments_outlined,
+                  supportingText: costCurrencies.isEmpty
+                      ? '暂无成本记录'
+                      : costCurrencies.join(' · '),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: tokens.spaceLg),
+          const AppSectionHeader(
+            title: '数量分布',
+            icon: Icons.bar_chart_rounded,
+            subtitle: '切换维度后，点击条目可直接查看对应收藏。',
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: <Widget>[
-                for (var index = 0; index < buckets.length; index++) ...[
-                  _BucketTile(
-                    bucket: buckets[index],
-                    onTap: () => _drillDown(buckets[index]),
+                for (final dimension in StatisticDimension.values) ...[
+                  ChoiceChip(
+                    label: Text(dimension.label),
+                    selected: dimension == _dimension,
+                    avatar: dimension == _dimension
+                        ? const Icon(Icons.check_rounded, size: 16)
+                        : null,
+                    onSelected: (_) => setState(() => _dimension = dimension),
                   ),
-                  if (index != buckets.length - 1) const Divider(height: 1),
+                  SizedBox(width: tokens.spaceSm),
                 ],
               ],
             ),
           ),
-        const SizedBox(height: 24),
-        Text('花费趋势', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        if (data.costTrend.isEmpty)
-          const Text('暂无花费记录。')
-        else
-          Card(
-            child: Column(
-              children: <Widget>[
-                for (final point in data.costTrend)
-                  ListTile(
-                    leading: const Icon(Icons.calendar_month_outlined),
-                    title: Text(
-                      '${point.monthLabel} · ${point.currency} '
-                      '${CurrencyAmount(minorUnits: point.minorUnits, currency: point.currency).formatted}',
+          SizedBox(height: tokens.spaceMd),
+          if (buckets.isEmpty)
+            const AppEmptyState(
+              icon: Icons.query_stats_outlined,
+              title: '暂无统计数据',
+              description: '先录入卡片或补充资料后，再回来查看这一维度。',
+            )
+          else
+            AppSurfaceCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: <Widget>[
+                  for (var index = 0; index < buckets.length; index++) ...[
+                    _BucketTile(
+                      bucket: buckets[index],
+                      maxCount: maxCount,
+                      onTap: () => _drillDown(buckets[index]),
                     ),
-                    subtitle: Text('${point.purchaseCount} 笔记录'),
-                  ),
-              ],
+                    if (index != buckets.length - 1)
+                      const Divider(indent: 16, endIndent: 16),
+                  ],
+                ],
+              ),
             ),
+          SizedBox(height: tokens.spaceLg),
+          const AppSectionHeader(
+            title: '花费趋势',
+            icon: Icons.timeline_rounded,
+            subtitle: '按月份与原始币种呈现，不进行汇率换算。',
           ),
-      ],
+          if (data.costTrend.isEmpty)
+            AppSurfaceCard(
+              color: context.palette.surfaceMuted,
+              child: const Row(
+                children: <Widget>[
+                  Icon(Icons.receipt_long_outlined),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('暂无花费记录。')),
+                ],
+              ),
+            )
+          else
+            AppSurfaceCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: <Widget>[
+                  for (
+                    var index = 0;
+                    index < data.costTrend.length;
+                    index++
+                  ) ...[
+                    _CostTrendTile(point: data.costTrend[index]),
+                    if (index != data.costTrend.length - 1)
+                      const Divider(indent: 72, endIndent: 16),
+                  ],
+                ],
+              ),
+            ),
+          SizedBox(height: tokens.space2xl),
+        ],
+      ),
     );
   }
 
@@ -103,43 +186,59 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
 }
 
 class _BucketTile extends StatelessWidget {
-  const _BucketTile({required this.bucket, required this.onTap});
+  const _BucketTile({
+    required this.bucket,
+    required this.maxCount,
+    required this.onTap,
+  });
 
   final StatisticBucket bucket;
+  final int maxCount;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(bucket.label),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text('${bucket.count}'),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right),
-        ],
-      ),
+    final tokens = context.tokens;
+    final progress = maxCount == 0 ? 0.0 : bucket.count / maxCount;
+    return InkWell(
       onTap: onTap,
-    );
-  }
-}
-
-class _EmptyStatistics extends StatelessWidget {
-  const _EmptyStatistics();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(tokens.spaceMd),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Icon(Icons.query_stats_outlined, size: 40),
-            const SizedBox(height: 8),
-            Text('暂无统计数据', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            const Text('先录入卡片或补充资料后再查看。'),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    bucket.label,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                Text(
+                  '${bucket.count}',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
+                  ),
+                ),
+                SizedBox(width: tokens.spaceXs),
+                const Icon(Icons.chevron_right_rounded, size: 20),
+              ],
+            ),
+            SizedBox(height: tokens.spaceSm),
+            Semantics(
+              label: '${bucket.label}，${bucket.count} 张',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(tokens.radiusPill),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: context.palette.surfaceMuted,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -147,26 +246,28 @@ class _EmptyStatistics extends StatelessWidget {
   }
 }
 
-class _StatisticsError extends StatelessWidget {
-  const _StatisticsError({required this.message, required this.onRetry});
+class _CostTrendTile extends StatelessWidget {
+  const _CostTrendTile({required this.point});
 
-  final String message;
-  final VoidCallback onRetry;
+  final CostTrendPoint point;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Icon(Icons.error_outline, size: 48),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            OutlinedButton(onPressed: onRetry, child: const Text('重试')),
-          ],
+    final formatted = CurrencyAmount(
+      minorUnits: point.minorUnits,
+      currency: point.currency,
+    ).formatted;
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        child: const Icon(Icons.calendar_month_outlined),
+      ),
+      title: Text(point.monthLabel),
+      subtitle: Text('${point.purchaseCount} 笔记录'),
+      trailing: Text(
+        '${point.currency} $formatted',
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
         ),
       ),
     );

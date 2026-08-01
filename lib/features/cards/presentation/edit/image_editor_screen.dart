@@ -187,9 +187,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
             SizedBox(height: tokens.spaceSm),
             Text(
               '亮度和对比度会立即预览；清晰度在保存时应用。图片保持当前像素尺寸，不会放大。',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: context.palette.textSecondary,
+              ),
             ),
             _AdjustmentSlider(
               label: '亮度',
@@ -225,7 +225,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
               SizedBox(height: tokens.spaceSm),
               Text(
                 failure.userMessage,
-                style: const TextStyle(color: AppColors.error),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
             SizedBox(height: tokens.spaceMd),

@@ -776,12 +776,14 @@ class _SaveFailure extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(context.tokens.spaceMd),
         decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.08),
+          color: Theme.of(context).colorScheme.errorContainer,
           borderRadius: BorderRadius.circular(context.tokens.radiusMd),
         ),
         child: Text(
           failure.userMessage,
-          style: const TextStyle(color: AppColors.error),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onErrorContainer,
+          ),
         ),
       ),
     );

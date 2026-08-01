@@ -135,11 +135,11 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           if (_report case final report?) ...<Widget>[
             SizedBox(height: tokens.spaceMd),
             Card(
-              color: AppColors.primaryContainer,
+              color: Theme.of(context).colorScheme.primaryContainer,
               child: ListTile(
-                leading: const Icon(
+                leading: Icon(
                   Icons.check_circle_outline,
-                  color: AppColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 title: const Text('操作完成'),
                 subtitle: Text(report),
@@ -400,7 +400,10 @@ class _PreviewCard extends StatelessWidget {
               SizedBox(height: context.tokens.spaceSm),
               Row(
                 children: <Widget>[
-                  const Icon(Icons.error_outline, color: AppColors.error),
+                  Icon(
+                    Icons.error_outline,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                   SizedBox(width: context.tokens.spaceSm),
                   Expanded(
                     child: Text('发现 ${preview.conflicts.length} 个冲突，当前模式不能导入'),

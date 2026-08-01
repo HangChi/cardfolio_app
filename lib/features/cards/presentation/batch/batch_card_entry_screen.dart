@@ -595,7 +595,7 @@ class _BatchDraftCard extends StatelessWidget {
                   onPressed: enabled && !draft.saved ? onRemove : null,
                   tooltip: '移除草稿',
                   icon: draft.saved
-                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      ? Icon(Icons.check_circle, color: context.palette.success)
                       : const Icon(Icons.close),
                 ),
               ],

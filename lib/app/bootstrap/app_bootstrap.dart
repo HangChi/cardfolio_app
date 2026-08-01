@@ -346,7 +346,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: buildCardfolioTheme(),
+      theme: buildCardfolioTheme(Brightness.light),
+      darkTheme: buildCardfolioTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
       home: Scaffold(
         body: SafeArea(
           child: Center(
@@ -378,7 +380,11 @@ class _BootstrapFailure extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Icon(Icons.storage_outlined, size: 48, color: AppColors.error),
+          Icon(
+            Icons.storage_outlined,
+            size: 48,
+            color: Theme.of(context).colorScheme.error,
+          ),
           SizedBox(height: context.tokens.spaceMd),
           Text(
             message,

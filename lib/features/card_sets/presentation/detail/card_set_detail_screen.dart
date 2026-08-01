@@ -643,7 +643,9 @@ class _MemberTrackTile extends StatelessWidget {
         : member.isOwned
         ? '已拥有'
         : '缺失';
-    final statusColor = member.isOwned ? AppColors.primary : AppColors.warning;
+    final statusColor = member.isOwned
+        ? Theme.of(context).colorScheme.primary
+        : context.palette.warning;
     return Semantics(
       container: true,
       label: '${member.name}，${member.required ? '必需成员' : '非必需成员'}，$status',

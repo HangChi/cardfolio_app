@@ -200,9 +200,9 @@ class _CardSetFormBodyState extends ConsumerState<_CardSetFormBody> {
                   liveRegion: true,
                   child: Text(
                     error,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: AppColors.error),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               ],

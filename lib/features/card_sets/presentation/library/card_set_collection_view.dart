@@ -38,10 +38,10 @@ class _EmptySets extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(
+            Icon(
               Icons.view_carousel_outlined,
               size: 52,
-              color: AppColors.primary,
+              color: Theme.of(context).colorScheme.primary,
             ),
             SizedBox(height: tokens.spaceMd),
             Text('还没有套卡', style: Theme.of(context).textTheme.titleLarge),
@@ -175,7 +175,11 @@ class _SetListError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(Icons.error_outline, color: AppColors.error, size: 40),
+            Icon(
+              Icons.error_outline,
+              color: Theme.of(context).colorScheme.error,
+              size: 40,
+            ),
             SizedBox(height: context.tokens.spaceMd),
             const Text('套卡暂时无法加载'),
             SizedBox(height: context.tokens.spaceMd),

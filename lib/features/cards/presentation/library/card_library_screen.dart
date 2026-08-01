@@ -8,7 +8,9 @@ import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/preferences/local_app_state.dart';
 import '../../../../core/preferences/local_app_state_providers.dart';
+import '../../../../core/widgets/app_layout.dart';
 import '../../../../core/widgets/app_name_dialog.dart';
+import '../../../../core/widgets/app_surface.dart';
 import '../../../card_sets/presentation/library/card_set_collection_view.dart';
 import '../../../organization/data/organization_providers.dart';
 import '../../../organization/domain/organization_models.dart';
@@ -192,7 +194,10 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
       });
     }
 
-    return SafeArea(
+    return AppContentView(
+      safeTop: true,
+      safeBottom: false,
+      padding: EdgeInsets.zero,
       child: DefaultTabController(
         key: ValueKey<int>(widget.initialTabIndex),
         length: 3,
@@ -207,9 +212,29 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
                 tokens.spaceLg,
                 tokens.spaceSm,
               ),
-              child: Text(
-                '我的收藏',
-                style: Theme.of(context).textTheme.headlineMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'CARD ARCHIVE',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      letterSpacing: 0.7,
+                    ),
+                  ),
+                  SizedBox(height: tokens.spaceXs),
+                  Text(
+                    '我的收藏',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  SizedBox(height: tokens.spaceXs),
+                  Text(
+                    '搜索、整理并继续完善你的交通卡档案。',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: context.palette.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -311,9 +336,14 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
                   ],
                 ),
               ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: tokens.spaceLg),
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: tokens.spaceLg),
+              decoration: BoxDecoration(
+                color: context.palette.surfaceMuted,
+                borderRadius: BorderRadius.circular(tokens.radiusMd),
+              ),
               child: const TabBar(
+                dividerColor: Colors.transparent,
                 tabs: <Widget>[
                   Tab(text: '卡片'),
                   Tab(text: '套卡'),
@@ -674,7 +704,7 @@ class _EmptyLibrary extends StatelessWidget {
               width: 144,
               height: 104,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: context.palette.surface,
                 borderRadius: BorderRadius.circular(tokens.radiusLg),
               ),
               child: const CardImage.placeholder(semanticLabel: '空收藏示意图'),
@@ -689,9 +719,9 @@ class _EmptyLibrary extends StatelessWidget {
             Text(
               '图片和资料都可暂不填写，保存后仍可继续编辑。',
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: context.palette.textSecondary,
+              ),
             ),
             SizedBox(height: tokens.spaceLg),
             FilledButton.icon(
@@ -752,7 +782,11 @@ class _LibraryError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(Icons.error_outline, color: AppColors.error, size: 40),
+            Icon(
+              Icons.error_outline,
+              color: Theme.of(context).colorScheme.error,
+              size: 40,
+            ),
             SizedBox(height: context.tokens.spaceMd),
             const Text('收藏暂时无法加载'),
             SizedBox(height: context.tokens.spaceMd),
@@ -816,81 +850,78 @@ class _CardTile extends StatelessWidget {
             '${CurrencyAmount(minorUnits: card.acquisitionCostMinor!, currency: card.acquisitionCostCurrency!).formatted}',
     ].join(' · ');
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(tokens.radiusLg),
-      ),
-      child: InkWell(
-        onTap: () => context.push(cardDetailPath(card.cardItemId)),
-        borderRadius: BorderRadius.circular(tokens.radiusLg),
-        child: Padding(
-          padding: EdgeInsets.all(tokens.spaceMd),
-          child: Row(
-            children: <Widget>[
-              SizedBox(
-                width: 104,
-                height: 72,
-                child: coverPath != null
-                    ? CardImage.managed(
-                        relativePath: coverPath,
-                        semanticLabel: '${card.name}封面',
-                      )
-                    : CardImage.placeholder(semanticLabel: '${card.name}封面'),
-              ),
-              SizedBox(width: tokens.spaceMd),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return AppSurfaceCard(
+      onTap: () => context.push(cardDetailPath(card.cardItemId)),
+      semanticLabel: '${card.name}，$metadata',
+      child: Row(
+        children: <Widget>[
+          SizedBox(
+            width: 104,
+            height: 72,
+            child: coverPath != null
+                ? CardImage.managed(
+                    relativePath: coverPath,
+                    semanticLabel: '${card.name}封面',
+                  )
+                : CardImage.placeholder(semanticLabel: '${card.name}封面'),
+          ),
+          SizedBox(width: tokens.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            card.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
+                    Expanded(
+                      child: Text(
+                        card.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    if (card.needsCompletion)
+                      Tooltip(
+                        message: '待完善',
+                        child: Icon(
+                          Icons.pending_outlined,
+                          size: 18,
+                          color: context.palette.warning,
                         ),
-                        if (card.needsCompletion)
-                          const Tooltip(
-                            message: '待完善',
-                            child: Icon(
-                              Icons.pending_outlined,
-                              size: 18,
-                              color: AppColors.warning,
-                            ),
-                          ),
-                      ],
-                    ),
-                    SizedBox(height: tokens.spaceXs),
-                    Text(
-                      metadata,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
                       ),
-                    ),
-                    if (card.tags.isNotEmpty) ...<Widget>[
-                      SizedBox(height: tokens.spaceXs),
-                      Wrap(
-                        spacing: tokens.spaceXs,
-                        children: <Widget>[
-                          for (final tag in card.tags.take(3))
-                            Text(
-                              '#${tag.name}',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: AppColors.primary),
-                            ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            ],
+                SizedBox(height: tokens.spaceXs),
+                Text(
+                  metadata,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.palette.textSecondary,
+                  ),
+                ),
+                if (card.tags.isNotEmpty) ...<Widget>[
+                  SizedBox(height: tokens.spaceXs),
+                  Wrap(
+                    spacing: tokens.spaceXs,
+                    children: <Widget>[
+                      for (final tag in card.tags.take(3))
+                        Text(
+                          '#${tag.name}',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: context.palette.textSecondary,
+          ),
+        ],
       ),
     );
   }

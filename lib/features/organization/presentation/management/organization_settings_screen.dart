@@ -535,9 +535,9 @@ class _SectionHeader extends StatelessWidget {
         SizedBox(height: context.tokens.spaceXs),
         Text(
           description,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: context.palette.textSecondary,
+          ),
         ),
       ],
     );
@@ -586,7 +586,10 @@ class _InlineError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        leading: const Icon(Icons.error_outline, color: AppColors.error),
+        leading: Icon(
+          Icons.error_outline,
+          color: Theme.of(context).colorScheme.error,
+        ),
         title: Text(message),
         trailing: TextButton(onPressed: onRetry, child: const Text('重试')),
       ),

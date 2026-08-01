@@ -428,9 +428,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           SizedBox(height: tokens.spaceSm),
           Text(
             metadata,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: context.palette.textSecondary,
+            ),
           ),
         ],
         SizedBox(height: tokens.spaceMd),
@@ -514,8 +514,11 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
         Container(
           padding: EdgeInsets.all(tokens.spaceMd),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.palette.surface,
             borderRadius: BorderRadius.circular(tokens.radiusLg),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Row(
             children: <Widget>[
@@ -741,7 +744,7 @@ class _Stat extends StatelessWidget {
           label,
           style: Theme.of(
             context,
-          ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+          ).textTheme.bodySmall?.copyWith(color: context.palette.textSecondary),
         ),
         SizedBox(height: context.tokens.spaceSm),
         Text(value, style: Theme.of(context).textTheme.titleLarge),
@@ -762,17 +765,18 @@ class _DetailRow extends StatelessWidget {
       margin: EdgeInsets.only(bottom: context.tokens.spaceMd),
       padding: EdgeInsets.all(context.tokens.spaceMd),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.palette.surface,
         borderRadius: BorderRadius.circular(context.tokens.radiusLg),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: context.palette.textSecondary,
+            ),
           ),
           SizedBox(height: context.tokens.spaceSm),
           Text(value),
@@ -793,10 +797,10 @@ class _MissingCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(
+            Icon(
               Icons.search_off_outlined,
               size: 48,
-              color: AppColors.textSecondary,
+              color: context.palette.textSecondary,
             ),
             SizedBox(height: context.tokens.spaceMd),
             const Text('这张卡片不存在'),

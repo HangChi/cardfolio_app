@@ -54,9 +54,9 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
         SizedBox(height: context.tokens.spaceXs),
         Text(
           '本地模式',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: AppColors.primary),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
         SizedBox(height: context.tokens.spaceXs),
         const Text('无需账号也能创建、浏览、编辑、统计和导出；登录仅用于云同步。'),
@@ -135,9 +135,9 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
           SizedBox(height: context.tokens.spaceMd),
           Text(
             '需要处理 ${overview.conflictCount} 个冲突',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: AppColors.error),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
           ),
           SizedBox(height: context.tokens.spaceSm),
           conflicts.when(
@@ -163,7 +163,9 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
             ),
             TextButton(
               onPressed: _busy ? null : _confirmDeleteAccount,
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
               child: const Text('删除账号与云端数据'),
             ),
           ],
@@ -174,7 +176,7 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
 
   Widget _conflictCard(SyncConflict conflict) {
     return Card(
-      color: AppColors.error.withValues(alpha: 0.06),
+      color: Theme.of(context).colorScheme.errorContainer,
       child: Padding(
         padding: EdgeInsets.all(context.tokens.spaceMd),
         child: Column(
@@ -291,7 +293,10 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
               child: const Text('取消'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
               onPressed: () => Navigator.pop(context, true),
               child: const Text('确认删除账号'),
             ),

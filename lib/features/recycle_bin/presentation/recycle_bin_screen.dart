@@ -94,14 +94,14 @@ class _RetentionCard extends StatelessWidget {
           children: <Widget>[
             const Icon(Icons.schedule_outlined),
             SizedBox(width: context.tokens.spaceMd),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text('自动清理'),
                   Text(
                     '超过保留期的卡片会在下次启动时永久删除。',
-                    style: TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(color: context.palette.textSecondary),
                   ),
                 ],
               ),
@@ -220,7 +220,8 @@ class _EntryCard extends ConsumerWidget {
                   child: FilledButton(
                     key: Key('permanently-delete-${entry.cardItemId}'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.error,
+                      backgroundColor: Theme.of(context).colorScheme.error,
+                      foregroundColor: Theme.of(context).colorScheme.onError,
                     ),
                     onPressed: () => _confirmPermanentDeletion(context, ref),
                     child: const Text('永久删除'),
@@ -277,7 +278,10 @@ class _EntryCard extends ConsumerWidget {
             child: const Text('取消'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('永久删除'),
           ),
@@ -333,10 +337,10 @@ class _EmptyState extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: context.tokens.spaceXl),
       child: Column(
         children: <Widget>[
-          const Icon(
+          Icon(
             Icons.delete_outline,
             size: 48,
-            color: AppColors.textSecondary,
+            color: context.palette.textSecondary,
           ),
           SizedBox(height: context.tokens.spaceMd),
           Text('回收站是空的', style: Theme.of(context).textTheme.titleLarge),

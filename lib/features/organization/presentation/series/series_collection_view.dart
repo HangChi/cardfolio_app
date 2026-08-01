@@ -85,10 +85,10 @@ class _EmptySeries extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(
+            Icon(
               Icons.collections_bookmark_outlined,
               size: 52,
-              color: AppColors.textSecondary,
+              color: context.palette.textSecondary,
             ),
             SizedBox(height: context.tokens.spaceMd),
             Text('还没有集卡册', style: Theme.of(context).textTheme.titleLarge),

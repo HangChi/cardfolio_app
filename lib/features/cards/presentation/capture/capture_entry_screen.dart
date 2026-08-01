@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
+import '../../../../core/widgets/app_layout.dart';
+import '../../../../core/widgets/app_surface.dart';
 import '../create/create_card_controller.dart';
 
 /// 卡片采集方式入口。
@@ -33,196 +35,167 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
         .read(createCardControllerProvider.notifier)
         .pickImage();
     if (!context.mounted) return;
-
     if (picked) {
       context.push(createCardPath);
       return;
     }
-
-    final failure = ref.read(createCardControllerProvider).failure;
-    if (failure != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
-    }
+    _showFailure(context);
   }
 
   Future<void> _capture(BuildContext context) async {
-    final controller = ref.read(createCardControllerProvider.notifier);
-    final captured = await controller.captureImage();
+    final captured = await ref
+        .read(createCardControllerProvider.notifier)
+        .captureImage();
     if (!context.mounted) return;
     if (captured) {
       context.push(createCardPath);
       return;
     }
+    _showFailure(context);
+  }
+
+  void _showFailure(BuildContext context) {
     final failure = ref.read(createCardControllerProvider).failure;
-    if (failure != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
-    }
+    if (failure == null) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
   }
 
   @override
   Widget build(BuildContext context) {
     // 入口页在新建页压入根导航器后仍保留监听，确保草稿状态跨路由存活。
-    ref.watch(createCardControllerProvider);
+    final state = ref.watch(createCardControllerProvider);
     final tokens = context.tokens;
+    final scheme = Theme.of(context).colorScheme;
 
-    return SafeArea(
+    return AppContentView(
+      safeTop: true,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          tokens.spaceLg,
-          tokens.spaceLg,
-          tokens.spaceLg,
-          tokens.spaceXl,
-        ),
         children: <Widget>[
-          Text('快速建档', style: Theme.of(context).textTheme.headlineMedium),
-          SizedBox(height: tokens.spaceXs),
-          Text(
-            '选择最适合这次录入的方式',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          const AppPageHeader(
+            eyebrow: 'CAPTURE & ARCHIVE',
+            title: '快速建档',
+            subtitle: '选择最适合这次录入的方式，图片和资料都可以稍后补充。',
+          ),
+          Semantics(
+            button: true,
+            label: '拍摄单张卡，主要操作',
+            child: Material(
+              color: scheme.primary,
+              borderRadius: BorderRadius.circular(tokens.radiusLg),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: state.isSaving ? null : () => _capture(context),
+                child: Padding(
+                  padding: EdgeInsets.all(tokens.spaceLg),
+                  child: Row(
+                    children: <Widget>[
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: scheme.onPrimary.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: state.isSaving
+                            ? Padding(
+                                padding: EdgeInsets.all(tokens.spaceMd),
+                                child: CircularProgressIndicator(
+                                  color: scheme.onPrimary,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.center_focus_strong_rounded,
+                                size: tokens.iconLg,
+                                color: scheme.onPrimary,
+                              ),
+                      ),
+                      SizedBox(width: tokens.spaceMd),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              '拍摄单张卡',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(color: scheme.onPrimary),
+                            ),
+                            SizedBox(height: tokens.spaceXs),
+                            Text(
+                              '拍摄后直接进入资料页，可继续添加正面、背面与细节。',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: scheme.onPrimary.withValues(
+                                      alpha: 0.82,
+                                    ),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: tokens.spaceSm),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: scheme.onPrimary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
           SizedBox(height: tokens.spaceLg),
-          _CaptureOption(
-            icon: Icons.center_focus_strong_outlined,
-            title: '拍摄单张卡',
-            subtitle: '拍摄后直接进入资料页，可继续添加正面、背面与细节',
-            enabled: true,
-            onTap: () => _capture(context),
+          const AppSectionHeader(
+            title: '其他录入方式',
+            icon: Icons.add_photo_alternate_outlined,
           ),
-          SizedBox(height: tokens.spaceMd),
-          _CaptureOption(
+          AppActionTile(
             icon: Icons.grid_on_outlined,
             title: '批量建卡 / 创建套卡',
-            subtitle: '多张卡独立建档，共用资料并自动加入套卡',
-            enabled: true,
+            subtitle: '多张卡独立建档，共用资料并自动加入套卡。',
             onTap: () => context.push(batchCardEntryPath),
           ),
-          SizedBox(height: tokens.spaceMd),
-          _CaptureOption(
+          SizedBox(height: tokens.spaceSm),
+          AppActionTile(
             icon: Icons.file_upload_outlined,
             title: '从相册导入',
-            subtitle: '选择一张已有图片',
-            enabled: true,
-            onTap: () => _pickFromGallery(context),
+            subtitle: '选择一张已有图片作为卡片封面。',
+            onTap: state.isSaving ? null : () => _pickFromGallery(context),
           ),
-          SizedBox(height: tokens.spaceXl),
-          Container(
-            padding: EdgeInsets.all(tokens.spaceMd),
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer,
-              borderRadius: BorderRadius.circular(tokens.radiusLg),
-            ),
-            child: const Column(
+          SizedBox(height: tokens.spaceLg),
+          AppSurfaceCard(
+            color: scheme.primaryContainer,
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  '小提示',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text('拍摄后不会强制裁剪；在资料页点击图片的“编辑”即可裁剪、旋转并调整画面。'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CaptureOption extends StatelessWidget {
-  const _CaptureOption({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.enabled = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool enabled;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: enabled ? title : '$title，后续开放',
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(tokens.radiusLg),
-        child: InkWell(
-          onTap: enabled ? onTap : null,
-          borderRadius: BorderRadius.circular(tokens.radiusLg),
-          child: Padding(
-            padding: EdgeInsets.all(tokens.spaceMd),
-            child: Row(
-              children: <Widget>[
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: enabled
-                        ? AppColors.primary
-                        : AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(tokens.radiusLg),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: enabled ? AppColors.onPrimary : AppColors.primary,
-                  ),
-                ),
-                SizedBox(width: tokens.spaceMd),
+                Icon(Icons.tips_and_updates_outlined, color: scheme.primary),
+                SizedBox(width: tokens.spaceSm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium,
+                        '拍摄小提示',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: scheme.onPrimaryContainer,
+                        ),
                       ),
                       SizedBox(height: tokens.spaceXs),
                       Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                        '拍摄后不会强制裁剪；在资料页点击图片的“编辑”即可裁剪、旋转并调整画面。',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: scheme.onPrimaryContainer,
                         ),
                       ),
-                      if (!enabled) ...<Widget>[
-                        SizedBox(height: tokens.spaceSm),
-                        const Text(
-                          '后续开放',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
-                if (enabled)
-                  const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textSecondary,
-                  ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }

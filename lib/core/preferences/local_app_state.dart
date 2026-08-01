@@ -2,6 +2,8 @@ import 'package:meta/meta.dart';
 
 import '../../features/organization/domain/organization_models.dart';
 
+enum AppThemePreference { system, light, dark }
+
 @immutable
 final class SavedCardFilter {
   const SavedCardFilter({
@@ -61,18 +63,21 @@ final class LocalAppState {
   const LocalAppState({
     this.onboardingCompleted = false,
     this.diagnosticsEnabled = false,
+    this.themePreference = AppThemePreference.system,
     this.savedFilters = const <SavedCardFilter>[],
     this.batchEntry,
   });
 
   final bool onboardingCompleted;
   final bool diagnosticsEnabled;
+  final AppThemePreference themePreference;
   final List<SavedCardFilter> savedFilters;
   final BatchEntrySnapshot? batchEntry;
 
   LocalAppState copyWith({
     bool? onboardingCompleted,
     bool? diagnosticsEnabled,
+    AppThemePreference? themePreference,
     List<SavedCardFilter>? savedFilters,
     BatchEntrySnapshot? batchEntry,
     bool clearBatchEntry = false,
@@ -80,6 +85,7 @@ final class LocalAppState {
     return LocalAppState(
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       diagnosticsEnabled: diagnosticsEnabled ?? this.diagnosticsEnabled,
+      themePreference: themePreference ?? this.themePreference,
       savedFilters: savedFilters ?? this.savedFilters,
       batchEntry: clearBatchEntry ? null : batchEntry ?? this.batchEntry,
     );
@@ -89,6 +95,7 @@ final class LocalAppState {
     'version': 1,
     'onboardingCompleted': onboardingCompleted,
     'diagnosticsEnabled': diagnosticsEnabled,
+    'themePreference': themePreference.name,
     'savedFilters': savedFilters.map((value) => value.toJson()).toList(),
     'batchEntry': batchEntry?.toJson(),
   };
@@ -97,6 +104,7 @@ final class LocalAppState {
     return LocalAppState(
       onboardingCompleted: json['onboardingCompleted'] as bool? ?? false,
       diagnosticsEnabled: json['diagnosticsEnabled'] as bool? ?? false,
+      themePreference: _themePreferenceFromJson(json['themePreference']),
       savedFilters: List<SavedCardFilter>.unmodifiable(
         (json['savedFilters'] as List<Object?>? ?? const <Object?>[])
             .map(_map)
@@ -117,6 +125,7 @@ final class LocalAppState {
       other is LocalAppState &&
       other.onboardingCompleted == onboardingCompleted &&
       other.diagnosticsEnabled == diagnosticsEnabled &&
+      other.themePreference == themePreference &&
       other.savedFilters.length == savedFilters.length &&
       other.batchEntry == batchEntry;
 
@@ -124,10 +133,17 @@ final class LocalAppState {
   int get hashCode => Object.hash(
     onboardingCompleted,
     diagnosticsEnabled,
+    themePreference,
     savedFilters.length,
     batchEntry,
   );
 }
+
+AppThemePreference _themePreferenceFromJson(Object? value) =>
+    AppThemePreference.values
+        .where((preference) => preference.name == value)
+        .firstOrNull ??
+    AppThemePreference.system;
 
 abstract interface class LocalAppStateStore {
   Future<LocalAppState> read();

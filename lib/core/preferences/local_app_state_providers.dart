@@ -45,6 +45,9 @@ final class LocalAppStateController extends AsyncNotifier<LocalAppState> {
   Future<void> setDiagnosticsEnabled(bool enabled) =>
       _update((value) => value.copyWith(diagnosticsEnabled: enabled));
 
+  Future<void> setThemePreference(AppThemePreference preference) =>
+      _update((value) => value.copyWith(themePreference: preference));
+
   Future<void> saveFilter({
     String? id,
     required String name,
