@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
-import '../../domain/image_processing.dart';
 import '../create/create_card_controller.dart';
 
 /// 卡片采集方式入口。
@@ -26,7 +25,7 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
     final controller = ref.read(createCardControllerProvider.notifier);
     final recovered = await controller.recoverLostCapture();
     if (!mounted || !recovered) return;
-    await _editLatestCapture();
+    context.push(createCardPath);
   }
 
   Future<void> _pickFromGallery(BuildContext context) async {
@@ -53,7 +52,7 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
     final captured = await controller.captureImage();
     if (!context.mounted) return;
     if (captured) {
-      await _editLatestCapture();
+      context.push(createCardPath);
       return;
     }
     final failure = ref.read(createCardControllerProvider).failure;
@@ -62,27 +61,6 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(failure.userMessage)));
     }
-  }
-
-  Future<void> _editLatestCapture() async {
-    final controller = ref.read(createCardControllerProvider.notifier);
-    final state = ref.read(createCardControllerProvider);
-    if (state.images.isEmpty || !mounted) return;
-    final image = state.images.last;
-    final result = await context.push<ProcessedImage>(
-      imageEditorPath,
-      extra: ImageEditorRouteArgs(
-        sourcePath: image.selection.path,
-        outputId: image.id,
-      ),
-    );
-    if (!mounted) return;
-    if (result == null) {
-      controller.discardImage(image.id);
-      return;
-    }
-    controller.applyProcessedImage(image.id, result.path);
-    context.push(createCardPath);
   }
 
   @override
@@ -112,7 +90,7 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
           _CaptureOption(
             icon: Icons.center_focus_strong_outlined,
             title: '拍摄单张卡',
-            subtitle: '拍摄正面、背面与细节，逐张裁切',
+            subtitle: '拍摄后直接进入资料页，可继续添加正面、背面与细节',
             enabled: true,
             onTap: () => _capture(context),
           ),
@@ -150,7 +128,7 @@ class _CaptureEntryScreenState extends ConsumerState<CaptureEntryScreen> {
                   ),
                 ),
                 SizedBox(height: 8),
-                Text('每次拍摄后可裁切与增强，并能在编辑页继续拍摄；若相机不可用，仍可从相册导入。'),
+                Text('拍摄后不会强制裁剪；在资料页点击图片的“编辑”即可裁剪、旋转并调整画面。'),
               ],
             ),
           ),

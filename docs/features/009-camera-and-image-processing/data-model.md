@@ -11,7 +11,7 @@ ImageEditSettings(corners, quarterTurns, adjustments, template)
 EdgeDetectionResult(corners, confidence, requiresManualAdjustment)
 ```
 
-默认四角为 `(0.04,0.04)`、`(0.96,0.04)`、`(0.96,0.96)`、`(0.04,0.96)`。
+当前编辑流程由平台裁剪器先生成矩形结果，Dart 调整阶段默认使用完整边界 `(0,0)`、`(1,0)`、`(1,1)`、`(0,1)`。
 标准卡片比例为 `85.60 / 53.98`，方形模板使用白色或近黑背景。
 
 ## 草稿

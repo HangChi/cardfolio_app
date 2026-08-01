@@ -20,6 +20,7 @@ import '../../data/card_providers.dart';
 import '../../domain/card_models.dart';
 import '../../domain/image_processing.dart';
 import '../widgets/card_image.dart';
+import '../widgets/card_location_field.dart';
 import '../widgets/card_entry_metadata_fields.dart';
 import '../widgets/optional_date_field.dart';
 
@@ -166,42 +167,51 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
 
     try {
       final String? path;
-      String? derivedPath;
       if (source == _ImageSourceChoice.gallery) {
         final images = await ref.read(galleryPickerProvider).pickMany(limit: 1);
         path = images.isEmpty ? null : images.first.path;
       } else {
         final captured = await ref.read(cameraCaptureProvider).capture();
         path = captured?.path;
-        if (path != null && mounted) {
-          final outputId = side == CardImageKind.front
-              ? draft.ids.imageId
-              : draft.backImageId;
-          final processed = await context.push<ProcessedImage>(
-            imageEditorPath,
-            extra: ImageEditorRouteArgs(
-              sourcePath: path,
-              outputId: outputId,
-            ),
-          );
-          if (processed == null) return;
-          derivedPath = processed.path;
-        }
       }
       if (path == null || !mounted) return;
       setState(() {
         if (side == CardImageKind.front) {
           draft.frontPath = path;
-          draft.frontDerivedPath = derivedPath;
+          draft.frontDerivedPath = null;
         } else {
           draft.backPath = path;
-          draft.backDerivedPath = derivedPath;
+          draft.backDerivedPath = null;
         }
       });
       _schedulePersist();
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
     }
+  }
+
+  Future<void> _editImage(_BatchCardDraft draft, CardImageKind side) async {
+    if (_saving || draft.saved || draft.confirmed) return;
+    final sourcePath = side == CardImageKind.front
+        ? draft.frontDerivedPath ?? draft.frontPath
+        : draft.backDerivedPath ?? draft.backPath;
+    if (sourcePath == null) return;
+    final outputId = side == CardImageKind.front
+        ? draft.ids.imageId
+        : draft.backImageId;
+    final processed = await context.push<ProcessedImage>(
+      imageEditorPath,
+      extra: ImageEditorRouteArgs(sourcePath: sourcePath, outputId: outputId),
+    );
+    if (processed == null || !mounted) return;
+    setState(() {
+      if (side == CardImageKind.front) {
+        draft.frontDerivedPath = processed.path;
+      } else {
+        draft.backDerivedPath = processed.path;
+      }
+    });
+    _schedulePersist();
   }
 
   Future<void> _saveAll() async {
@@ -393,11 +403,14 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
           SizedBox(height: tokens.spaceMd),
           Text('本批次共用资料', style: Theme.of(context).textTheme.titleMedium),
           SizedBox(height: tokens.spaceSm),
-          TextField(
-            controller: _sharedCity,
+          CardLocationField(
+            value: _sharedCity.text,
             enabled: !_saving,
-            onChanged: (_) => _schedulePersist(),
-            decoration: const InputDecoration(labelText: '城市（共用，可选）'),
+            label: '城市（共用，可选）',
+            onChanged: (value) {
+              setState(() => _sharedCity.text = value);
+              _schedulePersist();
+            },
           ),
           SizedBox(height: tokens.spaceSm),
           TextField(
@@ -505,6 +518,9 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
                   _chooseImage(_drafts[index], CardImageKind.front),
               onChooseBack: () =>
                   _chooseImage(_drafts[index], CardImageKind.back),
+              onEditFront: () =>
+                  _editImage(_drafts[index], CardImageKind.front),
+              onEditBack: () => _editImage(_drafts[index], CardImageKind.back),
               onCreateTag: () => _createTag(_drafts[index]),
               onChanged: () {
                 setState(() {});
@@ -539,6 +555,8 @@ class _BatchDraftCard extends StatelessWidget {
     required this.onRemove,
     required this.onChooseFront,
     required this.onChooseBack,
+    required this.onEditFront,
+    required this.onEditBack,
     required this.onCreateTag,
     required this.onChanged,
   });
@@ -551,6 +569,8 @@ class _BatchDraftCard extends StatelessWidget {
   final VoidCallback onRemove;
   final VoidCallback onChooseFront;
   final VoidCallback onChooseBack;
+  final VoidCallback onEditFront;
+  final VoidCallback onEditBack;
   final VoidCallback onCreateTag;
   final VoidCallback onChanged;
 
@@ -601,6 +621,7 @@ class _BatchDraftCard extends StatelessWidget {
                     path: draft.frontDerivedPath ?? draft.frontPath,
                     enabled: enabled && !draft.saved && !draft.confirmed,
                     onPressed: onChooseFront,
+                    onEdit: onEditFront,
                   ),
                 ),
                 SizedBox(width: tokens.spaceMd),
@@ -610,6 +631,7 @@ class _BatchDraftCard extends StatelessWidget {
                     path: draft.backDerivedPath ?? draft.backPath,
                     enabled: enabled && !draft.saved && !draft.confirmed,
                     onPressed: onChooseBack,
+                    onEdit: onEditBack,
                   ),
                 ),
               ],
@@ -717,12 +739,14 @@ class _SideImage extends StatelessWidget {
     required this.path,
     required this.enabled,
     required this.onPressed,
+    required this.onEdit,
   });
 
   final String label;
   final String? path;
   final bool enabled;
   final VoidCallback onPressed;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -730,7 +754,7 @@ class _SideImage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         AspectRatio(
-          aspectRatio: 0.72,
+          aspectRatio: 85.60 / 53.98,
           child: path == null
               ? DecoratedBox(
                   decoration: BoxDecoration(
@@ -745,16 +769,47 @@ class _SideImage extends StatelessWidget {
                     child: Icon(Icons.image_outlined, size: 36),
                   ),
                 )
-              : CardImage.local(
-                  path: path!,
-                  semanticLabel: label,
-                  borderRadius: BorderRadius.circular(context.tokens.radiusMd),
+              : Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    CardImage.local(
+                      path: path!,
+                      semanticLabel: label,
+                      borderRadius: BorderRadius.circular(
+                        context.tokens.radiusMd,
+                      ),
+                    ),
+                    Positioned(
+                      left: 8,
+                      top: 8,
+                      child: Chip(
+                        label: Text(label.replaceAll('（可选）', '')),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
                 ),
         ),
         const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: enabled ? onPressed : null,
-          child: Text(path == null ? label : '更换${label.substring(0, 2)}'),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: OutlinedButton(
+                onPressed: enabled ? onPressed : null,
+                child: Text(path == null ? '添加${label.substring(0, 2)}' : '更换'),
+              ),
+            ),
+            if (path != null) ...<Widget>[
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: enabled ? onEdit : null,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('编辑'),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );

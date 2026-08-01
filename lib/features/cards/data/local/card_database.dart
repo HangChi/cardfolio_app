@@ -1131,6 +1131,30 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<void> updateImageDerivedPath({
+    required String cardItemId,
+    required String imageId,
+    required String derivedRelativePath,
+    required DateTime updatedAt,
+  }) {
+    return transaction(() async {
+      final changed =
+          await (update(cardImages)..where(
+                (image) =>
+                    image.id.equals(imageId) &
+                    image.cardItemId.equals(cardItemId) &
+                    image.deletedAt.isNull(),
+              ))
+              .write(
+                CardImagesCompanion(
+                  derivedRelativePath: Value<String?>(derivedRelativePath),
+                ),
+              );
+      if (changed != 1) throw StateError('图片不存在。');
+      await _touchItem(cardItemId, updatedAt);
+    });
+  }
+
   Future<void> setCover({
     required String cardItemId,
     required String imageId,

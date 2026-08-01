@@ -22,6 +22,7 @@ import '../widgets/card_image.dart';
 import '../widgets/card_entry_metadata_fields.dart';
 import '../widgets/card_autofill_button.dart';
 import '../widgets/card_image_kind_label.dart';
+import '../widgets/card_location_field.dart';
 import '../widgets/optional_date_field.dart';
 import '../widgets/reserved_card_metadata_fields.dart';
 
@@ -396,12 +397,11 @@ class _CreateCardForm extends ConsumerWidget {
             textInputAction: TextInputAction.next,
           ),
           SizedBox(height: tokens.spaceMd),
-          _CardTextField(
-            label: '城市',
-            initialValue: state.city,
+          CardLocationField(
+            value: state.city,
             errorText: state.fieldErrors[CardField.city],
+            enabled: !state.isSaving,
             onChanged: controller.updateCity,
-            textInputAction: TextInputAction.next,
           ),
           SizedBox(height: tokens.spaceMd),
           _CardTextField(
@@ -534,7 +534,7 @@ class _DraftImagesEditor extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('拍摄'),
-              subtitle: const Text('拍摄后进入裁切与增强'),
+              subtitle: const Text('拍摄后直接添加，可稍后编辑'),
               onTap: () => context.pop(_DraftImageSource.camera),
             ),
             ListTile(
@@ -560,19 +560,6 @@ class _DraftImagesEditor extends ConsumerWidget {
 
     final captured = await controller.captureImage(append: state.hasImage);
     if (!captured || !context.mounted) return;
-    final image = ref.read(createCardControllerProvider).images.last;
-    final result = await context.push<ProcessedImage>(
-      imageEditorPath,
-      extra: ImageEditorRouteArgs(
-        sourcePath: image.selection.path,
-        outputId: image.id,
-      ),
-    );
-    if (result == null) {
-      controller.discardImage(image.id);
-      return;
-    }
-    controller.applyProcessedImage(image.id, result.path);
   }
 
   @override
@@ -610,7 +597,7 @@ class _DraftImagesEditor extends ConsumerWidget {
           )
         else
           SizedBox(
-            height: 246,
+            height: 220,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: state.images.length,
@@ -623,14 +610,15 @@ class _DraftImagesEditor extends ConsumerWidget {
                       '第 ${index + 1} 张，${image.kind.label}'
                       '${index == 0 ? '，封面' : ''}',
                   child: SizedBox(
-                    width: 184,
+                    width: 248,
                     child: Card(
                       clipBehavior: Clip.antiAlias,
                       child: Padding(
                         padding: EdgeInsets.all(tokens.spaceSm),
                         child: Column(
                           children: <Widget>[
-                            Expanded(
+                            AspectRatio(
+                              aspectRatio: 85.60 / 53.98,
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: <Widget>[
@@ -702,10 +690,8 @@ class _DraftImagesEditor extends ConsumerWidget {
                                             );
                                           }
                                         },
-                                  tooltip: '裁切与增强',
-                                  icon: const Icon(
-                                    Icons.auto_fix_high_outlined,
-                                  ),
+                                  tooltip: '编辑图片',
+                                  icon: const Icon(Icons.edit_outlined),
                                 ),
                                 IconButton(
                                   onPressed: state.isSaving || index == 0

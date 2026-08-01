@@ -72,6 +72,13 @@ final class ImageCorners {
     bottomLeft: NormalizedPoint(0.04, 0.96),
   );
 
+  static final ImageCorners full = ImageCorners(
+    topLeft: NormalizedPoint(0, 0),
+    topRight: NormalizedPoint(1, 0),
+    bottomRight: NormalizedPoint(1, 1),
+    bottomLeft: NormalizedPoint(0, 1),
+  );
+
   final NormalizedPoint topLeft;
   final NormalizedPoint topRight;
   final NormalizedPoint bottomRight;
@@ -144,7 +151,7 @@ enum ImageOutputTemplate { original, standardCard, squareLight, squareDark }
 final class ImageEditSettings {
   factory ImageEditSettings.initial({ImageCorners? corners}) {
     return ImageEditSettings._(
-      corners: corners ?? ImageCorners.safeInset,
+      corners: corners ?? ImageCorners.full,
       quarterTurns: 0,
       adjustments: ImageAdjustments.none,
       template: ImageOutputTemplate.original,

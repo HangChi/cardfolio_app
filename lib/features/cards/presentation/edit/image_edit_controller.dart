@@ -71,33 +71,14 @@ final class ImageEditController extends ChangeNotifier {
   var _generation = 0;
 
   Future<void> initialize() async {
-    final generation = ++_generation;
-    state = state.copyWith(
-      phase: ImageEditPhase.initializing,
-      clearFailure: true,
+    final settings = ImageEditSettings.initial();
+    _baseline = settings;
+    _history.clear();
+    state = ImageEditState(
+      phase: ImageEditPhase.ready,
+      settings: settings,
+      requiresManualAdjustment: false,
     );
-    notifyListeners();
-    try {
-      final edges = await processor.detectEdges(sourcePath);
-      if (generation != _generation) return;
-      final settings = ImageEditSettings.initial(corners: edges.corners);
-      _baseline = settings;
-      _history.clear();
-      state = ImageEditState(
-        phase: ImageEditPhase.ready,
-        settings: settings,
-        requiresManualAdjustment: edges.requiresManualAdjustment,
-      );
-    } on AppFailure catch (failure) {
-      if (generation != _generation) return;
-      state = state.copyWith(phase: ImageEditPhase.failure, failure: failure);
-    } catch (error) {
-      if (generation != _generation) return;
-      state = state.copyWith(
-        phase: ImageEditPhase.failure,
-        failure: ImageProcessingFailure('无法读取图片，请重新打开编辑器。', error),
-      );
-    }
     notifyListeners();
   }
 
@@ -235,7 +216,7 @@ final class ImageEditController extends ChangeNotifier {
       if (generation != _generation) return null;
       state = state.copyWith(
         phase: ImageEditPhase.failure,
-        failure: ImageProcessingFailure('生成展示图失败，请重试。', error),
+        failure: ImageProcessingFailure('保存编辑图片失败，请重试。', error),
       );
       notifyListeners();
       return null;

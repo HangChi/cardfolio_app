@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../domain/card_autofill.dart';
+import 'china_regions.dart';
 
 final class MethodChannelCardTextRecognizer implements CardTextRecognizer {
   const MethodChannelCardTextRecognizer();
@@ -17,7 +18,16 @@ final class MethodChannelCardTextRecognizer implements CardTextRecognizer {
       'recognize',
       <String, Object?>{'imagePath': imagePath},
     );
-    return RecognizedCardText.fromRawText(text ?? '');
+    final parsed = RecognizedCardText.fromRawText(text ?? '');
+    return RecognizedCardText(
+      rawText: parsed.rawText,
+      lines: parsed.lines,
+      name: parsed.name,
+      city: ChinaRegions.findBestPath(parsed.rawText),
+      issuer: parsed.issuer,
+      code: parsed.code,
+      issuedAt: parsed.issuedAt,
+    );
   }
 }
 
@@ -80,7 +90,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-beijing-yikatong',
       name: '北京市政交通一卡通',
-      city: '北京',
+      city: '北京市 / 北京市 / 全市',
       issuer: '北京市政交通一卡通有限公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -88,7 +98,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-shanghai-t-union',
       name: '上海公共交通卡',
-      city: '上海',
+      city: '上海市 / 上海市 / 全市',
       issuer: '上海公共交通卡股份有限公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -96,7 +106,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-guangzhou-yangchengtong',
       name: '羊城通',
-      city: '广州',
+      city: '广东省 / 广州市 / 全市',
       issuer: '广州羊城通有限公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -104,7 +114,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-shenzhen-tong',
       name: '深圳通',
-      city: '深圳',
+      city: '广东省 / 深圳市 / 全市',
       issuer: '深圳通有限公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -112,7 +122,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-wuhan-tong',
       name: '武汉通',
-      city: '武汉',
+      city: '湖北省 / 武汉市 / 全市',
       issuer: '武汉城市一卡通有限公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -120,7 +130,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-nanjing-jinlingtong',
       name: '金陵通',
-      city: '南京',
+      city: '江苏省 / 南京市 / 全市',
       issuer: '南京市市民卡有限公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -128,7 +138,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-xian-changantong',
       name: '长安通',
-      city: '西安',
+      city: '陕西省 / 西安市 / 全市',
       issuer: '西安城市一卡通有限责任公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -136,7 +146,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-chengdu-tianfutong',
       name: '天府通',
-      city: '成都',
+      city: '四川省 / 成都市 / 全市',
       issuer: '成都天府通金融服务股份有限公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -144,7 +154,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-chongqing-changxingtong',
       name: '重庆交通卡',
-      city: '重庆',
+      city: '重庆市 / 重庆市 / 全市',
       issuer: '重庆市轨道交通（集团）有限公司',
       cardType: '公共交通卡',
       confidence: 0,
@@ -152,7 +162,7 @@ final class BuiltInTransportCardCatalog implements TransportCardCatalog {
     TransportCardCatalogMatch(
       id: 'cn-suzhou-citizen',
       name: '苏州市民卡',
-      city: '苏州',
+      city: '江苏省 / 苏州市 / 全市',
       issuer: '苏州市民卡有限公司',
       cardType: '公共交通卡',
       confidence: 0,

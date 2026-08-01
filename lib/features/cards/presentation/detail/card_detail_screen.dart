@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -142,7 +144,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('拍摄'),
-              subtitle: const Text('拍摄后进入裁切与增强'),
+              subtitle: const Text('拍摄后直接添加，可在图片管理中编辑'),
               onTap: () => context.pop(_DetailImageSource.camera),
             ),
             ListTile(
@@ -165,29 +167,14 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             .pickMany(limit: remaining);
         pendingImages = <PendingCardImage>[
           for (final selection in selections)
-            PendingCardImage(
-              id: generator.newId(),
-              sourcePath: selection.path,
-            ),
+            PendingCardImage(id: generator.newId(), sourcePath: selection.path),
         ];
       } else {
         final captured = await ref.read(cameraCaptureProvider).capture();
         if (captured == null || !mounted) return;
         final imageId = generator.newId();
-        final processed = await context.push<ProcessedImage>(
-          imageEditorPath,
-          extra: ImageEditorRouteArgs(
-            sourcePath: captured.path,
-            outputId: imageId,
-          ),
-        );
-        if (processed == null) return;
         pendingImages = <PendingCardImage>[
-          PendingCardImage(
-            id: imageId,
-            sourcePath: captured.path,
-            derivedSourcePath: processed.path,
-          ),
+          PendingCardImage(id: imageId, sourcePath: captured.path),
         ];
       }
     } on AppFailure catch (failure) {
@@ -294,6 +281,15 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
               title: Text('第 ${index + 1} 张 · ${image.kind.label}'),
               subtitle: image.isCover ? const Text('当前封面') : null,
             ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('编辑图片'),
+              subtitle: const Text('裁剪、旋转、亮度、对比度与清晰度'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _editImage(image);
+              },
+            ),
             if (!image.isCover)
               ListTile(
                 leading: const Icon(Icons.star_outline),
@@ -374,6 +370,27 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
     );
   }
 
+  Future<void> _editImage(CardImageRef image) async {
+    final store = ref.read(managedImageStoreProvider);
+    final source = store.resolve(image.displayRelativePath);
+    final processed = await context.push<ProcessedImage>(
+      imageEditorPath,
+      extra: ImageEditorRouteArgs(sourcePath: source.path, outputId: image.id),
+    );
+    if (processed == null || !mounted) return;
+    await _run(
+      () => ref
+          .read(cardRepositoryProvider)
+          .updateImageEdit(
+            cardItemId: card.cardItemId,
+            imageId: image.id,
+            derivedSourcePath: processed.path,
+          ),
+    );
+    final derived = store.resolve('derived/${card.cardItemId}/${image.id}.jpg');
+    await PaintingBinding.instance.imageCache.evict(FileImage(derived));
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -396,7 +413,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           aspectRatio: 1.58,
           child: cover != null
               ? CardImage.managed(
-                  relativePath: cover.relativePath,
+                  relativePath: cover.displayRelativePath,
                   semanticLabel: '${card.name}正面',
                   borderRadius: BorderRadius.circular(tokens.radiusLg),
                 )
@@ -436,7 +453,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           ],
         ),
         SizedBox(
-          height: 144,
+          height: 164,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: card.images.length,
@@ -445,7 +462,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             itemBuilder: (context, index) {
               final image = card.images[index];
               return SizedBox(
-                width: 148,
+                width: 248,
                 child: Card(
                   clipBehavior: Clip.antiAlias,
                   child: Stack(
@@ -457,32 +474,24 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                             '第 ${index + 1} 张，${image.kind.label}'
                             '${image.isCover ? '，封面' : ''}',
                       ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          width: double.infinity,
-                          color: Colors.black.withValues(alpha: 0.64),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: tokens.spaceSm,
-                            vertical: 4,
-                          ),
-                          child: Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: Text(
-                                  image.kind.label,
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                              if (image.isCover)
-                                const Text(
-                                  '封面',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                            ],
-                          ),
+                      Positioned(
+                        left: tokens.spaceSm,
+                        top: tokens.spaceSm,
+                        child: Chip(
+                          label: Text(image.kind.label),
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
+                      if (image.isCover)
+                        Positioned(
+                          left: tokens.spaceSm,
+                          bottom: tokens.spaceSm,
+                          child: const Chip(
+                            avatar: Icon(Icons.star, size: 16),
+                            label: Text('封面'),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
                       Align(
                         alignment: Alignment.topRight,
                         child: IconButton.filledTonal(

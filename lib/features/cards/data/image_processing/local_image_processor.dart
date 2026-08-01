@@ -17,8 +17,7 @@ final class LocalImageProcessor implements ImageProcessor {
   final Directory workingDirectory;
 
   static const int maxDecodedPixels = 48 * 1000 * 1000;
-  static const int maxLongEdge = 4096;
-  static const int jpegQuality = 92;
+  static const int jpegQuality = 95;
 
   @override
   Future<EdgeDetectionResult> detectEdges(String sourcePath) async {
@@ -56,7 +55,7 @@ final class LocalImageProcessor implements ImageProcessor {
     } on ImageProcessingFailure {
       rethrow;
     } catch (error) {
-      throw ImageProcessingFailure('生成展示图失败，请检查存储空间后重试。', error);
+      throw ImageProcessingFailure('保存编辑图片失败，请检查存储空间后重试。', error);
     }
   }
 }
@@ -220,16 +219,6 @@ img.Image _decode(String sourcePath) {
   image = img.bakeOrientation(image);
   if (image.width * image.height > LocalImageProcessor.maxDecodedPixels) {
     throw const ImageProcessingFailure('图片分辨率过高，请使用不超过 48MP 的图片。');
-  }
-  final longEdge = math.max(image.width, image.height);
-  if (longEdge > LocalImageProcessor.maxLongEdge) {
-    final scale = LocalImageProcessor.maxLongEdge / longEdge;
-    image = img.copyResize(
-      image,
-      width: math.max(1, (image.width * scale).round()),
-      height: math.max(1, (image.height * scale).round()),
-      interpolation: img.Interpolation.linear,
-    );
   }
   return image;
 }

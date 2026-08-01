@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'card_condition_field.dart';
+
 class ReservedCardMetadataFields extends StatelessWidget {
   const ReservedCardMetadataFields({
     required this.conditionController,
@@ -20,14 +22,7 @@ class ReservedCardMetadataFields extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        TextField(
-          controller: conditionController,
-          enabled: enabled,
-          decoration: const InputDecoration(
-            labelText: '品相（可选）',
-            hintText: '例如：全新、轻微使用痕迹',
-          ),
-        ),
+        CardConditionField(controller: conditionController, enabled: enabled),
         const SizedBox(height: 12),
         TextField(
           controller: itemNotesController,

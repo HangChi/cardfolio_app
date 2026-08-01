@@ -52,7 +52,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
     setState(() => _saving = true);
     await ref.read(localAppStateProvider.notifier).completeOnboarding();
-    if (mounted) context.go(libraryPath);
+    if (mounted) context.go(homePath);
   }
 
   @override

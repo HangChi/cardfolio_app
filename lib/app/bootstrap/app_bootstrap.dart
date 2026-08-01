@@ -337,7 +337,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
         child: CardfolioApp(
           router: createAppRouter(
             initialLocation: dependencies.initialAppState.onboardingCompleted
-                ? libraryPath
+                ? homePath
                 : onboardingPath,
           ),
         ),

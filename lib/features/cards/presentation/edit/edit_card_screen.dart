@@ -16,6 +16,7 @@ import '../../domain/card_autofill.dart';
 import '../../domain/reserved_card_metadata.dart';
 import '../widgets/card_entry_metadata_fields.dart';
 import '../widgets/card_autofill_button.dart';
+import '../widgets/card_location_field.dart';
 import '../widgets/optional_date_field.dart';
 import '../widgets/reserved_card_metadata_fields.dart';
 
@@ -352,7 +353,11 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
         _sectionTitle('基础资料'),
         _textField(_name, '名称（可选）'),
         _gap(),
-        _textField(_city, '城市（可选）'),
+        CardLocationField(
+          value: _city.text,
+          enabled: !_saving,
+          onChanged: (value) => setState(() => _city.text = value),
+        ),
         _gap(),
         _textField(_issuer, '发行机构（可选）'),
         _gap(),

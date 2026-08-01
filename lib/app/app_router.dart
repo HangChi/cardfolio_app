@@ -64,7 +64,7 @@ String seriesDetailPath(String id) => '/series/$id';
 String editSeriesPath(String id) => '/series/$id/edit';
 
 /// Cardfolio 的五入口路由骨架。
-GoRouter createAppRouter({String initialLocation = libraryPath}) {
+GoRouter createAppRouter({String initialLocation = homePath}) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
 
   return GoRouter(

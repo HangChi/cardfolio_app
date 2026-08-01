@@ -28,6 +28,13 @@ abstract interface class CardRepository {
     required CardImageKind kind,
   });
 
+  /// 保存既有图片的新编辑结果；原图保持不变。
+  Future<void> updateImageEdit({
+    required String cardItemId,
+    required String imageId,
+    required String derivedSourcePath,
+  });
+
   /// 调整全部活跃图片的顺序。ID 必须完整且不重复。
   Future<void> reorderImages({
     required String cardItemId,

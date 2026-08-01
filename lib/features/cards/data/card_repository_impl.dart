@@ -140,6 +140,40 @@ class CardRepositoryImpl implements CardRepository {
   }
 
   @override
+  Future<void> updateImageEdit({
+    required String cardItemId,
+    required String imageId,
+    required String derivedSourcePath,
+  }) async {
+    final current = await _detail(cardItemId);
+    final image = current?.images.cast<CardImageRef?>().firstWhere(
+      (entry) => entry?.id == imageId,
+      orElse: () => null,
+    );
+    if (image == null) {
+      throw const ValidationFailure(CardField.image, '图片不存在，请刷新后重试。');
+    }
+    final imported = await _images.importDerivedImage(
+      sourcePath: derivedSourcePath,
+      cardItemId: cardItemId,
+      imageId: imageId,
+    );
+    try {
+      await _db.updateImageDerivedPath(
+        cardItemId: cardItemId,
+        imageId: imageId,
+        derivedRelativePath: imported.relativePath,
+        updatedAt: clock.nowUtc(),
+      );
+    } catch (error) {
+      if (image.derivedRelativePath == null) {
+        await _images.delete(imported.relativePath);
+      }
+      throw PersistenceFailure('保存图片编辑结果失败，请重试。', error);
+    }
+  }
+
+  @override
   Future<void> reorderImages({
     required String cardItemId,
     required List<String> orderedImageIds,

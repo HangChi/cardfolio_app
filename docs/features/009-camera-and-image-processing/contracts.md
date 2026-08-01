@@ -19,7 +19,7 @@ ImageProcessor
   process(ImageProcessingRequest) -> Future<ProcessedImage>
 ```
 
-`ImageProcessingRequest` 包含源路径、输出 ID、四角、旋转、增强和模板。
+`ImageProcessingRequest` 包含源路径、输出 ID和增强参数；裁剪、旋转与缩放由平台裁剪器先行完成。
 `ProcessedImage` 只返回临时派生文件路径、宽高、字节数和耗时。实现必须在 isolate
 处理，先写 `.tmp`，完成后再发布 `.jpg`。
 
@@ -28,22 +28,23 @@ ImageProcessor
 ```text
 ImageEditController
   initialize(sourcePath, outputId)
-  updateCorners/updateRotation/updateAdjustments/updateTemplate
+  updateAdjustments
   undo/reset
   render() -> Future<ProcessedImage?>
 ```
 
-状态历史最多保留 20 步。渲染期间重复提交被忽略；失败保留参数；成功由调用方决定
+调整历史最多保留 20 步。亮度和对比度使用界面即时预览，最终处理只在确认保存时执行；渲染期间重复提交被忽略；失败保留参数；成功由调用方决定
 是否把派生路径写入建卡草稿。
 
 ## 草稿与仓储
 
 `PendingCardImage` 可携带可空 `derivedSourcePath`。`CardRepository.createCard/addImages`
 同时导入原图和派生图；派生图失败视为整张图片导入失败，不得只保存半份关联。
+既有图片通过 `updateImageEdit` 替换派生图，原图保持不变。
 
 ## 错误
 
 - `CameraAccessFailure`：权限拒绝、相机不可用、系统入口失败；
-- `ImageProcessingFailure`：解码、像素上限、四角、处理或临时写入失败；
+- `ImageProcessingFailure`：解码、像素上限、调整处理或临时写入失败；
 - `ImageImportFailure`：受管原图/派生图复制失败；
 - 用户取消返回正常结果，不使用失败类型。
