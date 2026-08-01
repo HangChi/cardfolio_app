@@ -31,7 +31,7 @@ App 展示名：卡迹
 英文品牌名：Cardfolio
 Git 仓库名：cardfolio
 Flutter 项目名：cardfolio_app
-Android applicationId：com.songhangchi.cardfolio_app
+Android applicationId：com.songhangchi.cardfolio
 iOS Bundle ID：当前 Runner 工程配置值（发布前需与签名账号确认）
 
 

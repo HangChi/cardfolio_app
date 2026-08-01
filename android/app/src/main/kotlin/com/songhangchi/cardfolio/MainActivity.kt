@@ -1,4 +1,4 @@
-package com.songhangchi.cardfolio_app
+package com.songhangchi.cardfolio
 
 import android.Manifest
 import android.content.Intent
