@@ -177,6 +177,9 @@ class CreateCardController extends Notifier<CreateCardState> {
 
   void updateNotes(String value) => _updateField(CardField.notes, notes: value);
 
+  void updateQuantity(String value) =>
+      _updateField(CardField.quantity, quantityText: value);
+
   void prefill({
     String? name,
     String? city,
@@ -254,6 +257,7 @@ class CreateCardController extends Notifier<CreateCardState> {
     String? issuedAtText,
     String? code,
     String? notes,
+    String? quantityText,
   }) {
     if (state.isSaving) return;
     state = state
@@ -264,6 +268,7 @@ class CreateCardController extends Notifier<CreateCardState> {
           issuedAtText: issuedAtText,
           code: code,
           notes: notes,
+          quantityText: quantityText,
         )
         .withoutFieldError(field);
   }
@@ -292,6 +297,18 @@ class CreateCardController extends Notifier<CreateCardState> {
         fieldErrors: <CardField, String>{
           ...state.fieldErrors,
           ...requiredErrors,
+        },
+      );
+      return null;
+    }
+
+    final quantity = int.tryParse(state.quantityText.trim());
+    if (quantity == null || quantity <= 0) {
+      state = state.copyWith(
+        phase: CreateCardPhase.editing,
+        fieldErrors: <CardField, String>{
+          ...state.fieldErrors,
+          CardField.quantity: '持有数量请输入大于 0 的整数。',
         },
       );
       return null;
@@ -338,6 +355,7 @@ class CreateCardController extends Notifier<CreateCardState> {
         issuedAt: issuedAt,
         code: state.code,
         notes: state.notes,
+        quantity: quantity,
       ).normalized();
     } on ValidationFailure catch (failure) {
       state = state.copyWith(

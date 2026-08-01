@@ -112,8 +112,57 @@ class _DetailContent extends ConsumerStatefulWidget {
 
 class _DetailContentState extends ConsumerState<_DetailContent> {
   bool _busy = false;
+  late final PageController _imagePageController;
+  String? _selectedImageId;
 
   CardDetail get card => widget.card;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialIndex = _preferredImageIndex(card);
+    _selectedImageId = card.images.isEmpty
+        ? null
+        : card.images[initialIndex].id;
+    _imagePageController = PageController(initialPage: initialIndex);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DetailContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final selectedStillExists = card.images.any(
+      (image) => image.id == _selectedImageId,
+    );
+    if (!selectedStillExists) {
+      final target = _preferredImageIndex(card);
+      _selectedImageId = card.images.isEmpty ? null : card.images[target].id;
+    }
+    final targetIndex = _selectedImageIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_imagePageController.hasClients) return;
+      final currentPage = _imagePageController.page?.round();
+      if (currentPage != targetIndex) {
+        _imagePageController.jumpToPage(targetIndex);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _imagePageController.dispose();
+    super.dispose();
+  }
+
+  int get _selectedImageIndex {
+    if (card.images.isEmpty) return 0;
+    final index = card.images.indexWhere(
+      (image) => image.id == _selectedImageId,
+    );
+    return index < 0 ? _preferredImageIndex(card) : index;
+  }
+
+  CardImageRef? get _selectedImage =>
+      card.images.isEmpty ? null : card.images[_selectedImageIndex];
 
   Future<void> _run(Future<void> Function() operation) async {
     if (_busy) return;
@@ -394,7 +443,8 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final cover = card.cover;
+    final selectedImage = _selectedImage;
+    final selectedImageIndex = _selectedImageIndex;
     final metadata = <String>[
       ?card.city,
       ?card.issuer,
@@ -411,16 +461,40 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
       children: <Widget>[
         AspectRatio(
           aspectRatio: 1.58,
-          child: cover != null
-              ? CardImage.managed(
-                  relativePath: cover.displayRelativePath,
-                  semanticLabel: '${card.name}正面',
-                  borderRadius: BorderRadius.circular(tokens.radiusLg),
-                )
-              : CardImage.placeholder(
-                  semanticLabel: '${card.name}正面',
-                  borderRadius: BorderRadius.circular(tokens.radiusLg),
-                ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.radiusLg),
+            child: card.images.isEmpty
+                ? CardImage.placeholder(semanticLabel: '${card.name}暂无图片')
+                : PageView.builder(
+                    controller: _imagePageController,
+                    itemCount: card.images.length,
+                    onPageChanged: (index) => setState(
+                      () => _selectedImageId = card.images[index].id,
+                    ),
+                    itemBuilder: (context, index) {
+                      final image = card.images[index];
+                      return CardImage.managed(
+                        relativePath: image.displayRelativePath,
+                        semanticLabel:
+                            '${card.name}，${image.kind.label}'
+                            '${image.isCover ? '，封面' : ''}'
+                            '，第 ${index + 1} 张，共 ${card.images.length} 张',
+                      );
+                    },
+                  ),
+          ),
+        ),
+        SizedBox(height: tokens.spaceSm),
+        _ImageGalleryToolbar(
+          image: selectedImage,
+          index: selectedImageIndex,
+          count: card.images.length,
+          busy: _busy,
+          canAdd: card.images.length < CreateCardRequest.maxImages,
+          onAdd: _addImages,
+          onManage: selectedImage == null
+              ? null
+              : () => _openImageManager(selectedImage, selectedImageIndex),
         ),
         SizedBox(height: tokens.spaceLg),
         Text(card.name, style: Theme.of(context).textTheme.headlineSmall),
@@ -433,83 +507,6 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             ),
           ),
         ],
-        SizedBox(height: tokens.spaceMd),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                '${card.images.length} 张图片',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            TextButton.icon(
-              onPressed:
-                  _busy || card.images.length >= CreateCardRequest.maxImages
-                  ? null
-                  : _addImages,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('添加图片'),
-            ),
-          ],
-        ),
-        SizedBox(
-          height: 164,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: card.images.length,
-            separatorBuilder: (context, index) =>
-                SizedBox(width: tokens.spaceMd),
-            itemBuilder: (context, index) {
-              final image = card.images[index];
-              return SizedBox(
-                width: 248,
-                child: Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      CardImage.managed(
-                        relativePath: image.displayRelativePath,
-                        semanticLabel:
-                            '第 ${index + 1} 张，${image.kind.label}'
-                            '${image.isCover ? '，封面' : ''}',
-                      ),
-                      Positioned(
-                        left: tokens.spaceSm,
-                        top: tokens.spaceSm,
-                        child: Chip(
-                          label: Text(image.kind.label),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                      if (image.isCover)
-                        Positioned(
-                          left: tokens.spaceSm,
-                          bottom: tokens.spaceSm,
-                          child: const Chip(
-                            avatar: Icon(Icons.star, size: 16),
-                            label: Text('封面'),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ),
-                      Align(
-                        alignment: Alignment.topRight,
-                        child: IconButton.filledTonal(
-                          key: Key('manage-image-${image.id}'),
-                          onPressed: _busy
-                              ? null
-                              : () => _openImageManager(image, index),
-                          tooltip: '管理第 ${index + 1} 张图片',
-                          icon: const Icon(Icons.more_horiz),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
         SizedBox(height: tokens.spaceLg),
         Container(
           padding: EdgeInsets.all(tokens.spaceMd),
@@ -554,6 +551,87 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           ),
         ),
       ],
+    );
+  }
+}
+
+int _preferredImageIndex(CardDetail card) {
+  if (card.images.isEmpty) return 0;
+  final coverIndex = card.images.indexWhere((image) => image.isCover);
+  return coverIndex < 0 ? 0 : coverIndex;
+}
+
+class _ImageGalleryToolbar extends StatelessWidget {
+  const _ImageGalleryToolbar({
+    required this.image,
+    required this.index,
+    required this.count,
+    required this.busy,
+    required this.canAdd,
+    required this.onAdd,
+    required this.onManage,
+  });
+
+  final CardImageRef? image;
+  final int index;
+  final int count;
+  final bool busy;
+  final bool canAdd;
+  final VoidCallback onAdd;
+  final VoidCallback? onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final selected = image;
+    final label = selected == null
+        ? '暂无图片'
+        : '${selected.kind.label}${selected.isCover ? ' · 封面' : ''}';
+    return Container(
+      constraints: BoxConstraints(minHeight: tokens.minTapTarget),
+      padding: EdgeInsets.only(left: tokens.spaceMd, right: tokens.spaceXs),
+      decoration: BoxDecoration(
+        color: context.palette.surfaceMuted,
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(
+            selected?.isCover == true
+                ? Icons.star_rounded
+                : Icons.image_outlined,
+            size: tokens.iconSm,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          SizedBox(width: tokens.spaceSm),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ),
+          if (count > 0)
+            Text(
+              '${index + 1} / $count',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: context.palette.textSecondary,
+              ),
+            ),
+          IconButton(
+            tooltip: '添加图片',
+            onPressed: busy || !canAdd ? null : onAdd,
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+          ),
+          if (selected != null)
+            TextButton(
+              key: Key('manage-image-${selected.id}'),
+              onPressed: busy ? null : onManage,
+              child: const Text('管理'),
+            ),
+        ],
+      ),
     );
   }
 }

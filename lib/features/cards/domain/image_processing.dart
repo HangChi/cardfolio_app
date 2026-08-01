@@ -223,11 +223,13 @@ final class ImageProcessingRequest {
     required this.sourcePath,
     required this.outputId,
     required this.settings,
+    this.allowJpegPassthrough = false,
   });
 
   final String sourcePath;
   final String outputId;
   final ImageEditSettings settings;
+  final bool allowJpegPassthrough;
 }
 
 @immutable

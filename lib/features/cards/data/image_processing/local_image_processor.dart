@@ -131,29 +131,46 @@ _CornersData _detectEdges(String sourcePath) {
 
 _ProcessResultData _processImage(_RequestData request) {
   final stopwatch = Stopwatch()..start();
+  if (request.allowJpegPassthrough && _hasNoPixelChanges(request)) {
+    final sourceBytes = File(request.sourcePath).readAsBytesSync();
+    final info = img.JpegDecoder().startDecode(sourceBytes);
+    if (info != null &&
+        info.width * info.height <= LocalImageProcessor.maxDecodedPixels) {
+      return _writeProcessedImage(
+        request: request,
+        bytes: sourceBytes,
+        width: info.width,
+        height: info.height,
+        stopwatch: stopwatch,
+      );
+    }
+  }
+
   var image = _decode(request.sourcePath);
   final corners = request.corners;
 
-  image = img.copyRectify(
-    image,
-    topLeft: img.Point(
-      _pixel(corners[0], image.width),
-      _pixel(corners[1], image.height),
-    ),
-    topRight: img.Point(
-      _pixel(corners[2], image.width),
-      _pixel(corners[3], image.height),
-    ),
-    bottomRight: img.Point(
-      _pixel(corners[4], image.width),
-      _pixel(corners[5], image.height),
-    ),
-    bottomLeft: img.Point(
-      _pixel(corners[6], image.width),
-      _pixel(corners[7], image.height),
-    ),
-    interpolation: img.Interpolation.linear,
-  );
+  if (!_hasFullFrameCorners(corners)) {
+    image = img.copyRectify(
+      image,
+      topLeft: img.Point(
+        _pixel(corners[0], image.width),
+        _pixel(corners[1], image.height),
+      ),
+      topRight: img.Point(
+        _pixel(corners[2], image.width),
+        _pixel(corners[3], image.height),
+      ),
+      bottomRight: img.Point(
+        _pixel(corners[4], image.width),
+        _pixel(corners[5], image.height),
+      ),
+      bottomLeft: img.Point(
+        _pixel(corners[6], image.width),
+        _pixel(corners[7], image.height),
+      ),
+      interpolation: img.Interpolation.linear,
+    );
+  }
 
   if (request.quarterTurns != 0) {
     image = img.copyRotate(
@@ -180,6 +197,22 @@ _ProcessResultData _processImage(_RequestData request) {
 
   image = _applyTemplate(image, request.template);
   final bytes = img.encodeJpg(image, quality: LocalImageProcessor.jpegQuality);
+  return _writeProcessedImage(
+    request: request,
+    bytes: bytes,
+    width: image.width,
+    height: image.height,
+    stopwatch: stopwatch,
+  );
+}
+
+_ProcessResultData _writeProcessedImage({
+  required _RequestData request,
+  required List<int> bytes,
+  required int width,
+  required int height,
+  required Stopwatch stopwatch,
+}) {
   final destination = File(
     p.join(request.outputDirectory, '${request.outputId}.jpg'),
   );
@@ -196,12 +229,31 @@ _ProcessResultData _processImage(_RequestData request) {
 
   return _ProcessResultData(
     path: destination.path,
-    width: image.width,
-    height: image.height,
+    width: width,
+    height: height,
     byteSize: bytes.length,
     elapsedMicroseconds: stopwatch.elapsedMicroseconds,
   );
 }
+
+bool _hasNoPixelChanges(_RequestData request) =>
+    _hasFullFrameCorners(request.corners) &&
+    request.quarterTurns == 0 &&
+    request.brightness == 0 &&
+    request.contrast == 0 &&
+    request.sharpness == 0 &&
+    request.template == ImageOutputTemplate.original.index;
+
+bool _hasFullFrameCorners(List<double> corners) =>
+    corners.length == 8 &&
+    corners[0] == 0 &&
+    corners[1] == 0 &&
+    corners[2] == 1 &&
+    corners[3] == 0 &&
+    corners[4] == 1 &&
+    corners[5] == 1 &&
+    corners[6] == 0 &&
+    corners[7] == 1;
 
 img.Image _decode(String sourcePath) {
   final source = File(sourcePath);
@@ -287,6 +339,7 @@ _RequestData _requestData(
     contrast: request.settings.adjustments.contrast,
     sharpness: request.settings.adjustments.sharpness,
     template: request.settings.template.index,
+    allowJpegPassthrough: request.allowJpegPassthrough,
   );
 }
 
@@ -317,6 +370,7 @@ final class _RequestData {
     required this.contrast,
     required this.sharpness,
     required this.template,
+    required this.allowJpegPassthrough,
   });
 
   final String sourcePath;
@@ -328,6 +382,7 @@ final class _RequestData {
   final double contrast;
   final double sharpness;
   final int template;
+  final bool allowJpegPassthrough;
 }
 
 final class _ProcessResultData {

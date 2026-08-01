@@ -64,6 +64,7 @@ final class CreateCardState {
     this.issuedAtText = '',
     this.code = '',
     this.notes = '',
+    this.quantityText = '1',
     this.fieldErrors = const <CardField, String>{},
     this.failure,
     this.savedCardItemId,
@@ -84,6 +85,7 @@ final class CreateCardState {
   final String issuedAtText;
   final String code;
   final String notes;
+  final String quantityText;
 
   final Map<CardField, String> fieldErrors;
   final AppFailure? failure;
@@ -103,6 +105,7 @@ final class CreateCardState {
     String? issuedAtText,
     String? code,
     String? notes,
+    String? quantityText,
     Map<CardField, String>? fieldErrors,
     AppFailure? failure,
     bool clearFailure = false,
@@ -118,6 +121,7 @@ final class CreateCardState {
       issuedAtText: issuedAtText ?? this.issuedAtText,
       code: code ?? this.code,
       notes: notes ?? this.notes,
+      quantityText: quantityText ?? this.quantityText,
       fieldErrors: fieldErrors ?? this.fieldErrors,
       failure: clearFailure ? null : (failure ?? this.failure),
       savedCardItemId: savedCardItemId ?? this.savedCardItemId,

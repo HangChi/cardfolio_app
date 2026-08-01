@@ -441,6 +441,16 @@ class _CreateCardForm extends ConsumerWidget {
           SizedBox(height: tokens.spaceLg),
           Text('藏品与发行信息', style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: tokens.spaceMd),
+          _CardTextField(
+            key: const Key('card-quantity-field'),
+            label: '持有数量 *',
+            initialValue: state.quantityText,
+            errorText: state.fieldErrors[CardField.quantity],
+            onChanged: controller.updateQuantity,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+          ),
+          SizedBox(height: tokens.spaceMd),
           ReservedCardMetadataFields(
             issueQuantityController: issueQuantityController,
             issuePriceController: issuePriceController,
@@ -737,6 +747,7 @@ class _CardTextField extends StatelessWidget {
     required this.onChanged,
     this.errorText,
     this.textInputAction,
+    this.keyboardType,
     this.minLines,
     this.maxLines = 1,
     super.key,
@@ -747,6 +758,7 @@ class _CardTextField extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final String? errorText;
   final TextInputAction? textInputAction;
+  final TextInputType? keyboardType;
   final int? minLines;
   final int maxLines;
 
@@ -757,6 +769,7 @@ class _CardTextField extends StatelessWidget {
       onChanged: onChanged,
       enabled: true,
       textInputAction: textInputAction,
+      keyboardType: keyboardType,
       minLines: minLines,
       maxLines: maxLines,
       decoration: InputDecoration(labelText: label, errorText: errorText),

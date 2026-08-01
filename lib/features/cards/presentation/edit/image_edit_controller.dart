@@ -54,6 +54,7 @@ final class ImageEditController extends ChangeNotifier {
     required this.processor,
     required this.sourcePath,
     required this.outputId,
+    this.allowJpegPassthrough = false,
   }) : state = ImageEditState(
          phase: ImageEditPhase.initializing,
          settings: ImageEditSettings.initial(),
@@ -64,6 +65,7 @@ final class ImageEditController extends ChangeNotifier {
   final ImageProcessor processor;
   final String sourcePath;
   final String outputId;
+  final bool allowJpegPassthrough;
 
   ImageEditState state;
   ImageEditSettings? _baseline;
@@ -189,6 +191,7 @@ final class ImageEditController extends ChangeNotifier {
           sourcePath: sourcePath,
           outputId: outputId,
           settings: state.settings,
+          allowJpegPassthrough: allowJpegPassthrough,
         ),
       );
       if (generation != _generation) {

@@ -31,8 +31,11 @@ final class ImageEditorScreen extends StatefulWidget {
 }
 
 class _ImageEditorScreenState extends State<ImageEditorScreen> {
+  static const int _editedJpegQuality = 95;
+
   late ImageEditController _controller;
   late String _workingPath;
+  var _allowJpegPassthrough = false;
   var _cropping = false;
 
   @override
@@ -47,6 +50,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       processor: widget.processor,
       sourcePath: _workingPath,
       outputId: widget.outputId,
+      allowJpegPassthrough: _allowJpegPassthrough,
     )..addListener(_changed);
     _controller.initialize();
   }
@@ -60,6 +64,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       ..removeListener(_changed)
       ..dispose();
     _workingPath = path;
+    _allowJpegPassthrough = true;
     _installController();
     setState(() {});
   }
@@ -80,7 +85,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       final cropped = await ImageCropper().cropImage(
         sourcePath: _workingPath,
         compressFormat: ImageCompressFormat.jpg,
-        compressQuality: 100,
+        compressQuality: _editedJpegQuality,
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: '裁剪与旋转',

@@ -343,6 +343,8 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
         _textField(_notes, '备注', minLines: 3, maxLines: 6),
         SizedBox(height: tokens.spaceLg),
         _sectionTitle('藏品与发行信息'),
+        _textField(_quantity, '持有数量 *', keyboardType: TextInputType.number),
+        _gap(),
         ReservedCardMetadataFields(
           issueQuantityController: _issueQuantity,
           issuePriceController: _issuePrice,
@@ -388,8 +390,6 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
         ),
         SizedBox(height: tokens.spaceLg),
         _sectionTitle('入手成本'),
-        _textField(_quantity, '数量（默认 1）', keyboardType: TextInputType.number),
-        _gap(),
         CardConditionField(controller: _condition, enabled: !_saving),
         _gap(),
         Text(
