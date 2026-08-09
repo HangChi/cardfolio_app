@@ -583,13 +583,15 @@ class _DraftImagesEditor extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: tokens.spaceSm,
+          runSpacing: tokens.spaceXs,
           children: <Widget>[
-            Expanded(
-              child: Text(
-                '正反面与其他图片（${state.images.length} 张）',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+            Text(
+              '正反面与其他图片（${state.images.length} 张）',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             TextButton.icon(
               onPressed:

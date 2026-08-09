@@ -43,11 +43,15 @@ final class RecognizedCardText {
         }).toList()..sort((left, right) {
           int score(String value) {
             var result = 0;
-            if (RegExp(r'(交通|公交|地铁|一卡通|市民卡|纪念|通|卡)').hasMatch(value))
+            if (RegExp(r'(交通|公交|地铁|一卡通|市民卡|纪念|通|卡)').hasMatch(value)) {
               result += 3;
-            if (RegExp(r'^[\u3400-\u9fffA-Za-z0-9 ·•-]+$').hasMatch(value))
+            }
+            if (RegExp(r'^[\u3400-\u9fffA-Za-z0-9 ·•-]+$').hasMatch(value)) {
               result++;
-            if (value.length <= 16) result++;
+            }
+            if (value.length <= 16) {
+              result++;
+            }
             return result;
           }
 

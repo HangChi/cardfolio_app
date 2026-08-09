@@ -74,10 +74,18 @@ class _CardConditionFieldState extends State<CardConditionField> {
         DropdownButtonFormField<String>(
           key: ValueKey<String>(_selection),
           initialValue: _selection,
+          isExpanded: true,
           decoration: const InputDecoration(labelText: '品相'),
           items: <DropdownMenuItem<String>>[
             for (final option in options)
-              DropdownMenuItem(value: option, child: Text(option)),
+              DropdownMenuItem(
+                value: option,
+                child: Text(
+                  option,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
           ],
           onChanged: widget.enabled
               ? (value) => setState(() {

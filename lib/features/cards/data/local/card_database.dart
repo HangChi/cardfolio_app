@@ -132,6 +132,8 @@ class CardSets extends Table {
   TextColumn get coverImageId =>
       text().nullable().references(CardImages, #id)();
 
+  TextColumn get coverRelativePath => text().nullable()();
+
   IntColumn get version => integer()
       .withDefault(const Constant(1))
       // ignore: recursive_getters, Drift 的 check() 按设计引用列自身。
@@ -698,9 +700,6 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
-      await customStatement(
-        'ALTER TABLE card_sets ADD COLUMN cover_relative_path TEXT;',
-      );
       await _createImageIndexes();
       await _createCardSetIndexes();
       await _createOrganizationIndexes();
@@ -709,7 +708,8 @@ class AppDatabase extends _$AppDatabase {
       await _createSyncIndexes();
     },
     onUpgrade: (m, from, to) async {
-      if (from < 8) {
+      final legacyTarget = to < 8 ? to : 8;
+      if (from < legacyTarget) {
         await stepByStep(
           from1To2: (m, schema) async {
             await m.addColumn(
@@ -769,12 +769,10 @@ class AppDatabase extends _$AppDatabase {
               schema.seriesRecords.coverRelativePath,
             );
           },
-        )(m, from, 8);
+        )(m, from, legacyTarget);
       }
-      if (from < 9) {
-        await customStatement(
-          'ALTER TABLE card_sets ADD COLUMN cover_relative_path TEXT;',
-        );
+      if (from < 9 && to >= 9) {
+        await m.addColumn(cardSets, cardSets.coverRelativePath);
         await _normalizeLegacyAcquiredDates();
       }
     },

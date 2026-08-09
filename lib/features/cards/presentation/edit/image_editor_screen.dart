@@ -78,8 +78,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   }
 
   Future<void> _crop() async {
-    if (_cropping || _controller.state.phase == ImageEditPhase.processing)
+    if (_cropping || _controller.state.phase == ImageEditPhase.processing) {
       return;
+    }
     setState(() => _cropping = true);
     try {
       final cropped = await ImageCropper().cropImage(

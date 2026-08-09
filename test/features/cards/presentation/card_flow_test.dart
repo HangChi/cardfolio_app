@@ -11,11 +11,17 @@ import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
 import 'package:cardfolio_app/features/cards/domain/camera_capture.dart';
 import 'package:cardfolio_app/features/cards/domain/gallery_picker.dart';
 import 'package:cardfolio_app/features/cards/presentation/create/create_card_controller.dart';
+import 'package:cardfolio_app/features/card_sets/data/card_set_providers.dart';
 import 'package:cardfolio_app/features/organization/data/organization_providers.dart';
 import 'package:cardfolio_app/features/organization/domain/organization_models.dart';
+import 'package:cardfolio_app/features/organization/domain/organization_repository.dart';
+import 'package:cardfolio_app/features/purchases/data/purchase_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../card_sets/support/fake_card_set_repository.dart';
+import '../../purchases/support/fake_purchase_repository.dart';
 
 const SelectedGalleryImage _selectedImage = SelectedGalleryImage(
   path: 'C:/test/card-front.jpg',
@@ -190,6 +196,22 @@ class _FakeCardRepository implements CardRepository {
       Stream<CardDetail?>.value(details[cardItemId]);
 }
 
+class _FakeOrganizationRepository implements OrganizationRepository {
+  @override
+  Future<void> saveCardOrganization(
+    SaveCardOrganizationRequest request,
+  ) async {}
+
+  @override
+  Stream<List<CustomFieldDefinition>> watchFieldDefinitions() =>
+      Stream<List<CustomFieldDefinition>>.value(
+        const <CustomFieldDefinition>[],
+      );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class CardFlowHarness {
   CardFlowHarness._({
     required this._repository,
@@ -244,6 +266,9 @@ class CardFlowHarness {
 
   void completeSave() => _repository.saveGate.complete();
 
+  void setCity([String city = '东京']) =>
+      _container!.read(createCardControllerProvider.notifier).updateCity(city);
+
   Future<void> pump(
     WidgetTester tester, {
     String initialLocation = libraryPath,
@@ -253,6 +278,11 @@ class CardFlowHarness {
         galleryPickerProvider.overrideWithValue(_FakeGalleryPicker(selections)),
         cameraCaptureProvider.overrideWithValue(_FakeCameraCapture(captures)),
         cardRepositoryProvider.overrideWithValue(_repository),
+        cardSetRepositoryProvider.overrideWithValue(FakeCardSetRepository()),
+        organizationRepositoryProvider.overrideWithValue(
+          _FakeOrganizationRepository(),
+        ),
+        purchaseRepositoryProvider.overrideWithValue(FakePurchaseRepository()),
         managedImageStoreProvider.overrideWithValue(
           ManagedImageStore(imageRoot),
         ),
@@ -327,14 +357,17 @@ void main() {
     expect(find.text('新建卡片'), findsOneWidget);
   });
 
-  testWidgets('single and continuous capture are available', (tester) async {
+  testWidgets('capture entry exposes the supported creation paths', (
+    tester,
+  ) async {
     final harness = CardFlowHarness.empty();
     addTearDown(harness.dispose);
     await harness.pump(tester, initialLocation: capturePath);
 
     expect(find.text('拍摄单张卡'), findsOneWidget);
-    expect(find.text('单卡多图连拍'), findsOneWidget);
     expect(find.text('批量建卡 / 创建套卡'), findsOneWidget);
+    expect(find.text('从相册导入'), findsOneWidget);
+    expect(find.text('单卡多图连拍'), findsNothing);
   });
 
   testWidgets('single capture opens the existing card draft', (tester) async {
@@ -353,27 +386,7 @@ void main() {
     expect(find.text('正反面与其他图片（1 张）'), findsOneWidget);
   });
 
-  testWidgets('continuous capture keeps confirmed images and stops on cancel', (
-    tester,
-  ) async {
-    final harness = CardFlowHarness.empty(
-      captures: const <CapturedImage?>[
-        CapturedImage(path: 'C:/test/camera-front.jpg'),
-        CapturedImage(path: 'C:/test/camera-back.jpg'),
-        null,
-      ],
-    );
-    addTearDown(harness.dispose);
-    await harness.pump(tester, initialLocation: capturePath);
-
-    await tester.tap(find.text('单卡多图连拍'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('新建卡片'), findsOneWidget);
-    expect(find.text('正反面与其他图片（2 张）'), findsOneWidget);
-  });
-
-  testWidgets('blank card name saves as 未命名卡片', (tester) async {
+  testWidgets('blank required fields prevent saving', (tester) async {
     final harness = CardFlowHarness.empty();
     addTearDown(harness.dispose);
     await harness.pump(tester, initialLocation: capturePath);
@@ -383,8 +396,9 @@ void main() {
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 
-    expect(find.text('未命名卡片'), findsOneWidget);
-    expect(harness.createCalls, 1);
+    expect(find.text('请填写卡片名称。'), findsOneWidget);
+    expect(find.text('请选择或填写城市。'), findsOneWidget);
+    expect(harness.createCalls, 0);
   });
 
   testWidgets('batch entry starts with an empty optional card draft', (
@@ -393,12 +407,16 @@ void main() {
     final harness = CardFlowHarness.empty();
     addTearDown(harness.dispose);
     await harness.pump(tester, initialLocation: batchCardEntryPath);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
 
     expect(find.text('批量录入卡片'), findsOneWidget);
-    expect(find.text('正面（可选）'), findsOneWidget);
-    expect(find.text('背面（可选）'), findsOneWidget);
-    expect(find.text('名称（可选）'), findsOneWidget);
     expect(find.text('加入卡册（本批次共用，可多选）'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -800));
+    await tester.pumpAndSettle();
+    expect(find.text('添加正面'), findsOneWidget);
+    expect(find.text('添加背面'), findsOneWidget);
+    expect(find.text('名称'), findsOneWidget);
     expect(find.text('已确认此卡资料'), findsOneWidget);
   });
 
@@ -409,6 +427,8 @@ void main() {
     await tester.tap(find.text('从相册导入'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('card-name-field')), '樱花纪念卡');
+    harness.setCity();
+    await tester.pump();
 
     await tester.tap(find.text('保存'));
     await tester.pump();
@@ -427,11 +447,18 @@ void main() {
     await tester.tap(find.text('从相册导入'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('card-name-field')), '樱花纪念卡');
+    harness.setCity();
+    await tester.pump();
 
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 
     expect(find.text('卡片详情'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('樱花纪念卡'),
+      200,
+      scrollable: find.byWidgetPredicate((widget) => widget is Scrollable),
+    );
     expect(find.text('樱花纪念卡'), findsOneWidget);
   });
 

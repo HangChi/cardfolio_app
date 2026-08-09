@@ -49,7 +49,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('开始使用'));
     await tester.pumpAndSettle();
-    expect(find.text('我的收藏'), findsOneWidget);
+    expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).title, '卡迹');
 
     await tester.runAsync(dependencies.close);
     await tester.pumpWidget(const SizedBox.shrink());

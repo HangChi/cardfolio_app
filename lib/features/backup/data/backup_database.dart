@@ -34,8 +34,9 @@ final class BackupSnapshot {
       entities[name] = rawRows
           .map((row) {
             final parsed = _asObject(row, '备份实体字段无效。');
-            if (name == 'cardSets')
+            if (name == 'cardSets') {
               parsed.putIfAbsent('coverRelativePath', () => null);
+            }
             return parsed;
           })
           .toList(growable: false);

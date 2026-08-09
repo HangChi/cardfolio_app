@@ -86,6 +86,9 @@ class _EmptyCardRepository implements CardRepository {
 
 void main() {
   Future<void> pumpShell(WidgetTester tester, {String? initialLocation}) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -162,6 +165,11 @@ void main() {
     await pumpShell(tester, initialLocation: statsPath);
 
     expect(find.text('数量分布'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('暂无统计数据'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('暂无统计数据'), findsOneWidget);
   });
 
@@ -175,8 +183,11 @@ void main() {
   testWidgets('profile exposes the recycle-bin entry', (tester) async {
     await pumpShell(tester, initialLocation: profilePath);
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, -500));
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('回收站'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('回收站'), findsOneWidget);
     expect(find.text('恢复已删除卡片，或将其永久删除。'), findsOneWidget);
   });
@@ -191,8 +202,11 @@ void main() {
   testWidgets('profile exposes the backup entry', (tester) async {
     await pumpShell(tester, initialLocation: profilePath);
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, -600));
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('导入与导出'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('导入与导出'), findsOneWidget);
     expect(find.text('备份、恢复或合并你的全部收藏数据。'), findsOneWidget);
   });

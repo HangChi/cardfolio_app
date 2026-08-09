@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -194,12 +192,13 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('拍摄'),
               subtitle: const Text('拍摄后直接添加，可在图片管理中编辑'),
-              onTap: () => context.pop(_DetailImageSource.camera),
+              onTap: () => Navigator.of(context).pop(_DetailImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('从相册选择'),
-              onTap: () => context.pop(_DetailImageSource.gallery),
+              onTap: () =>
+                  Navigator.of(context).pop(_DetailImageSource.gallery),
             ),
           ],
         ),
@@ -437,7 +436,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           ),
     );
     final derived = store.resolve('derived/${card.cardItemId}/${image.id}.jpg');
-    await PaintingBinding.instance.imageCache.evict(FileImage(derived));
+    PaintingBinding.instance.imageCache.evict(FileImage(derived));
   }
 
   @override

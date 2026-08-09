@@ -23,6 +23,24 @@ void main() {
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
         clockProvider.overrideWithValue(FixedClock(now)),
+        cardFilterFacetsProvider.overrideWith(
+          (ref) => Stream<CardFilterFacets>.value(
+            CardFilterFacets(
+              cardTypes: const <String>[],
+              cities: const <String>[],
+              years: const <int>[],
+              tags: <TagSummary>[
+                TagSummary(
+                  id: 'tag-1',
+                  name: '纪念卡',
+                  cardCount: 0,
+                  createdAt: now,
+                  updatedAt: now,
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   });
@@ -66,17 +84,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('open-library-filters')));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('filter-tag-tag-1')),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -220));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('filter-tag-tag-1')));
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('filter-set-inSet')),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
+    await tester.ensureVisible(find.byKey(const Key('filter-set-inSet')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('filter-set-inSet')));
     await tester.tap(find.byKey(const Key('apply-library-filters')));
     await tester.pumpAndSettle();
@@ -104,18 +116,17 @@ void main() {
     expect(query.isFiltering, isFalse);
   });
 
-  testWidgets('sort menu exposes grouped original-currency acquisition cost', (
-    tester,
-  ) async {
+  testWidgets('sort menu exposes issue-date ordering', (tester) async {
     await pumpLibrary(tester);
 
     await tester.tap(find.byKey(const Key('library-sort-menu')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('入手成本：按币种高到低').last);
+    expect(find.textContaining('入手成本'), findsNothing);
+    await tester.tap(find.text('发行日期：新到旧').last);
     await tester.pumpAndSettle();
 
     final query = container.read(cardLibraryQueryProvider);
-    expect(query.sortField, CardSortField.acquisitionCost);
+    expect(query.sortField, CardSortField.issuedAt);
     expect(query.sortDirection, SortDirection.descending);
   });
 }

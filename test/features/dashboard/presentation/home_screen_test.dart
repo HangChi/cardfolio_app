@@ -20,7 +20,7 @@ void main() {
     );
   }
 
-  testWidgets('renders summary, separated currencies, and action lists', (
+  testWidgets('renders summary, CNY spending, and action lists', (
     tester,
   ) async {
     final repository = FakeDashboardRepository(
@@ -32,7 +32,6 @@ void main() {
         monthAddedCount: 2,
         costTotals: const <CostTotal>[
           CostTotal(currency: 'CNY', minorUnits: 1250, purchaseCount: 1),
-          CostTotal(currency: 'JPY', minorUnits: 300, purchaseCount: 1),
         ],
         recentCards: <DashboardCard>[
           DashboardCard(
@@ -70,13 +69,14 @@ void main() {
     await tester.pumpWidget(app(repository));
     await tester.pumpAndSettle();
 
-    expect(find.text('收藏概览'), findsOneWidget);
-    expect(find.text('实体卡'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget);
-    expect(find.text('CNY 12.50'), findsOneWidget);
-    expect(find.text('JPY 300'), findsOneWidget);
+    expect(find.text('你好，收藏家'), findsOneWidget);
+    expect(find.text('卡片'), findsOneWidget);
+    expect(find.text('3'), findsWidgets);
 
-    await tester.drag(find.byType(ListView), const Offset(0, -360));
+    await tester.drag(find.byType(ListView), const Offset(0, -240));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('12.50'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -120));
     await tester.pumpAndSettle();
     expect(find.text('樱花纪念卡'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -260));
@@ -93,7 +93,7 @@ void main() {
     await tester.pumpWidget(app(FakeDashboardRepository()));
     await tester.pumpAndSettle();
 
-    expect(find.text('还没有收藏'), findsOneWidget);
+    expect(find.text('让第一张收藏留下轨迹'), findsOneWidget);
     expect(find.text('添加第一张卡片'), findsOneWidget);
   });
 
@@ -136,6 +136,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.homeWatchCount, 2);
-    expect(find.text('还没有收藏'), findsOneWidget);
+    expect(find.text('让第一张收藏留下轨迹'), findsOneWidget);
   });
 }

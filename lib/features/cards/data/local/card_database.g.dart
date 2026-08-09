@@ -2017,6 +2017,18 @@ class $CardSetsTable extends CardSets with TableInfo<$CardSetsTable, CardSet> {
       'REFERENCES card_images (id)',
     ),
   );
+  static const VerificationMeta _coverRelativePathMeta = const VerificationMeta(
+    'coverRelativePath',
+  );
+  @override
+  late final GeneratedColumn<String> coverRelativePath =
+      GeneratedColumn<String>(
+        'cover_relative_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _versionMeta = const VerificationMeta(
     'version',
   );
@@ -2072,6 +2084,7 @@ class $CardSetsTable extends CardSets with TableInfo<$CardSetsTable, CardSet> {
     issueInfo,
     notes,
     coverImageId,
+    coverRelativePath,
     version,
     createdAt,
     updatedAt,
@@ -2140,6 +2153,15 @@ class $CardSetsTable extends CardSets with TableInfo<$CardSetsTable, CardSet> {
         ),
       );
     }
+    if (data.containsKey('cover_relative_path')) {
+      context.handle(
+        _coverRelativePathMeta,
+        coverRelativePath.isAcceptableOrUnknown(
+          data['cover_relative_path']!,
+          _coverRelativePathMeta,
+        ),
+      );
+    }
     if (data.containsKey('version')) {
       context.handle(
         _versionMeta,
@@ -2205,6 +2227,10 @@ class $CardSetsTable extends CardSets with TableInfo<$CardSetsTable, CardSet> {
         DriftSqlType.string,
         data['${effectivePrefix}cover_image_id'],
       ),
+      coverRelativePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_relative_path'],
+      ),
       version: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}version'],
@@ -2238,6 +2264,7 @@ class CardSet extends DataClass implements Insertable<CardSet> {
   final String? issueInfo;
   final String? notes;
   final String? coverImageId;
+  final String? coverRelativePath;
   final int version;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2250,6 +2277,7 @@ class CardSet extends DataClass implements Insertable<CardSet> {
     this.issueInfo,
     this.notes,
     this.coverImageId,
+    this.coverRelativePath,
     required this.version,
     required this.createdAt,
     required this.updatedAt,
@@ -2272,6 +2300,9 @@ class CardSet extends DataClass implements Insertable<CardSet> {
     }
     if (!nullToAbsent || coverImageId != null) {
       map['cover_image_id'] = Variable<String>(coverImageId);
+    }
+    if (!nullToAbsent || coverRelativePath != null) {
+      map['cover_relative_path'] = Variable<String>(coverRelativePath);
     }
     map['version'] = Variable<int>(version);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -2299,6 +2330,9 @@ class CardSet extends DataClass implements Insertable<CardSet> {
       coverImageId: coverImageId == null && nullToAbsent
           ? const Value.absent()
           : Value(coverImageId),
+      coverRelativePath: coverRelativePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverRelativePath),
       version: Value(version),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -2321,6 +2355,9 @@ class CardSet extends DataClass implements Insertable<CardSet> {
       issueInfo: serializer.fromJson<String?>(json['issueInfo']),
       notes: serializer.fromJson<String?>(json['notes']),
       coverImageId: serializer.fromJson<String?>(json['coverImageId']),
+      coverRelativePath: serializer.fromJson<String?>(
+        json['coverRelativePath'],
+      ),
       version: serializer.fromJson<int>(json['version']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2338,6 +2375,7 @@ class CardSet extends DataClass implements Insertable<CardSet> {
       'issueInfo': serializer.toJson<String?>(issueInfo),
       'notes': serializer.toJson<String?>(notes),
       'coverImageId': serializer.toJson<String?>(coverImageId),
+      'coverRelativePath': serializer.toJson<String?>(coverRelativePath),
       'version': serializer.toJson<int>(version),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2353,6 +2391,7 @@ class CardSet extends DataClass implements Insertable<CardSet> {
     Value<String?> issueInfo = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     Value<String?> coverImageId = const Value.absent(),
+    Value<String?> coverRelativePath = const Value.absent(),
     int? version,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2367,6 +2406,9 @@ class CardSet extends DataClass implements Insertable<CardSet> {
     issueInfo: issueInfo.present ? issueInfo.value : this.issueInfo,
     notes: notes.present ? notes.value : this.notes,
     coverImageId: coverImageId.present ? coverImageId.value : this.coverImageId,
+    coverRelativePath: coverRelativePath.present
+        ? coverRelativePath.value
+        : this.coverRelativePath,
     version: version ?? this.version,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -2387,6 +2429,9 @@ class CardSet extends DataClass implements Insertable<CardSet> {
       coverImageId: data.coverImageId.present
           ? data.coverImageId.value
           : this.coverImageId,
+      coverRelativePath: data.coverRelativePath.present
+          ? data.coverRelativePath.value
+          : this.coverRelativePath,
       version: data.version.present ? data.version.value : this.version,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2404,6 +2449,7 @@ class CardSet extends DataClass implements Insertable<CardSet> {
           ..write('issueInfo: $issueInfo, ')
           ..write('notes: $notes, ')
           ..write('coverImageId: $coverImageId, ')
+          ..write('coverRelativePath: $coverRelativePath, ')
           ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2421,6 +2467,7 @@ class CardSet extends DataClass implements Insertable<CardSet> {
     issueInfo,
     notes,
     coverImageId,
+    coverRelativePath,
     version,
     createdAt,
     updatedAt,
@@ -2437,6 +2484,7 @@ class CardSet extends DataClass implements Insertable<CardSet> {
           other.issueInfo == this.issueInfo &&
           other.notes == this.notes &&
           other.coverImageId == this.coverImageId &&
+          other.coverRelativePath == this.coverRelativePath &&
           other.version == this.version &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -2451,6 +2499,7 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
   final Value<String?> issueInfo;
   final Value<String?> notes;
   final Value<String?> coverImageId;
+  final Value<String?> coverRelativePath;
   final Value<int> version;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -2464,6 +2513,7 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
     this.issueInfo = const Value.absent(),
     this.notes = const Value.absent(),
     this.coverImageId = const Value.absent(),
+    this.coverRelativePath = const Value.absent(),
     this.version = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2478,6 +2528,7 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
     this.issueInfo = const Value.absent(),
     this.notes = const Value.absent(),
     this.coverImageId = const Value.absent(),
+    this.coverRelativePath = const Value.absent(),
     this.version = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -2496,6 +2547,7 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
     Expression<String>? issueInfo,
     Expression<String>? notes,
     Expression<String>? coverImageId,
+    Expression<String>? coverRelativePath,
     Expression<int>? version,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2510,6 +2562,7 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
       if (issueInfo != null) 'issue_info': issueInfo,
       if (notes != null) 'notes': notes,
       if (coverImageId != null) 'cover_image_id': coverImageId,
+      if (coverRelativePath != null) 'cover_relative_path': coverRelativePath,
       if (version != null) 'version': version,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2526,6 +2579,7 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
     Value<String?>? issueInfo,
     Value<String?>? notes,
     Value<String?>? coverImageId,
+    Value<String?>? coverRelativePath,
     Value<int>? version,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -2540,6 +2594,7 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
       issueInfo: issueInfo ?? this.issueInfo,
       notes: notes ?? this.notes,
       coverImageId: coverImageId ?? this.coverImageId,
+      coverRelativePath: coverRelativePath ?? this.coverRelativePath,
       version: version ?? this.version,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2572,6 +2627,9 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
     if (coverImageId.present) {
       map['cover_image_id'] = Variable<String>(coverImageId.value);
     }
+    if (coverRelativePath.present) {
+      map['cover_relative_path'] = Variable<String>(coverRelativePath.value);
+    }
     if (version.present) {
       map['version'] = Variable<int>(version.value);
     }
@@ -2600,6 +2658,7 @@ class CardSetsCompanion extends UpdateCompanion<CardSet> {
           ..write('issueInfo: $issueInfo, ')
           ..write('notes: $notes, ')
           ..write('coverImageId: $coverImageId, ')
+          ..write('coverRelativePath: $coverRelativePath, ')
           ..write('version: $version, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -12850,6 +12909,7 @@ typedef $$CardSetsTableCreateCompanionBuilder =
       Value<String?> issueInfo,
       Value<String?> notes,
       Value<String?> coverImageId,
+      Value<String?> coverRelativePath,
       Value<int> version,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -12865,6 +12925,7 @@ typedef $$CardSetsTableUpdateCompanionBuilder =
       Value<String?> issueInfo,
       Value<String?> notes,
       Value<String?> coverImageId,
+      Value<String?> coverRelativePath,
       Value<int> version,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -12966,6 +13027,11 @@ class $$CardSetsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverRelativePath => $composableBuilder(
+    column: $table.coverRelativePath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13102,6 +13168,11 @@ class $$CardSetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get coverRelativePath => $composableBuilder(
+    column: $table.coverRelativePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get version => $composableBuilder(
     column: $table.version,
     builder: (column) => ColumnOrderings(column),
@@ -13176,6 +13247,11 @@ class $$CardSetsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get coverRelativePath => $composableBuilder(
+    column: $table.coverRelativePath,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get version =>
       $composableBuilder(column: $table.version, builder: (column) => column);
@@ -13302,6 +13378,7 @@ class $$CardSetsTableTableManager
                 Value<String?> issueInfo = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String?> coverImageId = const Value.absent(),
+                Value<String?> coverRelativePath = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -13315,6 +13392,7 @@ class $$CardSetsTableTableManager
                 issueInfo: issueInfo,
                 notes: notes,
                 coverImageId: coverImageId,
+                coverRelativePath: coverRelativePath,
                 version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13330,6 +13408,7 @@ class $$CardSetsTableTableManager
                 Value<String?> issueInfo = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String?> coverImageId = const Value.absent(),
+                Value<String?> coverRelativePath = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -13343,6 +13422,7 @@ class $$CardSetsTableTableManager
                 issueInfo: issueInfo,
                 notes: notes,
                 coverImageId: coverImageId,
+                coverRelativePath: coverRelativePath,
                 version: version,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

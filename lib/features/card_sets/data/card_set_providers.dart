@@ -20,9 +20,8 @@ final StreamProvider<List<CardSetSummary>> cardSetListProvider =
 
 final cardSetMembershipsProvider =
     StreamProvider.family<List<CardSetMembership>, String>(
-      (ref, definitionId) => ref
-          .watch(cardSetRepositoryProvider)
-          .watchMemberships(definitionId),
+      (ref, definitionId) =>
+          ref.watch(cardSetRepositoryProvider).watchMemberships(definitionId),
     );
 
 final cardSetDetailProvider = StreamProvider.family<CardSetDetail?, String>(

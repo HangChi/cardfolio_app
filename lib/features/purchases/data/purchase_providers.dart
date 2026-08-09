@@ -13,12 +13,12 @@ final Provider<PurchaseRepository> purchaseRepositoryProvider =
       );
     });
 
-final cardEntryCostProvider =
-    StreamProvider.family<CardEntryCost, String>((ref, cardItemId) {
-      return ref
-          .watch(purchaseRepositoryProvider)
-          .watchCardEntryCost(cardItemId);
-    });
+final cardEntryCostProvider = StreamProvider.family<CardEntryCost, String>((
+  ref,
+  cardItemId,
+) {
+  return ref.watch(purchaseRepositoryProvider).watchCardEntryCost(cardItemId);
+});
 
 final NotifierProvider<CostDisplayOptionsController, CostDisplayOptions>
 purchaseCostDisplayOptionsProvider =

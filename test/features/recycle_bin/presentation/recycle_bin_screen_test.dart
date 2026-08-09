@@ -1,4 +1,6 @@
 import 'package:cardfolio_app/core/errors/app_failure.dart';
+import 'package:cardfolio_app/core/time/clock.dart';
+import 'package:cardfolio_app/features/cards/data/card_providers.dart';
 import 'package:cardfolio_app/features/recycle_bin/data/recycle_bin_providers.dart';
 import 'package:cardfolio_app/features/recycle_bin/domain/recycle_bin_models.dart';
 import 'package:cardfolio_app/features/recycle_bin/presentation/recycle_bin_screen.dart';
@@ -15,7 +17,12 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [recycleBinRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          recycleBinRepositoryProvider.overrideWithValue(repository),
+          clockProvider.overrideWithValue(
+            FixedClock(DateTime.utc(2026, 7, 29)),
+          ),
+        ],
         child: const MaterialApp(home: RecycleBinScreen()),
       ),
     );

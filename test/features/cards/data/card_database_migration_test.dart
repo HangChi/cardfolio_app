@@ -81,7 +81,7 @@ void main() {
     final detail = await db.watchCardDetail('item-1').first;
     final version = await db.customSelect('PRAGMA user_version;').getSingle();
 
-    expect(version.data.values.single, 7);
+    expect(version.data.values.single, db.schemaVersion);
     expect(detail!.images.single.id, 'image-1');
     expect(detail.images.single.isCover, isTrue);
     expect(detail.cover?.id, 'image-1');

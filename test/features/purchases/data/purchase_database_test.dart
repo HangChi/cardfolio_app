@@ -287,24 +287,27 @@ void main() {
     expect(await db.select(db.purchaseItems).get(), isEmpty);
   });
 
-  test('target snapshot and total survive target soft deletion', () async {
-    await insertCard(id: 'card-1', name: '即将删除的卡');
-    await db.createPurchase(request: purchase(), now: now);
+  test(
+    'target snapshot survives deletion while active total excludes it',
+    () async {
+      await insertCard(id: 'card-1', name: '即将删除的卡');
+      await db.createPurchase(request: purchase(), now: now);
 
-    await db.setItemDeletedAtForTest(
-      'card-1',
-      now.add(const Duration(days: 1)),
-    );
+      await db.setItemDeletedAtForTest(
+        'card-1',
+        now.add(const Duration(days: 1)),
+      );
 
-    final record = (await db.watchPurchaseRecords().first).single;
-    final options = await db.watchPurchaseTargetOptions().first;
-    final summary = await db
-        .watchPurchaseCostSummary(const CostDisplayOptions())
-        .first;
-    expect(record.targets.single.targetName, '即将删除的卡');
-    expect(options, isEmpty);
-    expect(summary.totals.single.minorUnits, 50000);
-  });
+      final record = (await db.watchPurchaseRecords().first).single;
+      final options = await db.watchPurchaseTargetOptions().first;
+      final summary = await db
+          .watchPurchaseCostSummary(const CostDisplayOptions())
+          .first;
+      expect(record.targets.single.targetName, '即将删除的卡');
+      expect(options, isEmpty);
+      expect(summary.totals, isEmpty);
+    },
+  );
 
   test('stores a precise exchange rate and its audit fields', () async {
     final rate = ExchangeRateInput(

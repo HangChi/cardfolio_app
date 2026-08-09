@@ -98,10 +98,6 @@ void main() {
   testWidgets('series form saves selected card and set memberships', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(800, 1200);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(app(const SeriesFormScreen()));
     await tester.pumpAndSettle();
 
@@ -110,8 +106,30 @@ void main() {
       find.byKey(const Key('series-description-input')),
       '东京主题收藏',
     );
-    await tester.tap(find.byKey(const Key('series-card-definition-1')));
-    await tester.tap(find.byKey(const Key('series-set-set-1')));
+    tester.testTextInput.hide();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    final formScroll = tester
+        .stateList<ScrollableState>(
+          find.byWidgetPredicate((widget) => widget is Scrollable),
+        )
+        .firstWhere((state) => state.position.maxScrollExtent > 0);
+    formScroll.position.jumpTo(300);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('series-card-definition-1')),
+        matching: find.byType(Checkbox),
+      ),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('series-set-set-1')),
+        matching: find.byType(Checkbox),
+      ),
+    );
+    formScroll.position.jumpTo(formScroll.position.maxScrollExtent);
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('save-series')));
     await tester.pumpAndSettle();
 

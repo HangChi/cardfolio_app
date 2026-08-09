@@ -178,7 +178,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).first, const Offset(0, -260));
+  }
+
+  Future<void> showSecondImage(WidgetTester tester) async {
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
     await tester.pumpAndSettle();
   }
 
@@ -187,17 +190,21 @@ void main() {
   ) async {
     await pump(tester);
 
-    expect(find.text('3 张图片'), findsOneWidget);
-    expect(find.text('正面'), findsOneWidget);
+    expect(find.text('正面 · 封面'), findsOneWidget);
+    expect(find.text('1 / 3'), findsOneWidget);
+    expect(find.byKey(const Key('manage-image-image-1')), findsOneWidget);
+
+    await showSecondImage(tester);
+
     expect(find.text('背面'), findsOneWidget);
-    expect(find.text('包装'), findsOneWidget);
-    expect(find.text('封面'), findsOneWidget);
+    expect(find.text('2 / 3'), findsOneWidget);
     expect(find.byKey(const Key('manage-image-image-2')), findsOneWidget);
   });
 
   testWidgets('sets a different cover without reordering', (tester) async {
     await pump(tester);
 
+    await showSecondImage(tester);
     await tester.tap(find.byKey(const Key('manage-image-image-2')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('设为封面'));
@@ -212,10 +219,14 @@ void main() {
   ) async {
     await pump(tester);
 
+    await showSecondImage(tester);
     await tester.tap(find.byKey(const Key('manage-image-image-2')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('移除图片'));
-    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('移除图片'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('移除图片'));
     await tester.pumpAndSettle();
 
@@ -232,7 +243,9 @@ void main() {
   ) async {
     await pump(tester);
 
-    await tester.tap(find.text('添加图片'));
+    await tester.tap(find.byTooltip('添加图片'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('从相册选择'));
     await tester.pumpAndSettle();
 
     expect(repository.addRequest?.cardItemId, 'item-1');
@@ -246,7 +259,9 @@ void main() {
     picker = const FakeDetailPicker(failure: GalleryAccessFailure());
     await pump(tester);
 
-    await tester.tap(find.text('添加图片'));
+    await tester.tap(find.byTooltip('添加图片'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('从相册选择'));
     await tester.pumpAndSettle();
 
     expect(find.text('无法访问相册，请检查权限后重试。'), findsOneWidget);

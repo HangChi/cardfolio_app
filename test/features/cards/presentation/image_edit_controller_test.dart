@@ -22,7 +22,7 @@ final class DelayedImageProcessor implements ImageProcessor {
 
 void main() {
   test(
-    'initializes with an automatic suggestion and manual fallback state',
+    'initializes with the full image and no automatic crop requirement',
     () async {
       final controller = ImageEditController(
         processor: FakeImageProcessor(),
@@ -33,8 +33,8 @@ void main() {
       await controller.initialize();
 
       expect(controller.state.phase, ImageEditPhase.ready);
-      expect(controller.state.requiresManualAdjustment, isTrue);
-      expect(controller.state.settings.corners, ImageCorners.safeInset);
+      expect(controller.state.requiresManualAdjustment, isFalse);
+      expect(controller.state.settings.corners, ImageCorners.full);
     },
   );
 

@@ -5,6 +5,7 @@ import 'package:cardfolio_app/features/dashboard/data/dashboard_providers.dart';
 import 'package:cardfolio_app/features/dashboard/domain/dashboard_models.dart';
 import 'package:cardfolio_app/features/organization/data/organization_providers.dart';
 import 'package:cardfolio_app/features/organization/domain/organization_models.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -75,8 +76,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.drag(find.byType(ListView), const Offset(0, -240));
+    await tester.pumpAndSettle();
+    expect(find.text('2026-07'), findsOneWidget);
+    expect(find.text('¥12.50'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
     expect(find.text('2026'), findsOneWidget);
-    expect(find.text('2026-07 · CNY 12.50'), findsOneWidget);
 
     await tester.tap(find.text('机构'));
     await tester.pumpAndSettle();
@@ -103,8 +109,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
     expect(find.text('暂无统计数据'), findsOneWidget);
-    expect(find.text('先录入卡片或补充资料后再查看。'), findsOneWidget);
+    expect(find.text('先录入卡片或补充资料后，再回来查看这一维度。'), findsOneWidget);
   });
 
   testWidgets('statistics read error shows safe copy and retry action', (

@@ -618,6 +618,7 @@ class _DetailBody extends StatelessWidget {
                 Card(
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
+                    key: const Key('card-set-cover'),
                     onTap: busy ? null : onSetCover,
                     child: SizedBox(
                       height: 188,

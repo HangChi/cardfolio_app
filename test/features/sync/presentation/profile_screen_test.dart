@@ -113,6 +113,8 @@ void main() {
     expect(find.textContaining('本地名称'), findsOneWidget);
     expect(find.textContaining('远端名称'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('保留本地'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('保留本地'));
     await tester.pumpAndSettle();
     expect(repository.resolvedConflictId, 'conflict-1');

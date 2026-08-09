@@ -111,11 +111,11 @@ void main() {
 
     expect(find.text('3 / 4'), findsOneWidget);
     expect(find.text('75%'), findsOneWidget);
-    expect(find.textContaining('缺失 1'), findsOneWidget);
-    expect(find.textContaining('重复成员 1'), findsOneWidget);
-    expect(find.text('重复 2 张'), findsOneWidget);
+    expect(find.text('缺失'), findsOneWidget);
+    expect(find.text('重复'), findsOneWidget);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
     await tester.pumpAndSettle();
+    expect(find.text('已拥有 2 张 · 重复 1 张'), findsOneWidget);
     expect(find.text('冬'), findsOneWidget);
     expect(find.text('缺失'), findsWidgets);
   });
@@ -190,7 +190,7 @@ void main() {
     await tester.pumpWidget(subject(repository));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('四季套卡套卡封面，点击更换'));
+    await tester.tap(find.byKey(const Key('card-set-cover')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('清除封面'));
     await tester.pumpAndSettle();

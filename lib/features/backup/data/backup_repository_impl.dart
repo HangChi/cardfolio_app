@@ -264,6 +264,10 @@ final class BackupRepositoryImpl implements BackupRepository {
       final cover = row['coverRelativePath'];
       if (cover is String && cover.isNotEmpty) paths.add(cover);
     }
+    for (final row in snapshot.rows('cardSets')) {
+      final cover = row['coverRelativePath'];
+      if (cover is String && cover.isNotEmpty) paths.add(cover);
+    }
 
     final result = <_ExportImage>[];
     final sortedPaths = paths.toList()..sort();
@@ -598,6 +602,10 @@ Set<String> _snapshotImagePaths(BackupSnapshot snapshot) {
     }
   }
   for (final row in snapshot.rows('seriesRecords')) {
+    final cover = row['coverRelativePath'];
+    if (cover is String && cover.isNotEmpty) paths.add(cover);
+  }
+  for (final row in snapshot.rows('cardSets')) {
     final cover = row['coverRelativePath'];
     if (cover is String && cover.isNotEmpty) paths.add(cover);
   }

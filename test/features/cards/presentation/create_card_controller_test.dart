@@ -438,23 +438,29 @@ void main() {
   group('save', () {
     Future<void> pickAndName(String name) async {
       await controller().pickImage();
-      controller().updateName(name);
+      controller()
+        ..updateName(name)
+        ..updateCity('东京');
     }
 
-    test('a blank name saves as 未命名卡片', () async {
+    test('a blank name is rejected before persistence', () async {
       container = buildContainer();
       await pickAndName('   ');
 
-      expect(await controller().save(), isNotNull);
-      expect(repository.requests.single.name, '未命名卡片');
+      expect(await controller().save(), isNull);
+      expect(state().fieldErrors[CardField.name], '请填写卡片名称。');
+      expect(repository.requests, isEmpty);
     });
 
     test('saving without an image creates an empty card', () async {
       container = buildContainer();
+      controller()
+        ..updateName('无图卡片')
+        ..updateCity('东京');
 
       expect(await controller().save(), isNotNull);
       expect(repository.requests.single.images, isEmpty);
-      expect(repository.requests.single.name, '未命名卡片');
+      expect(repository.requests.single.name, '无图卡片');
     });
 
     test('a successful save returns the item id and clears failures', () async {
@@ -594,7 +600,7 @@ void main() {
 
     test('editing a field clears that field error', () async {
       container = buildContainer();
-      await pickAndName('');
+      await pickAndName('樱花纪念卡');
       controller().updateIssuedAt('invalid');
       await controller().save();
       expect(state().fieldErrors[CardField.issuedAt], isNotNull);

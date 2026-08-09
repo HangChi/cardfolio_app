@@ -23,9 +23,9 @@ void main() {
 
     expect(harness.hasDraft, isTrue);
     expect(find.byKey(const Key('card-name-field')), findsOneWidget);
-    expect(find.text('城市'), findsOneWidget);
+    expect(find.text('城市 *'), findsOneWidget);
     expect(find.text('发行机构'), findsOneWidget);
-    expect(find.text('发行日期（可选）'), findsOneWidget);
+    expect(find.text('发行日期'), findsOneWidget);
     expect(find.text('编号'), findsOneWidget);
     expect(find.text('备注'), findsOneWidget);
   });

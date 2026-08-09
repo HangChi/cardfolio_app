@@ -90,14 +90,15 @@ void main() {
     await _disposeApp(tester);
   });
 
-  testWidgets('exposes the purchase ledger entry from profile management', (
+  testWidgets('exposes data-management entries separately from taxonomy', (
     tester,
   ) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
     expect(find.text('购买记录'), findsNothing);
-    expect(find.textContaining('分摊与退款'), findsOneWidget);
+    expect(find.text('回收站'), findsOneWidget);
+    expect(find.text('导入与导出'), findsOneWidget);
     await _disposeApp(tester);
   });
 
