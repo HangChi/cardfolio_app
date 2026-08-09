@@ -1,6 +1,9 @@
 # Feature 005：购买记录与累计花费
 
-状态：实施中
+状态：历史完整购买模块规格；当前用户流程与统计口径见 [Feature README](README.md)
+
+> 独立购买列表、退款表单、多币种录入和成本排序已经从当前 UI 移除。本文件保留底层账本
+> 兼容设计，不应作为当前页面验收说明。
 依赖：Feature 001、Feature 003
 上游：[PRD](../../product/卡迹App_PRD_v1.0.md)
 详细设计：[Feature 005 设计](../../superpowers/specs/2026-07-28-feature-005-purchases-and-costs-design.md)

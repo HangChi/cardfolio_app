@@ -11,6 +11,7 @@
 | `issueInfo` | nullable text | 最多 1000 |
 | `notes` | nullable text | 最多 1000 |
 | `coverImageId` | nullable text UUID | 活跃成员图片 |
+| `coverRelativePath` | nullable text | schema v9 独立受管封面；优先展示 |
 | `version` | integer | 至少 1 |
 | `createdAt/updatedAt` | UTC timestamp | 必填 |
 | `deletedAt` | nullable UTC timestamp | Feature 007 使用 |
@@ -34,6 +35,12 @@
 ## 3. schema v2 → v3
 
 只新增 `card_sets` 和 `card_set_members` 两张表及索引，不修改 v2 卡片和图片行。升级失败保留原数据库，不清库。
+
+### schema v8 → v9
+
+为 `card_sets` 新增可空 `cover_relative_path`。旧数据保持 `cover_image_id` 语义；读取时独立
+封面优先，否则回退到仍有效的成员图片。迁移不得提前执行到 Drift 请求的中间目标版本，
+并由 v1–v8 到 v9 的分步迁移测试覆盖。
 
 ## 4. 完成度查询
 

@@ -1,6 +1,6 @@
 # Feature 004：标签、系列与筛选
 
-状态：实施中
+状态：历史首次交付规格；当前收敛行为见 [Feature README](README.md)
 依赖：Feature 001、Feature 003
 上游：[PRD](../../product/卡迹App_PRD_v1.0.md)
 详细设计：[Feature 004 设计](../../superpowers/specs/2026-07-28-feature-004-tags-series-and-filters-design.md)

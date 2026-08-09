@@ -1,6 +1,6 @@
 # Figma 设计交付基线
 
-状态：M0 基线
+状态：历史 M0 设计交付快照；当前导航与行为见[导航文档](navigation.md)和[Feature 索引](../features/README.md)
 设计源：[卡迹 Cardfolio · 核心流程高保真原型](https://www.figma.com/design/AIiGFgVmQYrd8WqTPxHy0S/%E5%8D%A1%E8%BF%B9-Cardfolio-%C2%B7-%E6%A0%B8%E5%BF%83%E6%B5%81%E7%A8%8B%E9%AB%98%E4%BF%9D%E7%9C%9F%E5%8E%9F%E5%9E%8B?node-id=0-1)
 
 ## 1. 目的
@@ -24,7 +24,10 @@
 
 设计画板基准尺寸为 393 × 852。实现必须响应式适配，不得把画板宽高写成固定页面尺寸。
 
-## 3. Feature 001 映射
+## 3. Feature 001 历史映射
+
+以下内容记录 M0/Feature 001 首次切片边界，不代表当前 App 能力。相机、首页、统计、我的、
+套卡和批量录入已在后续 Feature 中实现；OCR 当前不可用状态见[已知问题](../known-issues.md)。
 
 Feature 001 只实现收藏、拍摄入口、新建卡片、卡片详情和五入口导航骨架：
 

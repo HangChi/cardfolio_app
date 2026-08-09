@@ -1,7 +1,7 @@
 # Cardfolio 文档中心
 
-状态：客户端功能基线完成，设备验收与生产同步部署待完成
-更新日期：2026-08-01
+状态：核心本地功能基线完成；OCR、设备验收与生产同步部署待完成
+更新日期：2026-08-09
 
 ## 从这里开始
 
@@ -10,9 +10,11 @@
 3. [当前路线图](product/roadmap.md)：已完成范围、剩余发布门禁和后续方向。
 4. [Feature 索引](features/README.md)：Feature 001–010 与后续增强的当前状态。
 5. [架构总览](architecture/overview.md)：运行时分层、依赖方向与启动流程。
-6. [数据库模型](architecture/database-schema.md)：当前 schema v8、表关系和迁移策略。
-7. [开发日志](engineering/development-log.md)：按日期记录的实现演进。
-8. [需求追踪矩阵](quality/requirements-traceability.md)：需求、实现和验证证据。
+6. [数据库模型](architecture/database-schema.md)：当前 schema v9、表关系和迁移策略。
+7. [工程基线](engineering-baseline.md)：本地与 CI 的格式、分析、测试、迁移和构建门禁。
+8. [已知问题](known-issues.md)：当前不可用能力、兼容预告和处置状态。
+9. [开发日志](engineering/development-log.md)：按日期记录的实现演进。
+10. [需求追踪矩阵](quality/requirements-traceability.md)：需求、实现和验证证据。
 
 ## 文档分区
 
@@ -31,9 +33,9 @@
 ## 当前实现边界
 
 - 本地客户端已覆盖卡片、多图、套卡、集卡册、标签、自定义字段、筛选、人民币成本、
-  首页/统计/消费日历、回收站、ZIP 备份、CSV 导出、相机、图片编辑、OCR、引导、主题
-  和可选账号同步客户端。
-- Drift 数据库当前为 schema v8；本地数据库和 App 私有图片目录始终是本地事实来源。
+  首页/统计/消费日历、回收站、ZIP 备份、CSV 导出、相机、图片编辑、引导、主题和可选
+  账号同步客户端。OCR 桥接与确认 UI 已存在，但当前运行时不可用，不能列为已交付能力。
+- Drift 数据库当前为 schema v9；本地数据库和 App 私有图片目录始终是本地事实来源。
 - 生产 REST 同步服务、Supabase 迁移落地、真实双设备同步、商店发布和完整设备矩阵仍是
   发布门禁，不能由宿主机测试结果替代。
 - 历史 Feature 规格描述的是当时冻结范围。若与当前代码冲突，以本页、架构文档、开发

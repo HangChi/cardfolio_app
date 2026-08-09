@@ -1,7 +1,7 @@
 # 数据库模型与迁移规范
 
-状态：schema v8
-更新日期：2026-08-01
+状态：schema v9
+更新日期：2026-08-09
 实现：Drift + SQLite
 
 ## 1. 核心约定
@@ -29,7 +29,7 @@
 
 | 表 | 作用 | 关键字段/约束 |
 |---|---|---|
-| `card_sets` | 有成员清单和完成度的套卡 | expected_count、count_known、issue_info、notes、cover_image_id、deleted_at |
+| `card_sets` | 有成员清单和完成度的套卡 | expected_count、count_known、issue_info、notes、cover_image_id、cover_relative_path、deleted_at |
 | `card_set_members` | 套卡期望款式 | set_id、definition_id、member_no、required、sort_order、deleted_at |
 | `tags` | 标签定义 | name、normalized_name、version、deleted_at |
 | `card_tags` | 标签到卡片款式 | tag_id + definition_id 组合主键 |
@@ -85,6 +85,7 @@
 | 6 | 回收站设置与文件清理队列 |
 | 7 | 同步设置、云端基线、outbox 和冲突副本 |
 | 8 | 集卡册自定义封面相对路径 |
+| 9 | 套卡独立封面相对路径；保留成员图片封面引用兼容 |
 
 每次 schema 变化必须更新 `drift_schemas/app/` 快照、生成代码和迁移测试。发布构建禁止以
 删库重建作为失败兜底。

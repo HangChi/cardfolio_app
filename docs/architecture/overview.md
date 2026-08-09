@@ -1,7 +1,7 @@
 # 卡迹总体架构
 
 状态：当前实现基线
-更新日期：2026-08-01
+更新日期：2026-08-09
 
 ## 1. 架构目标
 
@@ -16,12 +16,12 @@
 | UI | Flutter Material 3、亮暗主题、响应式手机/宽屏导航 |
 | 状态与依赖注入 | Riverpod 3，手写 Provider/Notifier |
 | 路由 | go_router，`StatefulShellRoute.indexedStack` 保留五入口状态 |
-| 本地数据 | Drift 2 + SQLite，schema v8 |
+| 本地数据 | Drift 2 + SQLite，schema v9 |
 | 文件 | `path_provider` 应用支持目录、受管原图/派生图、SHA-256 |
 | 图片输入/编辑 | image_picker、image_cropper、`image` isolate 处理 |
 | 导入导出 | archive、file_picker、share_plus |
 | 网络与账号 | http、flutter_secure_storage、可替换 REST v1 |
-| OCR | Android ML Kit 中文识别、iOS Vision，通过 MethodChannel 封装 |
+| OCR | Android ML Kit/iOS Vision MethodChannel 桥接已接入；当前运行时不可用，待诊断与真机验收 |
 
 ## 3. 分层与依赖方向
 

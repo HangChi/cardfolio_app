@@ -1,6 +1,6 @@
 # Feature 文档索引
 
-更新日期：2026-08-01
+更新日期：2026-08-09
 
 | Feature | 名称 | 当前实现状态 | 尚需验证/部署 |
 |---:|---|---|---|
@@ -12,7 +12,7 @@
 | 006 | [首页、统计与消费日历](006-dashboard-and-statistics/README.md) | 已实现；固定总卡片/总花费、六维分布、月趋势、日期明细和下钻 | 月边界、退款、窄屏和大字体 |
 | 007 | [回收站与永久删除](007-recycle-bin/README.md) | 已实现；级联可见性、恢复、7/30/90 天清理、图片清理重试 | 真实文件失败恢复与长期保留期 |
 | 008 | [ZIP 备份、恢复与迁移](008-import-export-and-migration/README.md) | 已实现；校验、空库恢复、仅新增合并、冲突预览；另有 CSV 导出 | 大文件、跨版本和真实往返 |
-| 009 | [相机与图片处理](009-camera-and-image-processing/README.md) | 已实现；拍照后先进入资料页，主动编辑时使用系统裁剪、旋转和增强；原图不覆盖 | Android/iOS 真机、HEIC、12MP 性能 |
+| 009 | [相机与图片处理](009-camera-and-image-processing/README.md) | 图片处理已实现；拍照后先进入资料页，主动编辑时使用系统裁剪、旋转和增强；原图不覆盖 | Android/iOS 真机、HEIC、12MP 性能；OCR 另属已知不可用增强 |
 | 010 | [账号与本地优先同步](010-account-and-local-first-sync/README.md) | 客户端与 Supabase 参考迁移已实现；未配置端点时纯本地 | 部署 REST 网关、RLS、双设备、监控和回滚 |
 
 ## 已落地的跨 Feature 增强
@@ -20,7 +20,8 @@
 - 卡片完整编辑、无图后补、人民币成本、标签/套卡/集卡册归属。
 - 多卡批量录入、共享资料、逐卡确认、草稿跨进程恢复。
 - 首次启动引导、应用设置、主题、存储/权限信息和诊断开关。
-- UTF-8 BOM CSV 导出、Android ML Kit OCR、iOS Vision OCR、内置/远程交通卡资料库。
+- UTF-8 BOM CSV 导出、内置/远程交通卡资料库，以及 Android ML Kit/iOS Vision OCR
+  桥接与候选确认 UI。OCR 当前运行时不可用，状态见[已知问题](../known-issues.md)。
 - 亮暗主题、宽屏侧边导航、统一状态组件和 Android 双击返回退出。
 - 本月入手筛选、消费日历、删除一致性和卡片详情无叠加图集。
 

@@ -1,6 +1,6 @@
 # Feature 001：本地创建卡片闭环
 
-状态：已确认，可进入开发准备
+状态：历史首个切片规格；当前实现见 [Feature 索引](../README.md) 与 [项目 README](../../../README.md)
 依赖：M0 文档基线
 上游：[PRD](../../product/卡迹App_PRD_v1.0.md)
 详细设计：[Feature 001 设计](../../superpowers/specs/2026-07-26-feature-001-local-card-creation-design.md)

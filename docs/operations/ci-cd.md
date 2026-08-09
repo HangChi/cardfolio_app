@@ -1,38 +1,57 @@
 # CI/CD 基线
 
-## 1. Pull Request 流水线
+状态：CI 质量门禁已实现；制品归档、签名和发布流水线尚未实现
+更新日期：2026-08-09
 
-按顺序执行：
+## 1. 当前已实现的工作流
 
-1. 获取固定 Flutter 稳定版本并恢复受控缓存；
-2. `flutter pub get`；
-3. 校验生成代码与源一致；
-4. Dart 格式检查；
-5. `flutter analyze`；
-6. `flutter test`；
-7. 数据库迁移测试；
-8. Android debug 构建；
-9. 上传测试结果，不上传用户数据。
+工作流位于 [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)，在 Pull Request 和
+推送到 `main` 时运行。环境固定为 Ubuntu、Flutter 3.44.0 和 Java 21，权限只有
+`contents: read`。
 
-任一步失败即阻断合并。CI 使用最小权限令牌，来自受保护的密钥存储。
+当前单个 `verify` Job 按顺序执行：
 
-## 2. 主分支流水线
+1. 检出仓库；
+2. 安装 Flutter 并使用依赖缓存；
+3. `flutter pub get`；
+4. `dart format --output=none --set-exit-if-changed lib test integration_test`；
+5. `flutter analyze --fatal-infos --fatal-warnings`；
+6. 执行 Drift 迁移专项，覆盖 v1–v8 到 schema v9；
+7. `flutter test --concurrency=1`；
+8. `flutter build apk --debug`。
 
-- 重复 PR 质量门禁，防止环境差异。
-- 生成带构建号的内部测试包。
-- 生成依赖清单、测试摘要和变更记录。
-- 构建产物按保留期归档并校验 SHA-256。
+任一步失败都会使工作流失败。相同分支的新运行会取消旧运行，避免重复占用资源。
 
-## 3. 发布流水线
+## 2. 本地等价门禁
 
-- 只从受保护标签和已审查提交触发。
-- 签名密钥不可导出到开发机或日志。
-- 发布前需要人工批准。
-- 商店发布采用分阶段比例，达到停止条件时暂停，不自动用旧二进制覆盖新 schema 数据。
+开发者在提交前应运行[工程基线](../engineering-baseline.md)中的同等命令。涉及生成代码或
+数据库模式时，还需先执行：
 
-## 4. 供应链
+```powershell
+dart run build_runner build --delete-conflicting-outputs
+git diff --check
+```
+
+生成代码与源文件必须进入同一提交。当前 CI 不会自动重新生成代码并检查工作区差异，
+因此不能把本地生成步骤写成已经由 CI 覆盖。
+
+## 3. 尚未实现的增强
+
+以下内容是后续工程目标，不属于当前 CI 能力：
+
+- 在干净工作区重新生成代码并检查无差异；
+- 上传机器可读测试报告、覆盖率、APK、依赖清单和 SHA-256；
+- 依赖安全与许可证检查；
+- 把第三方 Action 从版本标签固定到不可变提交 SHA；
+- 生成带构建号的内部测试包；
+- 正式签名、人工批准、受保护标签和分阶段商店发布；
+- 自动生成发布说明和变更记录。
+
+这些增强实现前，发布流程仍需人工执行对应检查，不得在其他文档中标记为“已建立”。
+
+## 4. 供应链原则
 
 - 锁文件必须提交。
 - 自动依赖更新只创建 PR，不自动合并主版本升级。
-- 生成步骤在干净工作区执行并检查未提交差异。
-- 第三方 Action/任务固定到不可变版本。
+- 密钥和签名材料只能进入受保护的发布系统，不能写入仓库或日志。
+- 第三方 Action 与 Flutter 版本升级必须独立评审并执行完整门禁。

@@ -2,7 +2,7 @@
 
 ## 1. 环境
 
-- Flutter 使用仓库约定的稳定版本；升级必须独立提交并记录迁移影响。
+- Flutter 固定为 3.44.0、Dart 最低为 3.12.0，CI 使用 JDK 21；升级必须独立提交并记录迁移影响。
 - Android 是首轮验收平台，生产 Dart 代码和插件配置保持 iOS 兼容。
 - 推荐 Android Studio 或 VS Code，启用 Dart 格式化和静态分析。
 
@@ -18,8 +18,10 @@ dart run build_runner build --delete-conflicting-outputs
 
 ```powershell
 dart format --output=none --set-exit-if-changed lib test integration_test
-flutter analyze
-flutter test
+flutter analyze --fatal-infos --fatal-warnings
+flutter test test/drift/app/migration_test.dart test/features/cards/data/card_database_migration_test.dart
+flutter test --concurrency=1
+flutter build apk --debug
 ```
 
 ## 2. 目录约定
@@ -48,7 +50,8 @@ lib/
 ## 4. 数据库变更
 
 - 永不编辑已经发布的 schema 快照。
-- 每次迁移包含升级逻辑、迁移测试和回滚/恢复说明。
+- 每次迁移包含新版本快照、生成夹具、升级逻辑、从所有旧版本分步升级的迁移测试和
+  回滚/恢复说明。
 - 数据库打开失败不得自动删库重建。
 - 任何写入多个聚合表的操作使用事务。
 - 文件与数据库跨资源写入需实现补偿和启动清理。

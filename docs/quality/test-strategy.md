@@ -40,8 +40,10 @@
 
 ```powershell
 dart format --output=none --set-exit-if-changed lib test integration_test
-flutter analyze
-flutter test
+flutter analyze --fatal-infos --fatal-warnings
+flutter test test/drift/app/migration_test.dart test/features/cards/data/card_database_migration_test.dart
+flutter test --concurrency=1
+flutter build apk --debug
 ```
 
 涉及平台插件时增加 Android 设备验收；涉及 schema 时增加从上一发布版本升级的迁移测试；涉及 UI 时增加目标节点的视觉与无障碍检查。

@@ -16,7 +16,7 @@ cardfolio-backup-YYYYMMDD-HHmmss.zip
 {
   "format": "cardfolio-backup",
   "formatVersion": 1,
-  "sourceSchemaVersion": 6,
+  "sourceSchemaVersion": 9,
   "createdAt": "2026-07-29T00:00:00.000Z",
   "dataFile": "data.json",
   "entries": [
@@ -40,6 +40,11 @@ cardfolio-backup-YYYYMMDD-HHmmss.zip
 
 字段使用稳定 lowerCamelCase 逻辑名；时间为 UTC ISO-8601，金额为最小货币单位整数，
 枚举为稳定字符串，图片只保存规范相对路径。
+
+`cardSets[*].coverRelativePath` 与 `seriesRecords[*].coverRelativePath` 是可空逻辑字段。
+非空时对应文件必须进入 ZIP 的 `images/<relativePath>`、清单和 SHA-256 校验；导入预览
+若缺少任一引用封面必须失败且不能修改现有收藏。旧格式缺少套卡独立封面字段时按 `null`
+规范化，不提升备份格式版本。
 
 ## 导入顺序
 

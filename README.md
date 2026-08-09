@@ -19,7 +19,8 @@
 - 系统相机和相册导入、单卡最多 20 张图片、正反面/包装/编号/细节等用途、排序与封面。
 - 拍照后直接进入资料页；用户主动编辑图片时再使用系统相册式裁剪、缩放和旋转，并可
   调整亮度、对比度和清晰度。原图保持不变，编辑结果单独保存。
-- 卡面 OCR 与资料候选确认；内置交通卡资料库，并可选接入远程资料库。
+- 已接入卡面 OCR 平台桥接、资料候选确认和内置/远程资料库接口；当前 OCR 运行时仍不可用，
+  需完成诊断与 Android/iOS 真机验收后才能作为交付能力使用。
 - 多卡批量录入、共享资料、草稿中断恢复、逐张确认，以及自动关联套卡和集卡册。
 - 套卡成员、整套张数、封面、已拥有/缺失/重复张数和完成度；集卡册可同时收纳卡片与套卡。
 - 标签、自定义字段、全文搜索、组合筛选、重复卡/待完善/本月入手筛选和稳定排序。
@@ -44,14 +45,17 @@ flutter run --dart-define=CARD_FOLIO_CATALOG_BASE_URL=https://catalog.example.co
 
 ## 本地开发
 
-需要 Flutter 3.x、Dart 3.12+ 和 Android SDK。Windows 使用 Flutter 插件时需先开启
+需要 Flutter 3.44.0、Dart 3.12+、JDK 21 和 Android SDK。Windows 使用 Flutter 插件时需先开启
 开发者模式以允许创建符号链接。在项目根目录依次运行：
 
 ```powershell
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
-flutter analyze
-flutter test
+dart format --output=none --set-exit-if-changed lib test integration_test
+flutter analyze --fatal-infos --fatal-warnings
+flutter test test/drift/app/migration_test.dart test/features/cards/data/card_database_migration_test.dart
+flutter test --concurrency=1
+flutter build apk --debug
 flutter run
 ```
 
@@ -74,6 +78,9 @@ flutter build apk --debug
 
 输出文件位于 `build/app/outputs/flutter-apk/app-debug.apk`。Release APK 对应
 `build/app/outputs/flutter-apk/app-release.apk`。
+
+完整质量门禁和最近一次验证结果见[工程基线](docs/engineering-baseline.md)；当前限制见
+[已知问题](docs/known-issues.md)。
 
 ## 验收平台
 
