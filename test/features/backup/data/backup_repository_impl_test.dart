@@ -171,6 +171,26 @@ void main() {
     );
   });
 
+  test(
+    'oversized import is rejected before copying into working storage',
+    () async {
+      final backup = File('${root.path}/oversized.cardfolio.zip');
+      final handle = await backup.open(mode: FileMode.write);
+      await handle.truncate(BackupLimits.maxUncompressedBytes + 1);
+      await handle.close();
+
+      await expectLater(
+        targetRepository.inspectBackup(backup, mode: BackupMode.emptyLibrary),
+        throwsA(isA<BackupValidationFailure>()),
+      );
+
+      expect(
+        Directory('${root.path}/target-work').listSync(recursive: true),
+        isEmpty,
+      );
+    },
+  );
+
   test('image commit failure rolls back imported database rows', () async {
     final backup = File('${root.path}/commit-failure.cardfolio.zip');
     await sourceRepository.exportBackup(backup);

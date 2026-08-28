@@ -94,6 +94,7 @@ String encodeCardCsv(Iterable<CardCsvRow> rows) {
 }
 
 String _escape(String value) {
-  if (!value.contains(RegExp('[,"\\r\\n]'))) return value;
-  return '"${value.replaceAll('"', '""')}"';
+  final safe = value.startsWith(RegExp(r'\s*[=+\-@]')) ? "'$value" : value;
+  if (!safe.contains(RegExp('[,"\\r\\n]'))) return safe;
+  return '"${safe.replaceAll('"', '""')}"';
 }

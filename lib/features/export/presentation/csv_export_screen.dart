@@ -1,15 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../card_sets/data/card_set_providers.dart';
-import '../../cards/data/card_providers.dart';
-import '../../cards/domain/reserved_card_metadata.dart';
-import '../../organization/data/organization_providers.dart';
-import '../../organization/domain/organization_models.dart';
-import '../../purchases/data/purchase_providers.dart';
-import '../../purchases/domain/purchase_models.dart';
 import '../data/csv_export_providers.dart';
 import '../domain/csv_export.dart';
 
@@ -27,64 +18,7 @@ class _CsvExportScreenState extends ConsumerState<CsvExportScreen> {
     if (_exporting) return;
     setState(() => _exporting = true);
     try {
-      final cards = await ref
-          .read(organizationRepositoryProvider)
-          .watchCards(const CardLibraryQuery())
-          .first;
-      final sets = await ref.read(cardSetRepositoryProvider).watchSets().first;
-      final setNames = <String, String>{
-        for (final set in sets) set.id: set.name,
-      };
-      final rows = <CardCsvRow>[];
-      for (final summary in cards) {
-        final card = await ref
-            .read(cardRepositoryProvider)
-            .watchCard(summary.cardItemId)
-            .first;
-        final organization = await ref
-            .read(organizationRepositoryProvider)
-            .watchCardOrganization(summary.cardItemId)
-            .first;
-        if (card == null || organization == null) continue;
-        final memberships = await ref
-            .read(cardSetRepositoryProvider)
-            .watchMemberships(organization.definitionId)
-            .first;
-        final cost = await ref
-            .read(purchaseRepositoryProvider)
-            .watchCardEntryCost(summary.cardItemId)
-            .first;
-        final metadata = ReservedCardMetadata.fromDetails(
-          organization.fieldValues,
-        );
-        rows.add(
-          CardCsvRow(
-            name: card.name,
-            city: card.city,
-            issuer: card.issuer,
-            issuedAt: card.issuedAt?.toIsoString(),
-            code: card.code,
-            quantity: card.quantity,
-            condition: metadata.condition,
-            itemNotes: metadata.itemNotes,
-            issueQuantity: metadata.issueQuantity,
-            issuePrice: metadata.issuePrice?.toStringAsFixed(2),
-            cardType: organization.cardType,
-            acquiredAt: organization.acquiredAt == null
-                ? null
-                : _date(organization.acquiredAt!),
-            tags: organization.tags.map((value) => value.name).toList(),
-            albums: organization.series.map((value) => value.name).toList(),
-            cardSets: memberships
-                .map((value) => setNames[value.setId])
-                .whereType<String>()
-                .toList(),
-            amount: _money(cost.amountMinor),
-            shipping: _money(cost.shippingMinor),
-            notes: card.notes,
-          ),
-        );
-      }
+      final rows = await ref.read(csvExportRepositoryProvider).loadRows();
       final now = DateTime.now();
       final suggested =
           'cardfolio-${now.year}${now.month.toString().padLeft(2, '0')}'
@@ -92,8 +26,10 @@ class _CsvExportScreenState extends ConsumerState<CsvExportScreen> {
       final publisher = ref.read(csvFilePublisherProvider);
       final path = await publisher.choosePath(suggested);
       if (path == null) return;
-      await File(path).writeAsString(encodeCardCsv(rows), flush: true);
-      final published = await publisher.publish(path);
+      final published = await publisher.writeAndPublish(
+        path,
+        encodeCardCsv(rows),
+      );
       if (mounted && published) {
         ScaffoldMessenger.of(
           context,
@@ -144,12 +80,3 @@ class _CsvExportScreenState extends ConsumerState<CsvExportScreen> {
     );
   }
 }
-
-String? _money(int minor) => minor == 0
-    ? null
-    : CurrencyAmount(minorUnits: minor, currency: 'CNY').formatted;
-
-String _date(DateTime value) =>
-    '${value.year.toString().padLeft(4, '0')}-'
-    '${value.month.toString().padLeft(2, '0')}-'
-    '${value.day.toString().padLeft(2, '0')}';

@@ -26,7 +26,8 @@ final class FilePickerCsvPublisher implements CsvFilePublisher {
   }
 
   @override
-  Future<bool> publish(String path) async {
+  Future<bool> writeAndPublish(String path, String contents) async {
+    await File(path).writeAsString(contents, flush: true);
     if (!Platform.isAndroid && !Platform.isIOS) return true;
     final result = await SharePlus.instance.share(
       ShareParams(

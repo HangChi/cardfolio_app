@@ -18,4 +18,18 @@ void main() {
     expect(csv, contains('"第一行\n第二行"'));
     expect(csv, contains(',2,'));
   });
+
+  test('neutralizes spreadsheet formulas in user-controlled fields', () {
+    final csv = encodeCardCsv(<CardCsvRow>[
+      const CardCsvRow(
+        name: '=HYPERLINK("https://example.invalid")',
+        issuer: '+cmd',
+        notes: '  @SUM(1+1)',
+      ),
+    ]);
+
+    expect(csv, contains('"\'=HYPERLINK(""https://example.invalid"")"'));
+    expect(csv, contains("'+cmd"));
+    expect(csv, contains("'  @SUM(1+1)"));
+  });
 }

@@ -537,10 +537,37 @@ final class BackupRepositoryImpl implements BackupRepository {
       throw const BackupStorageFailure('找不到所选备份文件。');
     }
     final local = File(p.join(operation.path, 'selected-backup.zip'));
+    RandomAccessFile? output;
     try {
-      await source.copy(local.path);
+      if (await source.length() > BackupLimits.maxUncompressedBytes) {
+        throw const BackupValidationFailure('备份文件大小超出安全限制。');
+      }
+
+      output = await local.open(mode: FileMode.write);
+      var copiedBytes = 0;
+      await for (final chunk in source.openRead()) {
+        _checkCancelled(token);
+        copiedBytes += chunk.length;
+        if (copiedBytes > BackupLimits.maxUncompressedBytes) {
+          throw const BackupValidationFailure('备份文件大小超出安全限制。');
+        }
+        await output.writeFrom(chunk);
+      }
+      await output.flush();
+      await output.close();
+      output = null;
+    } on AppFailure {
+      await _closeFileQuietly(output);
+      output = null;
+      await _deleteFileQuietly(local);
+      rethrow;
     } on FileSystemException catch (error) {
+      await _closeFileQuietly(output);
+      output = null;
+      await _deleteFileQuietly(local);
       throw BackupStorageFailure('无法读取所选备份文件。', error);
+    } finally {
+      await _closeFileQuietly(output);
     }
     _checkCancelled(token);
     return local;
@@ -642,6 +669,14 @@ void _progress(
 Future<void> _deleteFilesQuietly(Iterable<File> files) async {
   for (final file in files) {
     await _deleteFileQuietly(file);
+  }
+}
+
+Future<void> _closeFileQuietly(RandomAccessFile? file) async {
+  try {
+    await file?.close();
+  } on FileSystemException {
+    // 失败路径只负责释放句柄，不能覆盖原始错误。
   }
 }
 
