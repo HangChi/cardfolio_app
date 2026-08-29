@@ -1,6 +1,6 @@
 # 工程基线
 
-状态：已建立并在 2026-08-09 完整验证
+状态：Flutter 完整基线最近于 2026-08-09 验证；2026-08-29 服务端门禁已补充
 
 仓库固定使用 Flutter 3.44.0、Dart 3.12.0 和 CI JDK 21。Pull Request 与推送到
 `main` 必须通过 [.github/workflows/ci.yml](../.github/workflows/ci.yml) 中的质量门禁。
@@ -40,3 +40,11 @@ flutter build apk --debug
 - Android debug APK：构建成功。
 
 OCR 不在上述宿主机质量门禁的可用性结论内，当前状态见[已知问题](known-issues.md)。
+
+2026-08-29，当前工作树的 Node.js 24 同步网关通过：
+
+- 网关、超时、账号删除顺序与迁移静态守卫：17/17；
+- `node --check`：通过；
+- 当前 CI 已加入服务端测试、语法检查、迁移守卫和 Docker 构建；
+- 本次记录环境没有 Flutter/Dart 命令，因此不能把 2026-08-09 的 Flutter 结果写成当前
+  HEAD 复验结果；合并前仍须由 CI 完成 Flutter 全门禁。

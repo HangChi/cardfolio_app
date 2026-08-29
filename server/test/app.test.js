@@ -12,6 +12,7 @@ const config = Object.freeze({
   maxAttachmentBytes: 64 * 1024 * 1024,
   authRateLimit: 20,
   authRateWindowMs: 15 * 60 * 1000,
+  upstreamTimeoutMs: 30 * 1000,
   trustProxy: true,
 });
 
@@ -448,6 +449,53 @@ test('attachment upload verifies SHA-256 before touching Storage', async () => {
   assert.deepEqual(Buffer.from(calls[1].init.body), bytes);
 });
 
+test('account deletion blocks new writes before cleanup and Auth removal', async () => {
+  const calls = [];
+  const checksum = 'a'.repeat(64);
+  const app = createApp(config, {
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url: new URL(url), init });
+      const path = new URL(url).pathname;
+      if (path === '/auth/v1/user') {
+        return jsonResponse({ id: 'user-delete', email: 'collector@example.test' });
+      }
+      if (path === '/storage/v1/object/list/cardfolio-private') {
+        return jsonResponse([{ name: checksum }]);
+      }
+      return jsonResponse({});
+    },
+  });
+
+  const response = await app.handle(request('/v1/account', {
+    method: 'DELETE',
+    token: 'access-secret',
+    headers: { 'x-account-deletion-confirmation': 'DELETE' },
+  }));
+
+  assert.equal(response.status, 204);
+  assert.deepEqual(calls.map((call) => call.url.pathname), [
+    '/auth/v1/user',
+    '/rest/v1/rpc/cardfolio_begin_account_deletion',
+    '/storage/v1/object/list/cardfolio-private',
+    '/storage/v1/object/cardfolio-private',
+    '/rest/v1/rpc/cardfolio_delete_my_cloud_data',
+    '/auth/v1/admin/users/user-delete',
+  ]);
+  assert.equal(calls[1].init.headers.authorization, 'Bearer access-secret');
+  assert.deepEqual(JSON.parse(calls[2].init.body), {
+    prefix: 'user-delete',
+    limit: 1000,
+    offset: 0,
+    sortBy: { column: 'name', order: 'asc' },
+  });
+  assert.deepEqual(JSON.parse(calls[3].init.body), {
+    prefixes: [`user-delete/${checksum}`],
+  });
+  assert.equal(calls[4].init.headers.authorization, 'Bearer access-secret');
+  assert.equal(calls[5].init.headers.authorization, undefined);
+  assert.equal(calls[5].init.headers.apikey, 'sb_secret_test');
+});
+
 test('errors never expose an upstream response body', async () => {
   const app = createApp(config, {
     fetchImpl: async () => jsonResponse({
@@ -470,4 +518,29 @@ test('errors never expose an upstream response body', async () => {
   assert.equal(body.code, 'upstream_unavailable');
   assert.equal(body.retryable, true);
   assert.doesNotMatch(body.message, /database|secret/i);
+});
+
+test('stalled upstream calls fail with a retryable gateway timeout', async () => {
+  const app = createApp({ ...config, upstreamTimeoutMs: 5 }, {
+    fetchImpl: (_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(init.signal.reason), {
+        once: true,
+      });
+    }),
+  });
+
+  const response = await app.handle(request('/v1/auth/login', {
+    method: 'POST',
+    body: {
+      protocolVersion: 1,
+      email: 'collector@example.test',
+      password: 'password-123',
+      deviceId: 'device-1',
+    },
+  }));
+  const body = await response.json();
+
+  assert.equal(response.status, 504);
+  assert.equal(body.code, 'upstream_timeout');
+  assert.equal(body.retryable, true);
 });

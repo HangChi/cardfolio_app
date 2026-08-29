@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -12,15 +13,35 @@ final class RestAccountSyncRemote implements AccountSyncRemote {
   factory RestAccountSyncRemote({
     required Uri baseUri,
     required http.Client client,
-  }) => RestAccountSyncRemote._(_validatedBaseUri(baseUri), client);
+    Duration requestTimeout = const Duration(seconds: 30),
+    Duration attachmentTimeout = const Duration(minutes: 2),
+  }) {
+    if (requestTimeout <= Duration.zero ||
+        attachmentTimeout <= Duration.zero) {
+      throw ArgumentError('同步超时必须大于零');
+    }
+    return RestAccountSyncRemote._(
+      _validatedBaseUri(baseUri),
+      client,
+      requestTimeout,
+      attachmentTimeout,
+    );
+  }
 
-  RestAccountSyncRemote._(this._baseUri, this._client);
+  RestAccountSyncRemote._(
+    this._baseUri,
+    this._client,
+    this._requestTimeout,
+    this._attachmentTimeout,
+  );
 
   static const int protocolVersion = 1;
   static final RegExp _checksumPattern = RegExp(r'^[0-9a-f]{64}$');
 
   final Uri _baseUri;
   final http.Client _client;
+  final Duration _requestTimeout;
+  final Duration _attachmentTimeout;
 
   @override
   Future<void> register({
@@ -496,8 +517,20 @@ final class RestAccountSyncRemote implements AccountSyncRemote {
     if (bodyBytes != null) request.bodyBytes = bodyBytes;
 
     final http.Response response;
+    final timeout = path.startsWith('/v1/sync/attachments/')
+        ? _attachmentTimeout
+        : _requestTimeout;
     try {
-      response = await http.Response.fromStream(await _client.send(request));
+      response = await (() async {
+        final streamed = await _client.send(request);
+        return http.Response.fromStream(streamed);
+      })().timeout(timeout);
+    } on TimeoutException catch (error) {
+      throw SyncTransportFailure(
+        code: 'network_timeout',
+        retryable: true,
+        cause: error,
+      );
     } on Object catch (error) {
       throw SyncTransportFailure(
         code: 'network_unavailable',

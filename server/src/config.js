@@ -46,6 +46,11 @@ export function loadConfig(env = process.env) {
       15 * 60 * 1000,
       'AUTH_RATE_WINDOW_MS',
     ),
+    upstreamTimeoutMs: positiveInteger(
+      env.UPSTREAM_TIMEOUT_MS,
+      30 * 1000,
+      'UPSTREAM_TIMEOUT_MS',
+    ),
     trustProxy: env.TRUST_PROXY === 'true',
   });
 }

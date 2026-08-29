@@ -80,8 +80,8 @@ flutter run -d macos --dart-define=CARD_FOLIO_CATALOG_BASE_URL=https://catalog.e
 
 ## 5. 注意事项
 
-- **macOS 平台尚未完整验收**：`macos/` 目录已配置好 entitlements（Keychain/网络
-  权限），但 `image_picker`、`image_cropper` 等依赖在 macOS 桌面端的行为与手机端
+- **macOS 平台尚未完整验收**：`macos/` 的 Debug/Profile 与 Release 已配置出站网络
+  entitlement，但 Keychain、安全存储、`image_picker`、`image_cropper` 等依赖在桌面端
   可能存在差异，首次运行时留意拍照、相册、裁剪相关功能。
 - 数据（数据库 + 图片）保存在平台应用支持目录下，卸载或删除应用会一并清除。
 - 完整开发流程、质量门禁与已知问题见 [README.md](README.md)、

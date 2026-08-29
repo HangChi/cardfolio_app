@@ -43,7 +43,9 @@ createdAt: UTC
 ```
 
 服务端按 `(user_id, operation_id)` 去重。相同 ID 与相同载荷返回原 ack；相同 ID 与不同
-载荷返回 `idempotency_mismatch`。游标是不透明字符串，客户端不得解析或按设备时间构造。
+载荷返回 `idempotency_mismatch`。同一账号、操作和实体的并发写由事务锁串行化。账号删除
+进入 `deleting` 状态后，实体和附件写入返回失败；游标是不透明字符串，客户端不得解析
+或按设备时间构造。
 
 ## 客户端仓储
 

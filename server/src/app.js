@@ -1,5 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 
+import { deleteAccountAttachments } from './account_cleanup.js';
+import { ApiError, upstreamError } from './api_error.js';
+
 const protocolVersion = 1;
 const checksumPattern = /^[0-9a-f]{64}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -23,15 +26,6 @@ const entityTypes = new Set([
   'exchangeRates',
   'recycleBinSettings',
 ]);
-
-class ApiError extends Error {
-  constructor(status, code, message, retryable = false) {
-    super(message);
-    this.status = status;
-    this.code = code;
-    this.retryable = retryable;
-  }
-}
 
 class SlidingWindowLimiter {
   constructor(limit, windowMs, now) {
@@ -273,6 +267,21 @@ export function createApp(config, dependencies = {}) {
         }
         const token = bearer(request);
         const user = await currentUser(token);
+        const beginDeletion = await upstream(
+          '/rest/v1/rpc/cardfolio_begin_account_deletion',
+          {
+            method: 'POST',
+            headers: userHeaders(token, true),
+            body: '{}',
+          },
+        );
+        if (!beginDeletion.ok) throw upstreamError(beginDeletion.status);
+        await deleteAccountAttachments({
+          token,
+          userId: user.id,
+          upstream,
+          userHeaders,
+        });
         const cleanup = await upstream('/rest/v1/rpc/cardfolio_delete_my_cloud_data', {
           method: 'POST',
           headers: userHeaders(token, true),
@@ -497,8 +506,19 @@ export function createApp(config, dependencies = {}) {
     return user;
   }
 
-  function upstream(path, init = {}) {
-    return fetchImpl(new URL(path, config.supabaseUrl), init);
+  async function upstream(path, init = {}) {
+    const signal = AbortSignal.timeout(config.upstreamTimeoutMs);
+    try {
+      return await fetchImpl(new URL(path, config.supabaseUrl), {
+        ...init,
+        signal,
+      });
+    } catch (error) {
+      if (signal.aborted) {
+        throw new ApiError(504, 'upstream_timeout', '云端服务响应超时。', true);
+      }
+      throw new ApiError(502, 'upstream_unavailable', '云端服务暂时不可用。', true);
+    }
   }
 
   function anonHeaders(jsonBody = false) {
@@ -678,6 +698,9 @@ async function mutationError(response) {
   if (code.includes('invalid_mutation')) {
     return new ApiError(400, 'invalid_mutation', '同步操作格式无效。');
   }
+  if (code.includes('account_deleting')) {
+    return new ApiError(409, 'account_deleting', '账号正在删除，不能再写入云端数据。');
+  }
   return upstreamError(response.status);
 }
 
@@ -755,15 +778,6 @@ function emailOtpError(status) {
     return new ApiError(401, 'email_auth_failed', '邮箱或验证码无效。');
   }
   return upstreamError(status);
-}
-
-function upstreamError(status) {
-  if (status === 401) return new ApiError(401, 'authentication_required', '登录已过期，请重新登录。');
-  if (status === 403) return new ApiError(403, 'forbidden', '没有权限访问这份云端数据。');
-  if (status === 404) return new ApiError(404, 'not_found', '请求的数据不存在。');
-  if (status === 409) return new ApiError(409, 'conflict', '云端数据存在冲突。');
-  if (status === 429) return new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
-  return new ApiError(502, 'upstream_unavailable', '云端服务暂时不可用。', true);
 }
 
 function sha256(bytes) {

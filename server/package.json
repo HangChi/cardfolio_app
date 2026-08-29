@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test",
-    "check": "node --check src/app.js && node --check src/server.js"
+    "check": "node --check src/account_cleanup.js && node --check src/api_error.js && node --check src/app.js && node --check src/config.js && node --check src/server.js && node --check scripts/check-markdown-links.js",
+    "check:docs": "node scripts/check-markdown-links.js"
   }
 }

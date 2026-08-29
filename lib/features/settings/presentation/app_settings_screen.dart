@@ -104,6 +104,9 @@ class AppSettingsScreen extends ConsumerWidget {
                     ListTile(
                       leading: const Icon(Icons.photo_library_outlined),
                       title: const Text('照片与媒体'),
+                      subtitle: value.photoPermission == 'notRequired'
+                          ? const Text('使用系统照片选择器，不申请广泛媒体权限。')
+                          : null,
                       trailing: AppStatusBadge(
                         label: _permissionLabel(value.photoPermission),
                         icon: _permissionIcon(value.photoPermission),

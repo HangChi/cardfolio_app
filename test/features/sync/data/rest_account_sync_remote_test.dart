@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -380,6 +381,27 @@ void main() {
     expect(
       request.headers['idempotency-key'],
       '9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a',
+    );
+  });
+
+  test('maps a stalled request to a retryable timeout', () async {
+    final remote = RestAccountSyncRemote(
+      baseUri: Uri.parse('https://sync.example.test'),
+      client: MockClient((_) => Completer<http.Response>().future),
+      requestTimeout: const Duration(milliseconds: 5),
+    );
+
+    await expectLater(
+      remote.login(
+        email: 'collector@example.test',
+        password: 'password-123',
+        deviceId: 'device-1',
+      ),
+      throwsA(
+        isA<SyncTransportFailure>()
+            .having((failure) => failure.code, 'code', 'network_timeout')
+            .having((failure) => failure.retryable, 'retryable', isTrue),
+      ),
     );
   });
 }

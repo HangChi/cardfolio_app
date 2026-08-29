@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.StatFs
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
@@ -87,15 +86,12 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun inspectDevice(): Map<String, Any> {
-        val photoPermission = if (Build.VERSION.SDK_INT >= 33) {
-            permission(Manifest.permission.READ_MEDIA_IMAGES)
-        } else {
-            permission(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
         val stats = StatFs(filesDir.absolutePath)
         return mapOf(
             "cameraPermission" to permission(Manifest.permission.CAMERA),
-            "photoPermission" to photoPermission,
+            // image_picker uses a system picker and receives per-selection URI
+            // access, so Cardfolio does not request broad media-library access.
+            "photoPermission" to "notRequired",
             "freeBytes" to stats.availableBytes,
             "totalBytes" to stats.totalBytes,
         )

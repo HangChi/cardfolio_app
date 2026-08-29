@@ -1,6 +1,6 @@
 # Feature 010 数据模型
 
-## 本地 v7
+## 本地同步表（v7 引入，当前 schema v9）
 
 | 表 | 主键 | 用途 |
 |---|---|---|
@@ -17,6 +17,10 @@
 `server_version bigint`、`deleted boolean`、`updated_at timestamptz`。`sync_operations`
 以 `(user_id, operation_id)` 唯一；`sync_changes` 的单调 `change_id` 形成 pull 游标。
 对象路径为 `<user_id>/<sha256>`，私有 bucket 禁止跨用户读取。
+
+`cardfolio_account_lifecycle` 记录账号是否进入删除流程。登录用户只有同步表读取权限；写入
+统一通过 Security Definer RPC，并用账号、操作和实体事务锁保护。附件必须经 Storage API
+删除，不能直接修改 `storage.objects` 元数据。
 
 ## 合并
 

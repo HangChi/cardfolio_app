@@ -1,7 +1,7 @@
 # Feature 010 测试矩阵
 
 > 本页数字是 2026-07-29 同步客户端首次交付的历史主机证据，不是当前全量测试数量；
-> 当前验证见[工程基线](../../engineering-baseline.md)，生产服务与双设备验收仍未完成。
+> 当前验证见[工程基线](../../engineering-baseline.md)，生产部署与双设备验收仍未完成。
 
 | ID | 类型 | 场景 | 自动化 |
 |---|---|---|---|
@@ -15,6 +15,8 @@
 | T08 | 安全 | 令牌安全存储生命周期 | `secure_session_store_test.dart` |
 | T09 | 仓储 | 重放、刷新、退避、退出保留 | `account_sync_repository_impl_test.dart` |
 | T10 | Widget | 本地模式、登录、开关、状态、冲突、删除确认 | `profile_screen_test.dart` |
+| T11 | Node | 认证代理、push/pull、附件、脱敏、超时、删除顺序 | `server/test/app.test.js` |
+| T12 | SQL 守卫 | 撤销直写、Security Definer、账号/操作/实体锁、删除门禁 | `server/test/migrations.test.js` |
 
 ## 自动化结果
 
@@ -23,6 +25,8 @@
 - `flutter analyze --no-pub`：0 问题。
 - Dart 格式检查：30 个变更文件，0 个需修改。
 - 本轮没有启动模拟器或真机；以下步骤保留给设备环境手动执行。
+- 2026-08-29 当前网关与迁移守卫 17 项通过，Node 语法检查通过；Flutter 当前 HEAD 结果
+  等待 CI，不能沿用上面的历史数量冒充复验。
 
 ## 模拟器/真机手动步骤
 
