@@ -48,12 +48,31 @@ final class AccountSyncRepositoryImpl implements AccountSyncRepository {
     required String password,
   }) async {
     final settings = await _local.settings();
-    final session = await _remote.register(
+    await _remote.register(
       email: email,
       password: password,
       deviceId: settings.deviceId,
     );
+  }
+
+  @override
+  Future<void> verifyRegistration({
+    required String email,
+    required String code,
+  }) async {
+    final settings = await _local.settings();
+    final session = await _remote.verifyRegistration(
+      email: email,
+      code: code,
+      deviceId: settings.deviceId,
+    );
     await _acceptSession(session);
+  }
+
+  @override
+  Future<void> resendRegistration({required String email}) async {
+    final settings = await _local.settings();
+    await _remote.resendRegistration(email: email, deviceId: settings.deviceId);
   }
 
   @override
@@ -62,6 +81,82 @@ final class AccountSyncRepositoryImpl implements AccountSyncRepository {
     final session = await _remote.login(
       email: email,
       password: password,
+      deviceId: settings.deviceId,
+    );
+    await _acceptSession(session);
+  }
+
+  @override
+  Future<void> sendPasswordReset({required String email}) async {
+    final settings = await _local.settings();
+    await _remote.sendPasswordReset(email: email, deviceId: settings.deviceId);
+  }
+
+  @override
+  Future<void> verifyPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final settings = await _local.settings();
+    final session = await _remote.verifyPasswordReset(
+      email: email,
+      code: code,
+      newPassword: newPassword,
+      deviceId: settings.deviceId,
+    );
+    await _acceptSession(session);
+  }
+
+  @override
+  Future<void> sendEmailOtp({
+    required String email,
+    required bool createUser,
+  }) async {
+    final settings = await _local.settings();
+    await _remote.sendEmailOtp(
+      email: email,
+      createUser: createUser,
+      deviceId: settings.deviceId,
+    );
+  }
+
+  @override
+  Future<void> verifyEmailOtp({
+    required String email,
+    required String code,
+  }) async {
+    final settings = await _local.settings();
+    final session = await _remote.verifyEmailOtp(
+      email: email,
+      code: code,
+      deviceId: settings.deviceId,
+    );
+    await _acceptSession(session);
+  }
+
+  @override
+  Future<void> sendPhoneOtp({
+    required String phone,
+    required bool createUser,
+  }) async {
+    final settings = await _local.settings();
+    await _remote.sendPhoneOtp(
+      phone: phone,
+      createUser: createUser,
+      deviceId: settings.deviceId,
+    );
+  }
+
+  @override
+  Future<void> verifyPhoneOtp({
+    required String phone,
+    required String code,
+  }) async {
+    final settings = await _local.settings();
+    final session = await _remote.verifyPhoneOtp(
+      phone: phone,
+      code: code,
       deviceId: settings.deviceId,
     );
     await _acceptSession(session);

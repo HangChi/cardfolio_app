@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>卡迹重置密码验证码</title>
+  </head>
+  <body style="margin:0;padding:0;background:#F6F2E8;color:#1A1F1C;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">使用验证码重置卡迹账号密码，请勿向任何人透露。</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#F6F2E8;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#FFFEFA;border:1px solid #D7D0BC;border-radius:20px;overflow:hidden;box-shadow:0 12px 32px rgba(29,44,37,0.10);">
+            <tr><td style="height:8px;background:#1F574A;font-size:0;line-height:0;">&nbsp;</td></tr>
+            <tr>
+              <td style="padding:32px 36px 12px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td>
+                      <div style="font-size:25px;line-height:32px;font-weight:800;color:#1F574A;letter-spacing:1px;">卡迹</div>
+                      <div style="font-size:12px;line-height:18px;color:#65695F;letter-spacing:2px;text-transform:uppercase;">Cardfolio</div>
+                    </td>
+                    <td align="right" valign="top"><span style="display:inline-block;padding:6px 10px;border-radius:999px;background:#FFF0E7;color:#743718;font-size:12px;line-height:16px;font-weight:700;">密码重置</span></td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 36px 0;">
+                <h1 style="margin:0 0 12px;font-size:24px;line-height:34px;color:#1A1F1C;">重置你的卡迹账号密码</h1>
+                <p style="margin:0;color:#565C55;font-size:15px;line-height:25px;">我们收到了密码重置请求。请在卡迹中输入下方验证码，然后设置新密码。</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 36px 24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#E8EDDE;border:1px solid #CFD9C8;border-radius:16px;">
+                  <tr><td align="center" style="padding:22px 16px 8px;color:#565C55;font-size:13px;line-height:20px;">你的重置密码验证码</td></tr>
+                  <tr><td align="center" style="padding:0 12px 22px;color:#1F574A;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:36px;line-height:46px;font-weight:800;letter-spacing:8px;">{{ .Token }}</td></tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 36px 28px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#FFF3EC;border-left:4px solid #DE6E38;border-radius:8px;">
+                  <tr><td style="padding:14px 16px;color:#4A2A1C;font-size:13px;line-height:21px;"><strong>安全提醒：</strong>验证码仅用于本次密码重置。任何人向你索要验证码时，都不要提供。</td></tr>
+                </table>
+                <p style="margin:20px 0 0;color:#65695F;font-size:13px;line-height:22px;">如果这不是你的操作，请忽略本邮件；原密码不会发生变化。</p>
+              </td>
+            </tr>
+            <tr><td style="padding:20px 36px;background:#F3F0E6;border-top:1px solid #E3DCC9;color:#777D75;font-size:12px;line-height:20px;">本邮件由卡迹账号系统自动发送，请勿直接回复。<br>卡迹 · 记录每一张值得收藏的交通卡</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

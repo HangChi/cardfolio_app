@@ -4,15 +4,62 @@ import '../../../core/errors/app_failure.dart';
 import '../domain/sync_models.dart';
 
 abstract interface class AccountSyncRemote {
-  Future<AccountSession> register({
+  Future<void> register({
     required String email,
     required String password,
+    required String deviceId,
+  });
+
+  Future<AccountSession> verifyRegistration({
+    required String email,
+    required String code,
+    required String deviceId,
+  });
+
+  Future<void> resendRegistration({
+    required String email,
     required String deviceId,
   });
 
   Future<AccountSession> login({
     required String email,
     required String password,
+    required String deviceId,
+  });
+
+  Future<void> sendPasswordReset({
+    required String email,
+    required String deviceId,
+  });
+
+  Future<AccountSession> verifyPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String deviceId,
+  });
+
+  Future<void> sendEmailOtp({
+    required String email,
+    required bool createUser,
+    required String deviceId,
+  });
+
+  Future<AccountSession> verifyEmailOtp({
+    required String email,
+    required String code,
+    required String deviceId,
+  });
+
+  Future<void> sendPhoneOtp({
+    required String phone,
+    required bool createUser,
+    required String deviceId,
+  });
+
+  Future<AccountSession> verifyPhoneOtp({
+    required String phone,
+    required String code,
     required String deviceId,
   });
 
@@ -57,9 +104,22 @@ final class UnavailableAccountSyncRemote implements AccountSyncRemote {
   Never _unavailable() => throw const SyncConfigurationFailure();
 
   @override
-  Future<AccountSession> register({
+  Future<void> register({
     required String email,
     required String password,
+    required String deviceId,
+  }) async => _unavailable();
+
+  @override
+  Future<AccountSession> verifyRegistration({
+    required String email,
+    required String code,
+    required String deviceId,
+  }) async => _unavailable();
+
+  @override
+  Future<void> resendRegistration({
+    required String email,
     required String deviceId,
   }) async => _unavailable();
 
@@ -67,6 +127,48 @@ final class UnavailableAccountSyncRemote implements AccountSyncRemote {
   Future<AccountSession> login({
     required String email,
     required String password,
+    required String deviceId,
+  }) async => _unavailable();
+
+  @override
+  Future<void> sendPasswordReset({
+    required String email,
+    required String deviceId,
+  }) async => _unavailable();
+
+  @override
+  Future<AccountSession> verifyPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String deviceId,
+  }) async => _unavailable();
+
+  @override
+  Future<void> sendEmailOtp({
+    required String email,
+    required bool createUser,
+    required String deviceId,
+  }) async => _unavailable();
+
+  @override
+  Future<AccountSession> verifyEmailOtp({
+    required String email,
+    required String code,
+    required String deviceId,
+  }) async => _unavailable();
+
+  @override
+  Future<void> sendPhoneOtp({
+    required String phone,
+    required bool createUser,
+    required String deviceId,
+  }) async => _unavailable();
+
+  @override
+  Future<AccountSession> verifyPhoneOtp({
+    required String phone,
+    required String code,
     required String deviceId,
   }) async => _unavailable();
 

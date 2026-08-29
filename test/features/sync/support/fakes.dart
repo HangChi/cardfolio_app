@@ -47,11 +47,24 @@ final class FakeAccountSyncRemote implements AccountSyncRemote {
   );
 
   @override
-  Future<AccountSession> register({
+  Future<void> register({
     required String email,
     required String password,
     required String deviceId,
+  }) async {}
+
+  @override
+  Future<AccountSession> verifyRegistration({
+    required String email,
+    required String code,
+    required String deviceId,
   }) async => session();
+
+  @override
+  Future<void> resendRegistration({
+    required String email,
+    required String deviceId,
+  }) async {}
 
   @override
   Future<AccountSession> login({
@@ -59,6 +72,54 @@ final class FakeAccountSyncRemote implements AccountSyncRemote {
     required String password,
     required String deviceId,
   }) async => session();
+
+  @override
+  Future<void> sendPasswordReset({
+    required String email,
+    required String deviceId,
+  }) async {}
+
+  @override
+  Future<AccountSession> verifyPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String deviceId,
+  }) async => session();
+
+  @override
+  Future<void> sendEmailOtp({
+    required String email,
+    required bool createUser,
+    required String deviceId,
+  }) async {}
+
+  @override
+  Future<AccountSession> verifyEmailOtp({
+    required String email,
+    required String code,
+    required String deviceId,
+  }) async => session();
+
+  @override
+  Future<void> sendPhoneOtp({
+    required String phone,
+    required bool createUser,
+    required String deviceId,
+  }) async {}
+
+  @override
+  Future<AccountSession> verifyPhoneOtp({
+    required String phone,
+    required String code,
+    required String deviceId,
+  }) async => AccountSession(
+    userId: 'user-phone',
+    email: phone,
+    accessToken: 'phone-access',
+    refreshToken: 'phone-refresh',
+    expiresAt: DateTime.utc(2026, 7, 30),
+  );
 
   @override
   Future<AccountSession> refresh({
@@ -159,6 +220,20 @@ final class FakeAccountSyncRepository implements AccountSyncRepository {
   String? loginEmail;
   String? loginPassword;
   String? registerEmail;
+  String? registerPassword;
+  String? registrationCode;
+  var registrationResends = 0;
+  String? passwordResetEmail;
+  String? passwordResetCode;
+  String? newPassword;
+  String? otpEmail;
+  bool? emailOtpCreateUser;
+  String? verifiedEmail;
+  String? verifiedEmailCode;
+  String? otpPhone;
+  bool? otpCreateUser;
+  String? verifiedPhone;
+  String? verifiedCode;
   var syncCalls = 0;
   var signOutCalls = 0;
   bool? syncEnabled;
@@ -185,6 +260,74 @@ final class FakeAccountSyncRepository implements AccountSyncRepository {
     required String password,
   }) async {
     registerEmail = email;
+    registerPassword = password;
+  }
+
+  @override
+  Future<void> verifyRegistration({
+    required String email,
+    required String code,
+  }) async {
+    verifiedEmail = email;
+    registrationCode = code;
+  }
+
+  @override
+  Future<void> resendRegistration({required String email}) async {
+    registerEmail = email;
+    registrationResends++;
+  }
+
+  @override
+  Future<void> sendPasswordReset({required String email}) async {
+    passwordResetEmail = email;
+  }
+
+  @override
+  Future<void> verifyPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    passwordResetEmail = email;
+    passwordResetCode = code;
+    this.newPassword = newPassword;
+  }
+
+  @override
+  Future<void> sendEmailOtp({
+    required String email,
+    required bool createUser,
+  }) async {
+    otpEmail = email;
+    emailOtpCreateUser = createUser;
+  }
+
+  @override
+  Future<void> verifyEmailOtp({
+    required String email,
+    required String code,
+  }) async {
+    verifiedEmail = email;
+    verifiedEmailCode = code;
+  }
+
+  @override
+  Future<void> sendPhoneOtp({
+    required String phone,
+    required bool createUser,
+  }) async {
+    otpPhone = phone;
+    otpCreateUser = createUser;
+  }
+
+  @override
+  Future<void> verifyPhoneOtp({
+    required String phone,
+    required String code,
+  }) async {
+    verifiedPhone = phone;
+    verifiedCode = code;
   }
 
   @override

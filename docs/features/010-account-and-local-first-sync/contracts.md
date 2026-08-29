@@ -3,11 +3,20 @@
 ## REST v1
 
 ```text
-POST   /v1/auth/register       {email,password,deviceId} -> Session
+POST   /v1/auth/register       {email,password,deviceId} -> {resendAfterSeconds}
+POST   /v1/auth/register/verify {email,code,deviceId} -> Session
+POST   /v1/auth/register/resend {email,deviceId} -> {resendAfterSeconds}
 POST   /v1/auth/login          {email,password,deviceId} -> Session
+POST   /v1/auth/password/reset/send {email,deviceId} -> {resendAfterSeconds}
+POST   /v1/auth/password/reset/verify {email,code,newPassword,deviceId} -> Session
+POST   /v1/auth/email/send     {email,createUser,deviceId} -> {resendAfterSeconds}
+POST   /v1/auth/email/verify   {email,code,deviceId} -> Session
+POST   /v1/auth/phone/send     {phone,createUser,deviceId} -> {resendAfterSeconds}
+POST   /v1/auth/phone/verify   {phone,code,deviceId} -> Session
 POST   /v1/auth/refresh        {refreshToken,deviceId} -> Session
 POST   /v1/auth/logout         Authorization: Bearer <token> -> 204
 DELETE /v1/account            Authorization + confirmation -> 204
+GET    /v1/account/export     Authorization -> JSON bytes + X-Content-SHA256
 POST   /v1/sync/push           {deviceId,mutations[]} -> {acks[],changes[],cursor}
 GET    /v1/sync/pull           ?cursor=<opaque>&limit=100 -> {changes[],cursor,hasMore}
 PUT    /v1/sync/attachments/{sha256}  binary + Idempotency-Key -> 204
@@ -16,6 +25,9 @@ GET    /v1/sync/attachments/{sha256}  -> binary
 
 所有成功 JSON 返回 `protocolVersion: 1`。错误返回
 `{code,message,retryable}`；`message` 不含表名、SQL、令牌或用户内容。
+
+`GET /v1/account/export` 导出服务端保存的逻辑实体，不替代 App 内包含图片的完整 ZIP
+备份。响应使用 `X-File-Name` 和 `X-Content-SHA256` 标识文件名与内容校验和。
 
 ## Mutation
 

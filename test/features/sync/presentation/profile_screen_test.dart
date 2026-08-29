@@ -26,9 +26,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('local mode explains offline use and submits login', (
-    tester,
-  ) async {
+  testWidgets('email login uses email and password', (tester) async {
     await pumpProfile(tester);
 
     expect(find.text('本地模式'), findsOneWidget);
@@ -42,11 +40,111 @@ void main() {
       find.byKey(const Key('account-password')),
       'password-123',
     );
-    await tester.tap(find.widgetWithText(FilledButton, '登录'));
+    final loginButton = find.text('登录');
+    await tester.ensureVisible(loginButton);
+    await tester.pumpAndSettle();
+    await tester.tap(loginButton);
     await tester.pumpAndSettle();
 
     expect(repository.loginEmail, 'collector@example.test');
     expect(repository.loginPassword, 'password-123');
+  });
+
+  testWidgets('email registration verifies one OTP', (tester) async {
+    await pumpProfile(tester);
+
+    await tester.enterText(
+      find.byKey(const Key('account-email')),
+      'new@example.test',
+    );
+    await tester.enterText(
+      find.byKey(const Key('account-password')),
+      'password-123',
+    );
+    final registerButton = find.text('注册');
+    await tester.ensureVisible(registerButton);
+    await tester.pumpAndSettle();
+    await tester.tap(registerButton);
+    await tester.pumpAndSettle();
+
+    expect(repository.registerEmail, 'new@example.test');
+    expect(repository.registerPassword, 'password-123');
+
+    await tester.enterText(
+      find.byKey(const Key('account-email-otp')),
+      '123456',
+    );
+    final verifyButton = find.text('验证并完成注册');
+    await tester.ensureVisible(verifyButton);
+    await tester.pumpAndSettle();
+    await tester.tap(verifyButton);
+    await tester.pumpAndSettle();
+
+    expect(repository.verifiedEmail, 'new@example.test');
+    expect(repository.registrationCode, '123456');
+  });
+
+  testWidgets('forgot password verifies email OTP and sets new password', (
+    tester,
+  ) async {
+    await pumpProfile(tester);
+    await tester.enterText(
+      find.byKey(const Key('account-email')),
+      'collector@example.test',
+    );
+    final forgotButton = find.text('忘记密码？');
+    await tester.ensureVisible(forgotButton);
+    await tester.pumpAndSettle();
+    await tester.tap(forgotButton);
+    await tester.pumpAndSettle();
+
+    expect(repository.passwordResetEmail, 'collector@example.test');
+    await tester.enterText(
+      find.byKey(const Key('account-email-otp')),
+      '654321',
+    );
+    await tester.enterText(
+      find.byKey(const Key('account-new-password')),
+      'new-password-123',
+    );
+    final resetButton = find.text('验证并重置密码');
+    await tester.ensureVisible(resetButton);
+    await tester.pumpAndSettle();
+    await tester.tap(resetButton);
+    await tester.pumpAndSettle();
+
+    expect(repository.passwordResetCode, '654321');
+    expect(repository.newPassword, 'new-password-123');
+  });
+
+  testWidgets('phone registration sends and verifies an SMS OTP', (
+    tester,
+  ) async {
+    await pumpProfile(tester);
+
+    await tester.tap(find.text('手机号'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('account-phone')),
+      '+8613812345678',
+    );
+    await tester.tap(find.text('注册并获取验证码'));
+    await tester.pumpAndSettle();
+
+    expect(repository.otpPhone, '+8613812345678');
+    expect(repository.otpCreateUser, isTrue);
+    expect(find.byKey(const Key('account-otp')), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('account-otp')), '123456');
+    final verifyButton = find.text('验证并登录');
+    await tester.ensureVisible(verifyButton);
+    await tester.pumpAndSettle();
+    await tester.tap(verifyButton);
+    await tester.pumpAndSettle();
+
+    expect(repository.verifiedPhone, '+8613812345678');
+    expect(repository.verifiedCode, '123456');
   });
 
   testWidgets('signed-in mode shows queue, toggle and manual retry', (

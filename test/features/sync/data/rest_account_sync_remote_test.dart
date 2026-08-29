@@ -58,6 +58,187 @@ void main() {
     expect(session.accessToken, 'access-secret');
   });
 
+  test(
+    'registration and password recovery use dedicated OTP endpoints',
+    () async {
+      final requests = <http.Request>[];
+      final remote = RestAccountSyncRemote(
+        baseUri: Uri.parse('https://sync.example.test'),
+        client: MockClient((request) async {
+          requests.add(request);
+          final isVerification = request.url.path.endsWith('/verify');
+          return http.Response(
+            jsonEncode(
+              isVerification
+                  ? <String, Object?>{
+                      'protocolVersion': 1,
+                      'userId': 'user-1',
+                      'email': 'collector@example.test',
+                      'accessToken': 'access-secret',
+                      'refreshToken': 'refresh-secret',
+                      'expiresAt': '2026-07-29T10:00:00.000Z',
+                    }
+                  : <String, Object?>{
+                      'protocolVersion': 1,
+                      'resendAfterSeconds': 60,
+                    },
+            ),
+            200,
+          );
+        }),
+      );
+
+      await remote.register(
+        email: 'new@example.test',
+        password: 'password-123',
+        deviceId: 'device-1',
+      );
+      await remote.verifyRegistration(
+        email: 'new@example.test',
+        code: '123456',
+        deviceId: 'device-1',
+      );
+      await remote.sendPasswordReset(
+        email: 'collector@example.test',
+        deviceId: 'device-1',
+      );
+      await remote.verifyPasswordReset(
+        email: 'collector@example.test',
+        code: '654321',
+        newPassword: 'new-password-123',
+        deviceId: 'device-1',
+      );
+
+      expect(requests.map((request) => request.url.path), <String>[
+        '/v1/auth/register',
+        '/v1/auth/register/verify',
+        '/v1/auth/password/reset/send',
+        '/v1/auth/password/reset/verify',
+      ]);
+      expect(jsonDecode(requests.last.body), <String, Object?>{
+        'protocolVersion': 1,
+        'email': 'collector@example.test',
+        'code': '654321',
+        'newPassword': 'new-password-123',
+        'deviceId': 'device-1',
+      });
+    },
+  );
+
+  test('phone OTP send and verify use the versioned auth contract', () async {
+    final requests = <http.Request>[];
+    final remote = RestAccountSyncRemote(
+      baseUri: Uri.parse('https://sync.example.test'),
+      client: MockClient((request) async {
+        requests.add(request);
+        if (request.url.path.endsWith('/send')) {
+          return http.Response(
+            jsonEncode(<String, Object?>{
+              'protocolVersion': 1,
+              'resendAfterSeconds': 60,
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode(<String, Object?>{
+            'protocolVersion': 1,
+            'userId': 'user-phone',
+            'email': '+8613812345678',
+            'accessToken': 'phone-access',
+            'refreshToken': 'phone-refresh',
+            'expiresAt': '2026-07-29T10:00:00.000Z',
+          }),
+          200,
+        );
+      }),
+    );
+
+    await remote.sendPhoneOtp(
+      phone: '+86 138-1234-5678',
+      createUser: true,
+      deviceId: 'device-1',
+    );
+    final session = await remote.verifyPhoneOtp(
+      phone: '+8613812345678',
+      code: '123456',
+      deviceId: 'device-1',
+    );
+
+    expect(requests[0].url.path, '/v1/auth/phone/send');
+    expect(jsonDecode(requests[0].body), <String, Object?>{
+      'protocolVersion': 1,
+      'phone': '+8613812345678',
+      'createUser': true,
+      'deviceId': 'device-1',
+    });
+    expect(requests[1].url.path, '/v1/auth/phone/verify');
+    expect(jsonDecode(requests[1].body), <String, Object?>{
+      'protocolVersion': 1,
+      'phone': '+8613812345678',
+      'code': '123456',
+      'deviceId': 'device-1',
+    });
+    expect(session.email, '+8613812345678');
+  });
+
+  test('email OTP send and verify use the versioned auth contract', () async {
+    final requests = <http.Request>[];
+    final remote = RestAccountSyncRemote(
+      baseUri: Uri.parse('https://sync.example.test'),
+      client: MockClient((request) async {
+        requests.add(request);
+        if (request.url.path.endsWith('/send')) {
+          return http.Response(
+            jsonEncode(<String, Object?>{
+              'protocolVersion': 1,
+              'resendAfterSeconds': 60,
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode(<String, Object?>{
+            'protocolVersion': 1,
+            'userId': 'user-email',
+            'email': 'collector@example.test',
+            'accessToken': 'email-access',
+            'refreshToken': 'email-refresh',
+            'expiresAt': '2026-07-29T10:00:00.000Z',
+          }),
+          200,
+        );
+      }),
+    );
+
+    await remote.sendEmailOtp(
+      email: ' Collector@Example.Test ',
+      createUser: true,
+      deviceId: 'device-1',
+    );
+    final session = await remote.verifyEmailOtp(
+      email: 'collector@example.test',
+      code: '123456',
+      deviceId: 'device-1',
+    );
+
+    expect(requests[0].url.path, '/v1/auth/email/send');
+    expect(jsonDecode(requests[0].body), <String, Object?>{
+      'protocolVersion': 1,
+      'email': 'collector@example.test',
+      'createUser': true,
+      'deviceId': 'device-1',
+    });
+    expect(requests[1].url.path, '/v1/auth/email/verify');
+    expect(jsonDecode(requests[1].body), <String, Object?>{
+      'protocolVersion': 1,
+      'email': 'collector@example.test',
+      'code': '123456',
+      'deviceId': 'device-1',
+    });
+    expect(session.email, 'collector@example.test');
+  });
+
   test('push carries bearer auth and stable idempotency keys', () async {
     late http.Request request;
     final remote = RestAccountSyncRemote(

@@ -23,14 +23,46 @@ final class RestAccountSyncRemote implements AccountSyncRemote {
   final http.Client _client;
 
   @override
-  Future<AccountSession> register({
+  Future<void> register({
     required String email,
     required String password,
     required String deviceId,
-  }) => _authenticate(
-    'register',
+  }) async {
+    final normalizedEmail = _normalizedEmail(email);
+    if (password.length < 8 || deviceId.isEmpty) {
+      throw const AuthenticationFailure('请输入有效邮箱和至少 8 位密码。');
+    }
+    await _jsonRequest(
+      'POST',
+      '/v1/auth/register',
+      body: <String, Object?>{
+        'protocolVersion': protocolVersion,
+        'email': normalizedEmail,
+        'password': password,
+        'deviceId': deviceId,
+      },
+    );
+  }
+
+  @override
+  Future<AccountSession> verifyRegistration({
+    required String email,
+    required String code,
+    required String deviceId,
+  }) => _verifyEmailCode(
+    '/v1/auth/register/verify',
     email: email,
-    password: password,
+    code: code,
+    deviceId: deviceId,
+  );
+
+  @override
+  Future<void> resendRegistration({
+    required String email,
+    required String deviceId,
+  }) => _sendEmailAction(
+    '/v1/auth/register/resend',
+    email: email,
     deviceId: deviceId,
   );
 
@@ -45,6 +77,133 @@ final class RestAccountSyncRemote implements AccountSyncRemote {
     password: password,
     deviceId: deviceId,
   );
+
+  @override
+  Future<void> sendPasswordReset({
+    required String email,
+    required String deviceId,
+  }) => _sendEmailAction(
+    '/v1/auth/password/reset/send',
+    email: email,
+    deviceId: deviceId,
+  );
+
+  @override
+  Future<AccountSession> verifyPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String deviceId,
+  }) async {
+    if (newPassword.length < 8) {
+      throw const AuthenticationFailure('新密码至少需要 8 位。');
+    }
+    final normalizedEmail = _normalizedEmail(email);
+    final normalizedCode = code.trim();
+    if (!RegExp(r'^\d{6,10}$').hasMatch(normalizedCode) || deviceId.isEmpty) {
+      throw const AuthenticationFailure('请输入有效邮箱验证码。');
+    }
+    final response = await _jsonRequest(
+      'POST',
+      '/v1/auth/password/reset/verify',
+      body: <String, Object?>{
+        'protocolVersion': protocolVersion,
+        'email': normalizedEmail,
+        'code': normalizedCode,
+        'newPassword': newPassword,
+        'deviceId': deviceId,
+      },
+    );
+    return AccountSession.fromJson(response);
+  }
+
+  @override
+  Future<void> sendEmailOtp({
+    required String email,
+    required bool createUser,
+    required String deviceId,
+  }) async {
+    final normalizedEmail = _normalizedEmail(email);
+    if (deviceId.isEmpty) throw const AuthenticationFailure();
+    await _jsonRequest(
+      'POST',
+      '/v1/auth/email/send',
+      body: <String, Object?>{
+        'protocolVersion': protocolVersion,
+        'email': normalizedEmail,
+        'createUser': createUser,
+        'deviceId': deviceId,
+      },
+    );
+  }
+
+  @override
+  Future<AccountSession> verifyEmailOtp({
+    required String email,
+    required String code,
+    required String deviceId,
+  }) async {
+    final normalizedEmail = _normalizedEmail(email);
+    final normalizedCode = code.trim();
+    if (!RegExp(r'^\d{6,10}$').hasMatch(normalizedCode) || deviceId.isEmpty) {
+      throw const AuthenticationFailure('请输入有效邮箱验证码。');
+    }
+    final response = await _jsonRequest(
+      'POST',
+      '/v1/auth/email/verify',
+      body: <String, Object?>{
+        'protocolVersion': protocolVersion,
+        'email': normalizedEmail,
+        'code': normalizedCode,
+        'deviceId': deviceId,
+      },
+    );
+    return AccountSession.fromJson(response);
+  }
+
+  @override
+  Future<void> sendPhoneOtp({
+    required String phone,
+    required bool createUser,
+    required String deviceId,
+  }) async {
+    final normalizedPhone = _normalizedPhone(phone);
+    if (deviceId.isEmpty) throw const AuthenticationFailure();
+    await _jsonRequest(
+      'POST',
+      '/v1/auth/phone/send',
+      body: <String, Object?>{
+        'protocolVersion': protocolVersion,
+        'phone': normalizedPhone,
+        'createUser': createUser,
+        'deviceId': deviceId,
+      },
+    );
+  }
+
+  @override
+  Future<AccountSession> verifyPhoneOtp({
+    required String phone,
+    required String code,
+    required String deviceId,
+  }) async {
+    final normalizedPhone = _normalizedPhone(phone);
+    final normalizedCode = code.trim();
+    if (!RegExp(r'^\d{6,10}$').hasMatch(normalizedCode) || deviceId.isEmpty) {
+      throw const AuthenticationFailure('请输入有效短信验证码。');
+    }
+    final response = await _jsonRequest(
+      'POST',
+      '/v1/auth/phone/verify',
+      body: <String, Object?>{
+        'protocolVersion': protocolVersion,
+        'phone': normalizedPhone,
+        'code': normalizedCode,
+        'deviceId': deviceId,
+      },
+    );
+    return AccountSession.fromJson(response);
+  }
 
   @override
   Future<AccountSession> refresh({
@@ -227,6 +386,64 @@ final class RestAccountSyncRemote implements AccountSyncRemote {
       },
     );
     return AccountSession.fromJson(response);
+  }
+
+  Future<void> _sendEmailAction(
+    String path, {
+    required String email,
+    required String deviceId,
+  }) async {
+    final normalizedEmail = _normalizedEmail(email);
+    if (deviceId.isEmpty) throw const AuthenticationFailure();
+    await _jsonRequest(
+      'POST',
+      path,
+      body: <String, Object?>{
+        'protocolVersion': protocolVersion,
+        'email': normalizedEmail,
+        'deviceId': deviceId,
+      },
+    );
+  }
+
+  Future<AccountSession> _verifyEmailCode(
+    String path, {
+    required String email,
+    required String code,
+    required String deviceId,
+  }) async {
+    final normalizedEmail = _normalizedEmail(email);
+    final normalizedCode = code.trim();
+    if (!RegExp(r'^\d{6,10}$').hasMatch(normalizedCode) || deviceId.isEmpty) {
+      throw const AuthenticationFailure('请输入有效邮箱验证码。');
+    }
+    final response = await _jsonRequest(
+      'POST',
+      path,
+      body: <String, Object?>{
+        'protocolVersion': protocolVersion,
+        'email': normalizedEmail,
+        'code': normalizedCode,
+        'deviceId': deviceId,
+      },
+    );
+    return AccountSession.fromJson(response);
+  }
+
+  static String _normalizedPhone(String value) {
+    final phone = value.trim().replaceAll(RegExp(r'[\s()-]'), '');
+    if (!RegExp(r'^\+[1-9]\d{7,14}$').hasMatch(phone)) {
+      throw const AuthenticationFailure('手机号必须使用国际格式，例如 +8613812345678。');
+    }
+    return phone;
+  }
+
+  static String _normalizedEmail(String value) {
+    final email = value.trim().toLowerCase();
+    if (!email.contains('@') || email.startsWith('@') || email.endsWith('@')) {
+      throw const AuthenticationFailure('请输入有效邮箱地址。');
+    }
+    return email;
   }
 
   Future<Map<String, Object?>> _jsonRequest(

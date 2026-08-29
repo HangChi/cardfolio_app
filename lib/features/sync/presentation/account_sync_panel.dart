@@ -8,6 +8,8 @@ import '../../../core/errors/app_failure.dart';
 import '../data/sync_providers.dart';
 import '../domain/sync_models.dart';
 
+enum _EmailAuthStep { credentials, registrationCode, passwordResetCode }
+
 class AccountSyncPanel extends ConsumerStatefulWidget {
   const AccountSyncPanel({super.key});
 
@@ -18,12 +20,24 @@ class AccountSyncPanel extends ConsumerStatefulWidget {
 class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _newPassword = TextEditingController();
+  final _emailOtp = TextEditingController();
+  final _phone = TextEditingController(text: '+86');
+  final _otp = TextEditingController();
+  var _phoneMode = false;
+  var _otpSent = false;
+  var _emailStep = _EmailAuthStep.credentials;
+  var _phoneCreateUser = false;
   var _busy = false;
 
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _newPassword.dispose();
+    _emailOtp.dispose();
+    _phone.dispose();
+    _otp.dispose();
     super.dispose();
   }
 
@@ -61,38 +75,212 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
         SizedBox(height: context.tokens.spaceXs),
         const Text('无需账号也能创建、浏览、编辑、统计和导出；登录仅用于云同步。'),
         SizedBox(height: context.tokens.spaceMd),
+        SegmentedButton<bool>(
+          segments: const <ButtonSegment<bool>>[
+            ButtonSegment<bool>(
+              value: true,
+              icon: Icon(Icons.phone_android_outlined),
+              label: Text('手机号'),
+            ),
+            ButtonSegment<bool>(
+              value: false,
+              icon: Icon(Icons.email_outlined),
+              label: Text('邮箱'),
+            ),
+          ],
+          selected: <bool>{_phoneMode},
+          onSelectionChanged: _busy
+              ? null
+              : (selection) => setState(() {
+                  _phoneMode = selection.single;
+                  _otpSent = false;
+                  _otp.clear();
+                  _emailStep = _EmailAuthStep.credentials;
+                  _emailOtp.clear();
+                  _newPassword.clear();
+                }),
+        ),
+        SizedBox(height: context.tokens.spaceSm),
+        if (_phoneMode)
+          _buildPhoneAuthentication(context)
+        else
+          _buildEmailAuthentication(context),
+      ],
+    );
+  }
+
+  Widget _buildPhoneAuthentication(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        TextField(
+          key: const Key('account-phone'),
+          controller: _phone,
+          enabled: !_busy && !_otpSent,
+          keyboardType: TextInputType.phone,
+          autofillHints: const <String>[AutofillHints.telephoneNumber],
+          decoration: const InputDecoration(
+            labelText: '手机号 *',
+            helperText: '使用国际格式，例如 +8613812345678',
+          ),
+        ),
+        if (_otpSent) ...<Widget>[
+          SizedBox(height: context.tokens.spaceSm),
+          TextField(
+            key: const Key('account-otp'),
+            controller: _otp,
+            enabled: !_busy,
+            keyboardType: TextInputType.number,
+            autofillHints: const <String>[AutofillHints.oneTimeCode],
+            decoration: const InputDecoration(labelText: '短信验证码 *'),
+          ),
+        ],
+        SizedBox(height: context.tokens.spaceMd),
+        if (_otpSent)
+          Wrap(
+            spacing: context.tokens.spaceSm,
+            runSpacing: context.tokens.spaceSm,
+            children: <Widget>[
+              FilledButton(
+                onPressed: _busy ? null : _verifyPhoneOtp,
+                child: const Text('验证并登录'),
+              ),
+              TextButton(
+                onPressed: _busy
+                    ? null
+                    : () => _sendPhoneOtp(register: _phoneCreateUser),
+                child: const Text('重新发送'),
+              ),
+            ],
+          )
+        else
+          Wrap(
+            spacing: context.tokens.spaceSm,
+            runSpacing: context.tokens.spaceSm,
+            children: <Widget>[
+              FilledButton(
+                onPressed: _busy ? null : () => _sendPhoneOtp(register: false),
+                child: const Text('获取登录验证码'),
+              ),
+              OutlinedButton(
+                onPressed: _busy ? null : () => _sendPhoneOtp(register: true),
+                child: const Text('注册并获取验证码'),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEmailAuthentication(BuildContext context) {
+    final waitingForCode = _emailStep != _EmailAuthStep.credentials;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
         TextField(
           key: const Key('account-email'),
           controller: _email,
-          enabled: !_busy,
+          enabled: !_busy && !waitingForCode,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const <String>[AutofillHints.email],
           decoration: const InputDecoration(labelText: '邮箱 *'),
         ),
-        SizedBox(height: context.tokens.spaceSm),
-        TextField(
-          key: const Key('account-password'),
-          controller: _password,
-          enabled: !_busy,
-          obscureText: true,
-          autofillHints: const <String>[AutofillHints.password],
-          decoration: const InputDecoration(labelText: '密码 *（至少 8 位）'),
-        ),
-        SizedBox(height: context.tokens.spaceMd),
-        Wrap(
-          spacing: context.tokens.spaceSm,
-          runSpacing: context.tokens.spaceSm,
-          children: <Widget>[
-            FilledButton(
-              onPressed: _busy ? null : () => _authenticate(register: false),
-              child: const Text('登录'),
+        if (_emailStep == _EmailAuthStep.credentials) ...<Widget>[
+          SizedBox(height: context.tokens.spaceSm),
+          TextField(
+            key: const Key('account-password'),
+            controller: _password,
+            enabled: !_busy,
+            obscureText: true,
+            autofillHints: const <String>[AutofillHints.password],
+            decoration: const InputDecoration(
+              labelText: '密码 *',
+              helperText: '至少 8 位',
             ),
-            OutlinedButton(
-              onPressed: _busy ? null : () => _authenticate(register: true),
-              child: const Text('注册'),
+          ),
+        ] else ...<Widget>[
+          SizedBox(height: context.tokens.spaceSm),
+          TextField(
+            key: const Key('account-email-otp'),
+            controller: _emailOtp,
+            enabled: !_busy,
+            keyboardType: TextInputType.number,
+            autofillHints: const <String>[AutofillHints.oneTimeCode],
+            decoration: const InputDecoration(labelText: '邮箱验证码 *'),
+          ),
+          if (_emailStep == _EmailAuthStep.passwordResetCode) ...<Widget>[
+            SizedBox(height: context.tokens.spaceSm),
+            TextField(
+              key: const Key('account-new-password'),
+              controller: _newPassword,
+              enabled: !_busy,
+              obscureText: true,
+              autofillHints: const <String>[AutofillHints.newPassword],
+              decoration: const InputDecoration(
+                labelText: '新密码 *',
+                helperText: '至少 8 位',
+              ),
             ),
           ],
-        ),
+        ],
+        SizedBox(height: context.tokens.spaceMd),
+        if (_emailStep == _EmailAuthStep.registrationCode)
+          Wrap(
+            spacing: context.tokens.spaceSm,
+            runSpacing: context.tokens.spaceSm,
+            children: <Widget>[
+              FilledButton(
+                onPressed: _busy ? null : _verifyRegistration,
+                child: const Text('验证并完成注册'),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _resendRegistration,
+                child: const Text('重新发送'),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _backToLogin,
+                child: const Text('返回登录'),
+              ),
+            ],
+          )
+        else if (_emailStep == _EmailAuthStep.passwordResetCode)
+          Wrap(
+            spacing: context.tokens.spaceSm,
+            runSpacing: context.tokens.spaceSm,
+            children: <Widget>[
+              FilledButton(
+                onPressed: _busy ? null : _verifyPasswordReset,
+                child: const Text('验证并重置密码'),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _sendPasswordReset,
+                child: const Text('重新发送'),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _backToLogin,
+                child: const Text('返回登录'),
+              ),
+            ],
+          )
+        else
+          Wrap(
+            spacing: context.tokens.spaceSm,
+            runSpacing: context.tokens.spaceSm,
+            children: <Widget>[
+              FilledButton(
+                onPressed: _busy ? null : _loginWithPassword,
+                child: const Text('登录'),
+              ),
+              OutlinedButton(
+                onPressed: _busy ? null : _startRegistration,
+                child: const Text('注册'),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _sendPasswordReset,
+                child: const Text('忘记密码？'),
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -220,18 +408,143 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
     );
   }
 
-  Future<void> _authenticate({required bool register}) {
+  bool _validEmailAndPassword({bool passwordRequired = true}) {
     final email = _email.text.trim();
-    final password = _password.text;
-    if (email.isEmpty || password.length < 8) {
-      _showMessage('请输入有效邮箱和至少 8 位密码。');
+    if (!email.contains('@') || email.startsWith('@') || email.endsWith('@')) {
+      _showMessage('请输入有效邮箱地址。');
+      return false;
+    }
+    if (passwordRequired && _password.text.length < 8) {
+      _showMessage('密码至少需要 8 位。');
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _loginWithPassword() {
+    if (!_validEmailAndPassword()) return Future<void>.value();
+    return _run(
+      () => ref
+          .read(accountSyncRepositoryProvider)
+          .login(email: _email.text.trim(), password: _password.text),
+    );
+  }
+
+  Future<void> _startRegistration() {
+    if (!_validEmailAndPassword()) return Future<void>.value();
+    return _run(
+      () => ref
+          .read(accountSyncRepositoryProvider)
+          .register(email: _email.text.trim(), password: _password.text),
+      onSuccess: () {
+        setState(() {
+          _emailStep = _EmailAuthStep.registrationCode;
+          _emailOtp.clear();
+        });
+        _showMessage('注册验证码已发送，请查看邮箱。');
+      },
+    );
+  }
+
+  Future<void> _verifyRegistration() {
+    final code = _emailOtp.text.trim();
+    if (!RegExp(r'^\d{6,10}$').hasMatch(code)) {
+      _showMessage('请输入有效邮箱验证码。');
       return Future<void>.value();
     }
-    final repository = ref.read(accountSyncRepositoryProvider);
     return _run(
-      () => register
-          ? repository.register(email: email, password: password)
-          : repository.login(email: email, password: password),
+      () => ref
+          .read(accountSyncRepositoryProvider)
+          .verifyRegistration(email: _email.text.trim(), code: code),
+    );
+  }
+
+  Future<void> _resendRegistration() => _run(
+    () => ref
+        .read(accountSyncRepositoryProvider)
+        .resendRegistration(email: _email.text.trim()),
+    onSuccess: () => _showMessage('注册验证码已重新发送。'),
+  );
+
+  Future<void> _sendPasswordReset() {
+    if (!_validEmailAndPassword(passwordRequired: false)) {
+      return Future<void>.value();
+    }
+    return _run(
+      () => ref
+          .read(accountSyncRepositoryProvider)
+          .sendPasswordReset(email: _email.text.trim()),
+      onSuccess: () {
+        setState(() {
+          _emailStep = _EmailAuthStep.passwordResetCode;
+          _emailOtp.clear();
+        });
+        _showMessage('重置密码验证码已发送，请查看邮箱。');
+      },
+    );
+  }
+
+  Future<void> _verifyPasswordReset() {
+    final code = _emailOtp.text.trim();
+    if (!RegExp(r'^\d{6,10}$').hasMatch(code)) {
+      _showMessage('请输入有效邮箱验证码。');
+      return Future<void>.value();
+    }
+    if (_newPassword.text.length < 8) {
+      _showMessage('新密码至少需要 8 位。');
+      return Future<void>.value();
+    }
+    return _run(
+      () => ref
+          .read(accountSyncRepositoryProvider)
+          .verifyPasswordReset(
+            email: _email.text.trim(),
+            code: code,
+            newPassword: _newPassword.text,
+          ),
+    );
+  }
+
+  void _backToLogin() {
+    setState(() {
+      _emailStep = _EmailAuthStep.credentials;
+      _emailOtp.clear();
+      _newPassword.clear();
+    });
+  }
+
+  Future<void> _sendPhoneOtp({required bool register}) {
+    final phone = _phone.text.trim();
+    if (!RegExp(
+      r'^\+[1-9]\d{7,14}$',
+    ).hasMatch(phone.replaceAll(RegExp(r'[\s()-]'), ''))) {
+      _showMessage('手机号必须使用国际格式，例如 +8613812345678。');
+      return Future<void>.value();
+    }
+    return _run(
+      () => ref
+          .read(accountSyncRepositoryProvider)
+          .sendPhoneOtp(phone: phone, createUser: register),
+      onSuccess: () {
+        setState(() {
+          _otpSent = true;
+          _phoneCreateUser = register;
+        });
+        _showMessage('验证码已发送，请查看短信。');
+      },
+    );
+  }
+
+  Future<void> _verifyPhoneOtp() {
+    final code = _otp.text.trim();
+    if (!RegExp(r'^\d{6,10}$').hasMatch(code)) {
+      _showMessage('请输入有效短信验证码。');
+      return Future<void>.value();
+    }
+    return _run(
+      () => ref
+          .read(accountSyncRepositoryProvider)
+          .verifyPhoneOtp(phone: _phone.text.trim(), code: code),
     );
   }
 
@@ -313,11 +626,15 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
     }
   }
 
-  Future<void> _run(Future<void> Function() operation) async {
+  Future<void> _run(
+    Future<void> Function() operation, {
+    VoidCallback? onSuccess,
+  }) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
       await operation();
+      if (mounted) onSuccess?.call();
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
     } on Object {

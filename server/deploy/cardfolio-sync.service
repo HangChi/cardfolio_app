@@ -1,0 +1,31 @@
+[Unit]
+Description=Cardfolio Sync Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/cardfolio-sync
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=18080
+EnvironmentFile=/home/ubuntu/cardfolio-sync/.env
+ExecStart=/home/ubuntu/opt/node-v24.19.0-linux-x64/bin/node src/server.js
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=15s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

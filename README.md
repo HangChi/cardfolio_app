@@ -43,6 +43,9 @@ flutter run --dart-define=CARD_FOLIO_API_BASE_URL=https://sync.example.com
 flutter run --dart-define=CARD_FOLIO_CATALOG_BASE_URL=https://catalog.example.com
 ```
 
+自建同步服务的实现、Supabase 迁移和 Docker/Nginx 部署步骤见
+[server/README.md](server/README.md)。服务端密钥不得编译进 App。
+
 ## 本地开发
 
 需要 Flutter 3.44.0、Dart 3.12+、JDK 21 和 Android SDK。Windows 使用 Flutter 插件时需先开启
