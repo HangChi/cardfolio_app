@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
@@ -43,77 +44,35 @@ final class BackupRepositoryImpl implements BackupRepository {
   }) async {
     final operation = await _createOperationDirectory();
     final partFile = File('${destination.path}.part');
-    ZipFileEncoder? encoder;
     try {
       _checkCancelled(cancellationToken);
       _progress(onProgress, BackupStage.readingDatabase, 0.05);
       final snapshot = await _database.exportLogicalBackup();
       _checkCancelled(cancellationToken);
 
-      final dataBytes = utf8.encode(jsonEncode(snapshot.toJson()));
-      if (dataBytes.length > BackupLimits.maxDataBytes) {
-        throw const BackupValidationFailure('结构化数据超出备份安全限制。');
-      }
-      final dataFile = File(
-        p.join(operation.path, BackupManifest.dataFileName),
-      );
-      await dataFile.writeAsBytes(dataBytes, flush: true);
-
-      _progress(onProgress, BackupStage.checkingImages, 0.2);
-      final imageFiles = await _collectExportImages(
-        snapshot,
-        cancellationToken,
-      );
-      final entries = <BackupEntry>[
-        BackupEntry(
-          path: BackupManifest.dataFileName,
-          byteSize: dataBytes.length,
-          sha256: sha256.convert(dataBytes).toString(),
-        ),
-        for (final image in imageFiles)
-          BackupEntry(
-            path: 'images/${image.relativePath}',
-            byteSize: image.byteSize,
-            sha256: image.checksum,
-          ),
-      ];
+      // 编码结构化数据、逐图哈希与 ZIP 压缩都是 CPU 密集操作，
+      // 整体放到后台 isolate 执行，避免大收藏库备份时卡住 UI。
+      // 取消令牌与进度回调无法跨 isolate，因此只在单元前后检查与上报。
       final createdAt = _clock.nowUtc();
-      final manifest = BackupManifest(
-        formatVersion: BackupManifest.currentVersion,
-        sourceSchemaVersion: _database.schemaVersion,
-        createdAt: createdAt,
-        entries: entries,
-        entityCounts: snapshot.entityCounts,
-      );
-      final manifestBytes = utf8.encode(jsonEncode(manifest.toJson()));
-      if (manifestBytes.length > BackupLimits.maxManifestBytes) {
-        throw const BackupValidationFailure('备份清单超出安全限制。');
-      }
-      final manifestFile = File(
-        p.join(operation.path, BackupManifest.manifestFileName),
-      );
-      await manifestFile.writeAsBytes(manifestBytes, flush: true);
-
-      _checkCancelled(cancellationToken);
+      _progress(onProgress, BackupStage.checkingImages, 0.2);
       _progress(onProgress, BackupStage.writingArchive, 0.55);
-      final archiveFile = File(p.join(operation.path, 'backup.zip'));
-      encoder = ZipFileEncoder()..create(archiveFile.path, modified: createdAt);
-      await encoder.addFile(manifestFile, BackupManifest.manifestFileName);
-      await encoder.addFile(dataFile, BackupManifest.dataFileName);
-      for (var index = 0; index < imageFiles.length; index++) {
-        _checkCancelled(cancellationToken);
-        final image = imageFiles[index];
-        await encoder.addFile(image.file, 'images/${image.relativePath}');
-        _progress(
-          onProgress,
-          BackupStage.writingArchive,
-          0.6 + (0.3 * (index + 1) / imageFiles.length),
-        );
-      }
-      await encoder.close();
-      encoder = null;
+      // 闭包不能引用实例字段（会捕获不可跨 isolate 的 this），
+      // 因此先把实例字段全部提取为纯数据局部变量。
+      final imageRootPath = _imageStore.root.path;
+      final operationPath = operation.path;
+      final schemaVersion = _database.schemaVersion;
+      final result = await Isolate.run(
+        () => _runExportPipeline(
+          snapshot: snapshot,
+          imageRootPath: imageRootPath,
+          operationPath: operationPath,
+          schemaVersion: schemaVersion,
+          createdAt: createdAt,
+        ),
+      );
       _checkCancelled(cancellationToken);
 
+      final archiveFile = File(p.join(operation.path, 'backup.zip'));
       await destination.parent.create(recursive: true);
       if (partFile.existsSync()) await partFile.delete();
       await archiveFile.copy(partFile.path);
@@ -123,9 +82,9 @@ final class BackupRepositoryImpl implements BackupRepository {
       _progress(onProgress, BackupStage.completed, 1);
       return BackupExportReport(
         createdAt: createdAt,
-        entityCount: snapshot.totalEntityCount,
-        imageCount: imageFiles.length,
-        byteSize: await destination.length(),
+        entityCount: result.entityCount,
+        imageCount: result.imageCount,
+        byteSize: result.archiveByteSize,
       );
     } on AppFailure {
       rethrow;
@@ -134,13 +93,6 @@ final class BackupRepositoryImpl implements BackupRepository {
     } catch (error) {
       throw BackupStorageFailure('导出备份失败，请重试。', error);
     } finally {
-      if (encoder != null) {
-        try {
-          await encoder.close();
-        } on Object {
-          // 失败路径只负责释放句柄，不能覆盖原始错误。
-        }
-      }
       await _deleteFileQuietly(partFile);
       await _deleteDirectoryQuietly(operation);
     }
@@ -238,66 +190,6 @@ final class BackupRepositoryImpl implements BackupRepository {
     }
   }
 
-  Future<List<_ExportImage>> _collectExportImages(
-    BackupSnapshot snapshot,
-    BackupCancellationToken? cancellationToken,
-  ) async {
-    final declaredOriginalChecksums = <String, String>{};
-    final paths = <String>{};
-    for (final row in snapshot.rows('cardImages')) {
-      final relativePath = _requiredString(row, 'relativePath');
-      if (!paths.add(relativePath)) {
-        throw const BackupValidationFailure('备份图片路径重复。');
-      }
-      declaredOriginalChecksums[relativePath] = _requiredString(
-        row,
-        'checksum',
-      );
-      final derived = row['derivedRelativePath'];
-      if (derived != null) {
-        if (derived is! String || !paths.add(derived)) {
-          throw const BackupValidationFailure('备份图片路径重复或无效。');
-        }
-      }
-    }
-    for (final row in snapshot.rows('seriesRecords')) {
-      final cover = row['coverRelativePath'];
-      if (cover is String && cover.isNotEmpty) paths.add(cover);
-    }
-    for (final row in snapshot.rows('cardSets')) {
-      final cover = row['coverRelativePath'];
-      if (cover is String && cover.isNotEmpty) paths.add(cover);
-    }
-
-    final result = <_ExportImage>[];
-    final sortedPaths = paths.toList()..sort();
-    for (final relativePath in sortedPaths) {
-      _checkCancelled(cancellationToken);
-      final file = _imageStore.resolve(relativePath);
-      if (!file.existsSync()) {
-        throw const BackupStorageFailure('备份所需图片缺失，请先检查收藏图片。');
-      }
-      final size = await file.length();
-      if (size > BackupLimits.maxEntryBytes) {
-        throw const BackupValidationFailure('备份中的图片大小超出安全限制。');
-      }
-      final checksum = (await sha256.bind(file.openRead()).first).toString();
-      final declared = declaredOriginalChecksums[relativePath];
-      if (declared != null && declared != checksum) {
-        throw const BackupValidationFailure('收藏图片校验失败，导出已停止。');
-      }
-      result.add(
-        _ExportImage(
-          relativePath: relativePath,
-          file: file,
-          byteSize: size,
-          checksum: checksum,
-        ),
-      );
-    }
-    return result;
-  }
-
   Future<_ValidatedArchive> _validateArchive(
     File source, {
     BackupCancellationToken? cancellationToken,
@@ -313,187 +205,19 @@ final class BackupRepositoryImpl implements BackupRepository {
       throw const BackupValidationFailure('备份文件大小超出安全限制。');
     }
 
-    InputFileStream? input;
-    Archive? archive;
-    try {
-      input = InputFileStream(source.path);
-      final decoder = ZipDecoder();
-      archive = decoder.decodeStream(input);
-      final headers = decoder.directory.fileHeaders;
-      if (headers.length > BackupLimits.maxEntries + 1) {
-        throw const BackupValidationFailure('备份文件数量超出安全限制。');
-      }
-      final names = headers.map((header) => header.filename).toList();
-      if (names.toSet().length != names.length ||
-          archive.length != headers.length) {
-        throw const BackupValidationFailure('备份包含重复文件路径。');
-      }
-
-      var totalSize = 0;
-      final compressedSizes = <String, int>{};
-      for (final header in headers) {
-        compressedSizes[header.filename] = header.compressedSize;
-      }
-      for (final entry in archive) {
-        _validateArchiveEntry(entry);
-        totalSize += entry.size;
-        if (totalSize > BackupLimits.maxUncompressedBytes) {
-          throw const BackupValidationFailure('备份解压大小超出安全限制。');
-        }
-        final compressed = compressedSizes[entry.name] ?? 0;
-        if (entry.size > 0 &&
-            (compressed == 0 ||
-                entry.size > compressed * BackupLimits.maxCompressionRatio)) {
-          throw const BackupValidationFailure('备份压缩比超出安全限制。');
-        }
-      }
-
-      final manifestEntry = archive.find(BackupManifest.manifestFileName);
-      if (manifestEntry == null ||
-          manifestEntry.size > BackupLimits.maxManifestBytes) {
-        throw const BackupValidationFailure('备份清单缺失或过大。');
-      }
-      final manifest = _decodeManifest(manifestEntry);
-      final actualPaths = archive
-          .where((entry) => entry.name != BackupManifest.manifestFileName)
-          .map((entry) => entry.name)
-          .toSet();
-      final declaredPaths = manifest.entries.map((entry) => entry.path).toSet();
-      if (!_sameSet(actualPaths, declaredPaths)) {
-        throw const BackupValidationFailure('备份清单与文件内容不一致。');
-      }
-
-      List<int>? dataBytes;
-      final checksums = <String, String>{};
-      for (var index = 0; index < manifest.entries.length; index++) {
-        _checkCancelled(cancellationToken);
-        final declared = manifest.entries[index];
-        final entry = archive.find(declared.path)!;
-        if (entry.size != declared.byteSize) {
-          throw const BackupValidationFailure('备份文件大小校验失败。');
-        }
-        final bytes = entry.readBytes();
-        if (bytes == null) {
-          throw const BackupValidationFailure('备份文件无法读取。');
-        }
-        final checksum = sha256.convert(bytes).toString();
-        if (checksum != declared.sha256) {
-          throw const BackupValidationFailure('备份文件校验失败，文件可能已损坏。');
-        }
-        checksums[declared.path] = checksum;
-        if (declared.path == BackupManifest.dataFileName) {
-          if (bytes.length > BackupLimits.maxDataBytes) {
-            throw const BackupValidationFailure('备份数据大小超出安全限制。');
-          }
-          dataBytes = bytes;
-        } else if (extractImagesTo != null) {
-          final relativePath = declared.path.substring('images/'.length);
-          final staged = File(
-            p.joinAll(<String>[
-              extractImagesTo.path,
-              ...p.posix.split(relativePath),
-            ]),
-          );
-          await staged.parent.create(recursive: true);
-          await staged.writeAsBytes(bytes, flush: true);
-        }
-        _progress(
-          onProgress,
-          BackupStage.validatingArchive,
-          0.15 + (0.4 * (index + 1) / manifest.entries.length),
-        );
-      }
-      if (dataBytes == null) {
-        throw const BackupValidationFailure('备份缺少结构化数据。');
-      }
-
-      _progress(onProgress, BackupStage.validatingData, 0.6);
-      final Object? rawSnapshot;
-      try {
-        rawSnapshot = jsonDecode(utf8.decode(dataBytes));
-      } on Object catch (error) {
-        throw BackupValidationFailure('备份数据无法解析。', error);
-      }
-      final snapshot = BackupSnapshot.fromJson(rawSnapshot);
-      if (!_sameCounts(manifest.entityCounts, snapshot.entityCounts)) {
-        throw const BackupValidationFailure('备份实体计数校验失败。');
-      }
-
-      final imagePaths = _snapshotImagePaths(snapshot);
-      final archivedImagePaths = declaredPaths
-          .where((path) => path.startsWith('images/'))
-          .map((path) => path.substring('images/'.length))
-          .toSet();
-      if (!_sameSet(imagePaths, archivedImagePaths)) {
-        throw const BackupValidationFailure('备份图片引用不完整。');
-      }
-      for (final row in snapshot.rows('cardImages')) {
-        final relativePath = _requiredString(row, 'relativePath');
-        final declaredChecksum = _requiredString(row, 'checksum');
-        if (checksums['images/$relativePath'] != declaredChecksum) {
-          throw const BackupValidationFailure('备份原图校验与数据记录不一致。');
-        }
-      }
-
-      return _ValidatedArchive(
-        manifest: manifest,
-        snapshot: snapshot,
-        imagePaths: imagePaths.toList()..sort(),
-        imageChecksums: <String, String>{
-          for (final path in imagePaths) path: checksums['images/$path']!,
-        },
-      );
-    } on AppFailure {
-      rethrow;
-    } on Object catch (error) {
-      throw BackupValidationFailure('备份 ZIP 无法读取或已损坏。', error);
-    } finally {
-      if (archive != null) await archive.clear();
-      if (input != null) await input.close();
-    }
-  }
-
-  void _validateArchiveEntry(ArchiveFile entry) {
-    final path = entry.name;
-    final segments = path.split('/');
-    final allowed =
-        path == BackupManifest.manifestFileName ||
-        path == BackupManifest.dataFileName ||
-        path.startsWith('images/');
-    if (path != BackupManifest.manifestFileName) {
-      BackupEntry.validatePath(path);
-    }
-    if (!entry.isFile ||
-        entry.isSymbolicLink ||
-        path.isEmpty ||
-        path.startsWith('/') ||
-        path.contains(r'\') ||
-        path.contains(':') ||
-        path.runes.any((rune) => rune < 0x20 || rune == 0x7f) ||
-        segments.any(
-          (segment) => segment.isEmpty || segment == '.' || segment == '..',
-        ) ||
-        !allowed) {
-      throw const BackupValidationFailure('备份包含不安全或未知的文件路径。');
-    }
-    final limit = path == BackupManifest.manifestFileName
-        ? BackupLimits.maxManifestBytes
-        : BackupLimits.maxEntryBytes;
-    if (entry.size < 0 || entry.size > limit) {
-      throw const BackupValidationFailure('备份中的文件大小超出安全限制。');
-    }
-  }
-
-  BackupManifest _decodeManifest(ArchiveFile entry) {
-    try {
-      return BackupManifest.fromJson(
-        jsonDecode(utf8.decode(entry.readBytes()!)),
-      );
-    } on AppFailure {
-      rethrow;
-    } on Object catch (error) {
-      throw BackupValidationFailure('备份清单无法解析。', error);
-    }
+    // 解压、逐条哈希与 JSON 解析都是 CPU 密集操作，整体放到后台 isolate。
+    // 取消令牌与进度回调无法跨 isolate，只在单元前后检查与上报。
+    final sourcePath = source.path;
+    final extractImagesToPath = extractImagesTo?.path;
+    final validated = await Isolate.run(
+      () => _validateArchiveFiles(
+        sourcePath: sourcePath,
+        extractImagesToPath: extractImagesToPath,
+      ),
+    );
+    _checkCancelled(cancellationToken);
+    _progress(onProgress, BackupStage.validatingData, 0.6);
+    return validated;
   }
 
   Future<void> _commitImages(
@@ -586,18 +310,318 @@ final class BackupRepositoryImpl implements BackupRepository {
   }
 }
 
-final class _ExportImage {
-  const _ExportImage({
-    required this.relativePath,
-    required this.file,
-    required this.byteSize,
-    required this.checksum,
+/// 后台 isolate 中一次导出管线的结果。只允许纯数据字段。
+final class _ExportPipelineResult {
+  const _ExportPipelineResult({
+    required this.entityCount,
+    required this.imageCount,
+    required this.archiveByteSize,
   });
 
-  final String relativePath;
-  final File file;
-  final int byteSize;
-  final String checksum;
+  final int entityCount;
+  final int imageCount;
+  final int archiveByteSize;
+}
+
+/// 后台 isolate：编码结构化数据、逐图校验哈希、写清单并压缩为 ZIP。
+///
+/// 只能抛出不含 cause 的常量 [AppFailure]，保证错误对象可以跨 isolate
+/// 传回主 isolate；取消与进度上报由调用方在单元边界处理。
+Future<_ExportPipelineResult> _runExportPipeline({
+  required BackupSnapshot snapshot,
+  required String imageRootPath,
+  required String operationPath,
+  required int schemaVersion,
+  required DateTime createdAt,
+}) async {
+  final dataBytes = utf8.encode(jsonEncode(snapshot.toJson()));
+  if (dataBytes.length > BackupLimits.maxDataBytes) {
+    throw const BackupValidationFailure('结构化数据超出备份安全限制。');
+  }
+  final dataFile = File(p.join(operationPath, BackupManifest.dataFileName));
+  await dataFile.writeAsBytes(dataBytes, flush: true);
+
+  final store = ManagedImageStore(Directory(imageRootPath));
+  final plan = _exportImagePlan(snapshot);
+  final images = <(String, String, int)>[];
+  for (final relativePath in plan.paths.toList()..sort()) {
+    final file = store.resolve(relativePath);
+    if (!file.existsSync()) {
+      throw const BackupStorageFailure('备份所需图片缺失，请先检查收藏图片。');
+    }
+    final size = await file.length();
+    if (size > BackupLimits.maxEntryBytes) {
+      throw const BackupValidationFailure('备份中的图片大小超出安全限制。');
+    }
+    final checksum = (await sha256.bind(file.openRead()).first).toString();
+    final declared = plan.declaredOriginalChecksums[relativePath];
+    if (declared != null && declared != checksum) {
+      throw const BackupValidationFailure('收藏图片校验失败，导出已停止。');
+    }
+    images.add((relativePath, checksum, size));
+  }
+
+  final entries = <BackupEntry>[
+    BackupEntry(
+      path: BackupManifest.dataFileName,
+      byteSize: dataBytes.length,
+      sha256: sha256.convert(dataBytes).toString(),
+    ),
+    for (final image in images)
+      BackupEntry(
+        path: 'images/${image.$1}',
+        byteSize: image.$3,
+        sha256: image.$2,
+      ),
+  ];
+  final manifest = BackupManifest(
+    formatVersion: BackupManifest.currentVersion,
+    sourceSchemaVersion: schemaVersion,
+    createdAt: createdAt,
+    entries: entries,
+    entityCounts: snapshot.entityCounts,
+  );
+  final manifestBytes = utf8.encode(jsonEncode(manifest.toJson()));
+  if (manifestBytes.length > BackupLimits.maxManifestBytes) {
+    throw const BackupValidationFailure('备份清单超出安全限制。');
+  }
+  final manifestFile = File(
+    p.join(operationPath, BackupManifest.manifestFileName),
+  );
+  await manifestFile.writeAsBytes(manifestBytes, flush: true);
+
+  final archiveFile = File(p.join(operationPath, 'backup.zip'));
+  final encoder = ZipFileEncoder()
+    ..create(archiveFile.path, modified: createdAt);
+  try {
+    await encoder.addFile(manifestFile, BackupManifest.manifestFileName);
+    await encoder.addFile(dataFile, BackupManifest.dataFileName);
+    for (final image in images) {
+      await encoder.addFile(store.resolve(image.$1), 'images/${image.$1}');
+    }
+  } finally {
+    await encoder.close();
+  }
+
+  return _ExportPipelineResult(
+    entityCount: snapshot.totalEntityCount,
+    imageCount: images.length,
+    archiveByteSize: await archiveFile.length(),
+  );
+}
+
+/// 解析快照中需要导出的图片路径与已声明的原图校验和。
+({Set<String> paths, Map<String, String> declaredOriginalChecksums})
+_exportImagePlan(BackupSnapshot snapshot) {
+  final declaredOriginalChecksums = <String, String>{};
+  final paths = <String>{};
+  for (final row in snapshot.rows('cardImages')) {
+    final relativePath = _requiredString(row, 'relativePath');
+    if (!paths.add(relativePath)) {
+      throw const BackupValidationFailure('备份图片路径重复。');
+    }
+    declaredOriginalChecksums[relativePath] = _requiredString(row, 'checksum');
+    final derived = row['derivedRelativePath'];
+    if (derived != null) {
+      if (derived is! String || !paths.add(derived)) {
+        throw const BackupValidationFailure('备份图片路径重复或无效。');
+      }
+    }
+  }
+  for (final row in snapshot.rows('seriesRecords')) {
+    final cover = row['coverRelativePath'];
+    if (cover is String && cover.isNotEmpty) paths.add(cover);
+  }
+  for (final row in snapshot.rows('cardSets')) {
+    final cover = row['coverRelativePath'];
+    if (cover is String && cover.isNotEmpty) paths.add(cover);
+  }
+  return (paths: paths, declaredOriginalChecksums: declaredOriginalChecksums);
+}
+
+void _validateArchiveEntry(ArchiveFile entry) {
+  final path = entry.name;
+  final segments = path.split('/');
+  final allowed =
+      path == BackupManifest.manifestFileName ||
+      path == BackupManifest.dataFileName ||
+      path.startsWith('images/');
+  if (path != BackupManifest.manifestFileName) {
+    BackupEntry.validatePath(path);
+  }
+  if (!entry.isFile ||
+      entry.isSymbolicLink ||
+      path.isEmpty ||
+      path.startsWith('/') ||
+      path.contains(r'\') ||
+      path.contains(':') ||
+      path.runes.any((rune) => rune < 0x20 || rune == 0x7f) ||
+      segments.any(
+        (segment) => segment.isEmpty || segment == '.' || segment == '..',
+      ) ||
+      !allowed) {
+    throw const BackupValidationFailure('备份包含不安全或未知的文件路径。');
+  }
+  final limit = path == BackupManifest.manifestFileName
+      ? BackupLimits.maxManifestBytes
+      : BackupLimits.maxEntryBytes;
+  if (entry.size < 0 || entry.size > limit) {
+    throw const BackupValidationFailure('备份中的文件大小超出安全限制。');
+  }
+}
+
+BackupManifest _decodeManifest(ArchiveFile entry) {
+  try {
+    return BackupManifest.fromJson(jsonDecode(utf8.decode(entry.readBytes()!)));
+  } on AppFailure {
+    rethrow;
+  } on Object {
+    // 不携带 cause：本函数在后台 isolate 中执行，错误对象必须可跨 isolate 传递。
+    throw const BackupValidationFailure('备份清单无法解析。');
+  }
+}
+
+/// 后台 isolate：解压备份、逐条校验哈希并解析结构化数据。
+///
+/// 只能抛出不含 cause 的常量 [AppFailure]，保证错误对象可以跨 isolate
+/// 传回主 isolate；取消与进度上报由调用方在单元边界处理。
+Future<_ValidatedArchive> _validateArchiveFiles({
+  required String sourcePath,
+  required String? extractImagesToPath,
+}) async {
+  final extractImagesTo = extractImagesToPath == null
+      ? null
+      : Directory(extractImagesToPath);
+  InputFileStream? input;
+  Archive? archive;
+  try {
+    input = InputFileStream(sourcePath);
+    final decoder = ZipDecoder();
+    archive = decoder.decodeStream(input);
+    final headers = decoder.directory.fileHeaders;
+    if (headers.length > BackupLimits.maxEntries + 1) {
+      throw const BackupValidationFailure('备份文件数量超出安全限制。');
+    }
+    final names = headers.map((header) => header.filename).toList();
+    if (names.toSet().length != names.length ||
+        archive.length != headers.length) {
+      throw const BackupValidationFailure('备份包含重复文件路径。');
+    }
+
+    var totalSize = 0;
+    final compressedSizes = <String, int>{};
+    for (final header in headers) {
+      compressedSizes[header.filename] = header.compressedSize;
+    }
+    for (final entry in archive) {
+      _validateArchiveEntry(entry);
+      totalSize += entry.size;
+      if (totalSize > BackupLimits.maxUncompressedBytes) {
+        throw const BackupValidationFailure('备份解压大小超出安全限制。');
+      }
+      final compressed = compressedSizes[entry.name] ?? 0;
+      if (entry.size > 0 &&
+          (compressed == 0 ||
+              entry.size > compressed * BackupLimits.maxCompressionRatio)) {
+        throw const BackupValidationFailure('备份压缩比超出安全限制。');
+      }
+    }
+
+    final manifestEntry = archive.find(BackupManifest.manifestFileName);
+    if (manifestEntry == null ||
+        manifestEntry.size > BackupLimits.maxManifestBytes) {
+      throw const BackupValidationFailure('备份清单缺失或过大。');
+    }
+    final manifest = _decodeManifest(manifestEntry);
+    final actualPaths = archive
+        .where((entry) => entry.name != BackupManifest.manifestFileName)
+        .map((entry) => entry.name)
+        .toSet();
+    final declaredPaths = manifest.entries.map((entry) => entry.path).toSet();
+    if (!_sameSet(actualPaths, declaredPaths)) {
+      throw const BackupValidationFailure('备份清单与文件内容不一致。');
+    }
+
+    List<int>? dataBytes;
+    final checksums = <String, String>{};
+    for (final declared in manifest.entries) {
+      final entry = archive.find(declared.path)!;
+      if (entry.size != declared.byteSize) {
+        throw const BackupValidationFailure('备份文件大小校验失败。');
+      }
+      final bytes = entry.readBytes();
+      if (bytes == null) {
+        throw const BackupValidationFailure('备份文件无法读取。');
+      }
+      final checksum = sha256.convert(bytes).toString();
+      if (checksum != declared.sha256) {
+        throw const BackupValidationFailure('备份文件校验失败，文件可能已损坏。');
+      }
+      checksums[declared.path] = checksum;
+      if (declared.path == BackupManifest.dataFileName) {
+        if (bytes.length > BackupLimits.maxDataBytes) {
+          throw const BackupValidationFailure('备份数据大小超出安全限制。');
+        }
+        dataBytes = bytes;
+      } else if (extractImagesTo != null) {
+        final relativePath = declared.path.substring('images/'.length);
+        final staged = File(
+          p.joinAll(<String>[
+            extractImagesTo.path,
+            ...p.posix.split(relativePath),
+          ]),
+        );
+        await staged.parent.create(recursive: true);
+        await staged.writeAsBytes(bytes, flush: true);
+      }
+    }
+    if (dataBytes == null) {
+      throw const BackupValidationFailure('备份缺少结构化数据。');
+    }
+
+    final Object? rawSnapshot;
+    try {
+      rawSnapshot = jsonDecode(utf8.decode(dataBytes));
+    } on Object {
+      throw const BackupValidationFailure('备份数据无法解析。');
+    }
+    final snapshot = BackupSnapshot.fromJson(rawSnapshot);
+    if (!_sameCounts(manifest.entityCounts, snapshot.entityCounts)) {
+      throw const BackupValidationFailure('备份实体计数校验失败。');
+    }
+
+    final imagePaths = _snapshotImagePaths(snapshot);
+    final archivedImagePaths = declaredPaths
+        .where((path) => path.startsWith('images/'))
+        .map((path) => path.substring('images/'.length))
+        .toSet();
+    if (!_sameSet(imagePaths, archivedImagePaths)) {
+      throw const BackupValidationFailure('备份图片引用不完整。');
+    }
+    for (final row in snapshot.rows('cardImages')) {
+      final relativePath = _requiredString(row, 'relativePath');
+      final declaredChecksum = _requiredString(row, 'checksum');
+      if (checksums['images/$relativePath'] != declaredChecksum) {
+        throw const BackupValidationFailure('备份原图校验与数据记录不一致。');
+      }
+    }
+
+    return _ValidatedArchive(
+      manifest: manifest,
+      snapshot: snapshot,
+      imagePaths: imagePaths.toList()..sort(),
+      imageChecksums: <String, String>{
+        for (final path in imagePaths) path: checksums['images/$path']!,
+      },
+    );
+  } on AppFailure {
+    rethrow;
+  } on Object {
+    throw const BackupValidationFailure('备份 ZIP 无法读取或已损坏。');
+  } finally {
+    if (archive != null) await archive.clear();
+    if (input != null) await input.close();
+  }
 }
 
 final class _ValidatedArchive {
