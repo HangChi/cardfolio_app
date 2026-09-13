@@ -214,6 +214,41 @@ void main() {
     expect(repository.orderedIds, isNull);
   });
 
+  testWidgets('sets cover directly from the gallery toolbar', (tester) async {
+    await pump(tester);
+
+    await showSecondImage(tester);
+    await tester.tap(find.byKey(const Key('set-cover-image-image-2')));
+    await tester.pumpAndSettle();
+
+    expect(repository.coverImageId, 'image-2');
+  });
+
+  testWidgets('cover star is disabled for the current cover image', (
+    tester,
+  ) async {
+    await pump(tester);
+
+    final button = tester.widget<IconButton>(
+      find.byKey(const Key('set-cover-image-image-1')),
+    );
+    expect(button.onPressed, isNull);
+  });
+
+  testWidgets('changes image kind from the inline chips in the manager sheet', (
+    tester,
+  ) async {
+    await pump(tester);
+
+    await showSecondImage(tester);
+    await tester.tap(find.byKey(const Key('manage-image-image-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('细节'));
+    await tester.pumpAndSettle();
+
+    expect(repository.updatedKind, CardImageKind.detail);
+  });
+
   testWidgets('delete confirmation defaults to retaining the original', (
     tester,
   ) async {

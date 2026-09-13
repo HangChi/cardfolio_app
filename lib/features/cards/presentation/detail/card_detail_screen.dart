@@ -266,11 +266,14 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             onPressed: () => Navigator.pop(context),
             child: const Text('取消'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('移除并保留原图'),
           ),
-          FilledButton(
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => Navigator.pop(context, false),
             child: const Text('同时删除原图'),
           ),
@@ -326,30 +329,47 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                   );
                 },
               ),
-            ExpansionTile(
-              leading: const Icon(Icons.label_outline),
-              title: const Text('图片用途'),
-              children: <Widget>[
-                for (final kind in CardImageKind.values)
-                  ListTile(
-                    title: Text(kind.label),
-                    trailing: kind == image.kind
-                        ? const Icon(Icons.check)
-                        : null,
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      _run(
-                        () => ref
-                            .read(cardRepositoryProvider)
-                            .updateImageKind(
-                              cardItemId: card.cardItemId,
-                              imageId: image.id,
-                              kind: kind,
-                            ),
-                      );
-                    },
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: sheetContext.tokens.spaceLg,
+                vertical: sheetContext.tokens.spaceSm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '图片用途',
+                    style: Theme.of(sheetContext).textTheme.titleSmall,
                   ),
-              ],
+                  SizedBox(height: sheetContext.tokens.spaceXs),
+                  Wrap(
+                    spacing: sheetContext.tokens.spaceXs,
+                    runSpacing: sheetContext.tokens.spaceXs,
+                    children: <Widget>[
+                      for (final kind in CardImageKind.values)
+                        ChoiceChip(
+                          label: Text(kind.label),
+                          selected: kind == image.kind,
+                          onSelected: kind == image.kind
+                              ? null
+                              : (selected) {
+                                  if (!selected) return;
+                                  Navigator.pop(sheetContext);
+                                  _run(
+                                    () => ref
+                                        .read(cardRepositoryProvider)
+                                        .updateImageKind(
+                                          cardItemId: card.cardItemId,
+                                          imageId: image.id,
+                                          kind: kind,
+                                        ),
+                                  );
+                                },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.arrow_back),
@@ -465,6 +485,19 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
           busy: _busy,
           canAdd: card.images.length < CreateCardRequest.maxImages,
           onAdd: _addImages,
+          onEdit: selectedImage == null
+              ? null
+              : () => _editImage(selectedImage),
+          onSetCover: selectedImage == null || selectedImage.isCover
+              ? null
+              : () => _run(
+                  () => ref
+                      .read(cardRepositoryProvider)
+                      .setCover(
+                        cardItemId: card.cardItemId,
+                        imageId: selectedImage.id,
+                      ),
+                ),
           onManage: selectedImage == null
               ? null
               : () => _openImageManager(selectedImage, selectedImageIndex),
@@ -542,6 +575,8 @@ class _ImageGalleryToolbar extends StatelessWidget {
     required this.busy,
     required this.canAdd,
     required this.onAdd,
+    required this.onEdit,
+    required this.onSetCover,
     required this.onManage,
   });
 
@@ -551,6 +586,8 @@ class _ImageGalleryToolbar extends StatelessWidget {
   final bool busy;
   final bool canAdd;
   final VoidCallback onAdd;
+  final VoidCallback? onEdit;
+  final VoidCallback? onSetCover;
   final VoidCallback? onManage;
 
   @override
@@ -592,6 +629,26 @@ class _ImageGalleryToolbar extends StatelessWidget {
                 color: context.palette.textSecondary,
               ),
             ),
+          IconButton(
+            tooltip: '编辑图片',
+            key: selected == null ? null : Key('edit-image-${selected.id}'),
+            onPressed: busy || selected == null ? null : onEdit,
+            icon: const Icon(Icons.crop_outlined),
+          ),
+          IconButton(
+            tooltip: selected?.isCover == true ? '已是封面' : '设为封面',
+            key: selected == null
+                ? null
+                : Key('set-cover-image-${selected.id}'),
+            onPressed: busy || selected == null || selected.isCover
+                ? null
+                : onSetCover,
+            icon: Icon(
+              selected?.isCover == true
+                  ? Icons.star_rounded
+                  : Icons.star_outline,
+            ),
+          ),
           IconButton(
             tooltip: '添加图片',
             onPressed: busy || !canAdd ? null : onAdd,
