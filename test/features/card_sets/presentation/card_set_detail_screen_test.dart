@@ -158,6 +158,49 @@ void main() {
     expect(repository.added.single.memberNo, 'SP');
   });
 
+  testWidgets('add-member sheet searches and associates in one step', (
+    tester,
+  ) async {
+    final repository = FakeCardSetRepository(
+      details: <String, CardSetDetail?>{'set-1': detail(countKnown: false)},
+      candidates: const <String, List<CardSetCandidate>>{
+        'set-1': <CardSetCandidate>[
+          CardSetCandidate(
+            definitionId: 'definition-9',
+            name: '樱花纪念卡',
+            ownedQuantity: 2,
+          ),
+          CardSetCandidate(
+            definitionId: 'definition-10',
+            name: '七夕限定卡',
+            ownedQuantity: 1,
+          ),
+        ],
+      },
+    );
+    await tester.pumpWidget(subject(repository));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('添加成员'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('add-member-search')), findsOneWidget);
+    expect(find.text('樱花纪念卡'), findsOneWidget);
+    expect(find.text('七夕限定卡'), findsOneWidget);
+    expect(find.text('定义缺失成员'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('add-member-search')), '樱花');
+    await tester.pump();
+    expect(find.text('七夕限定卡'), findsNothing);
+
+    await tester.tap(find.text('樱花纪念卡'));
+    await tester.pumpAndSettle();
+
+    expect(repository.added, hasLength(1));
+    expect(repository.added.single.createsDefinition, isFalse);
+    expect(repository.added.single.definitionId, 'definition-9');
+  });
+
   testWidgets('remains usable at 200 percent text on a narrow screen', (
     tester,
   ) async {

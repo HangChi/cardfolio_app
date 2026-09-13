@@ -69,7 +69,7 @@ class _CardSetDetailScreenState extends ConsumerState<CardSetDetailScreen> {
             : _DetailBody(
                 set: set,
                 busy: _busy,
-                onAdd: () => _showAddOptions(set),
+                onAdd: () => _showAddMemberSheet(set),
                 onSetCover: () => _showCoverPicker(set),
                 onMemberAction: (member, action) =>
                     _handleMemberAction(set, member, action),
@@ -78,39 +78,43 @@ class _CardSetDetailScreenState extends ConsumerState<CardSetDetailScreen> {
     );
   }
 
-  Future<void> _showAddOptions(CardSetDetail set) async {
-    await showModalBottomSheet<void>(
+  /// 一步式添加成员：候选卡片（可搜索）与"定义缺失成员"合并在同一弹层。
+  Future<void> _showAddMemberSheet(CardSetDetail set) async {
+    final result = await showModalBottomSheet<_AddMemberResult>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(bottom: sheetContext.tokens.spaceMd),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.collections_bookmark_outlined),
-                title: const Text('关联已有卡片'),
-                subtitle: const Text('从收藏中选择尚未加入的款式'),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showExistingCandidates(set);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.add_card_outlined),
-                title: const Text('定义缺失成员'),
-                subtitle: const Text('先记录尚未拥有的预期款式'),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showMissingMemberDialog(set);
-                },
-              ),
-            ],
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+        ),
+        child: SafeArea(
+          child: _AddMemberSheet(
+            setId: set.id,
+            onDone: (result) => Navigator.pop(sheetContext, result),
           ),
         ),
       ),
     );
+    switch (result) {
+      case null:
+        break;
+      case _ExistingMemberResult(:final definitionId):
+        final ids = ref.read(idGeneratorProvider);
+        await _run(
+          () => ref
+              .read(cardSetRepositoryProvider)
+              .addMember(
+                AddCardSetMemberRequest.existing(
+                  id: ids.newId(),
+                  setId: set.id,
+                  definitionId: definitionId,
+                ),
+              ),
+        );
+      case _MissingMemberMarker():
+        await _showMissingMemberDialog(set);
+    }
   }
 
   Future<void> _showCoverPicker(CardSetDetail set) async {
@@ -242,58 +246,6 @@ class _CardSetDetailScreenState extends ConsumerState<CardSetDetailScreen> {
                   );
                 },
               ),
-      ),
-    );
-  }
-
-  Future<void> _showExistingCandidates(CardSetDetail set) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => Consumer(
-        builder: (context, ref, child) {
-          final candidates = ref.watch(cardSetCandidatesProvider(set.id));
-          return SafeArea(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 520),
-              child: candidates.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(semanticsLabel: '正在加载候选卡片'),
-                ),
-                error: (error, stackTrace) =>
-                    const Center(child: Text('候选卡片暂时无法加载')),
-                data: (items) => items.isEmpty
-                    ? const Center(child: Text('没有可关联的卡片款式'))
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: items.length,
-                        itemBuilder: (context, index) {
-                          final candidate = items[index];
-                          return ListTile(
-                            title: Text(candidate.name),
-                            subtitle: Text('已拥有 ${candidate.ownedQuantity} 张'),
-                            onTap: () {
-                              Navigator.pop(sheetContext);
-                              final ids = ref.read(idGeneratorProvider);
-                              _run(
-                                () => ref
-                                    .read(cardSetRepositoryProvider)
-                                    .addMember(
-                                      AddCardSetMemberRequest.existing(
-                                        id: ids.newId(),
-                                        setId: set.id,
-                                        definitionId: candidate.definitionId,
-                                      ),
-                                    ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -857,6 +809,123 @@ class _MemberTrackTile extends StatelessWidget {
 enum _MemberAction { edit, moveUp, moveDown, cover, remove }
 
 enum _CoverSourceAction { camera, gallery, member, clear }
+
+sealed class _AddMemberResult {}
+
+final class _ExistingMemberResult extends _AddMemberResult {
+  _ExistingMemberResult({required this.definitionId});
+
+  final String definitionId;
+}
+
+final class _MissingMemberMarker extends _AddMemberResult {}
+
+/// 添加成员弹层：顶部搜索 + 候选卡片列表 + 底部"定义缺失成员"入口。
+class _AddMemberSheet extends ConsumerStatefulWidget {
+  const _AddMemberSheet({required this.setId, required this.onDone});
+
+  final String setId;
+  final ValueChanged<_AddMemberResult> onDone;
+
+  @override
+  ConsumerState<_AddMemberSheet> createState() => _AddMemberSheetState();
+}
+
+class _AddMemberSheetState extends ConsumerState<_AddMemberSheet> {
+  final TextEditingController _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final candidates = ref.watch(cardSetCandidatesProvider(widget.setId));
+    final query = _search.text.trim().toLowerCase();
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 560),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              tokens.spaceLg,
+              tokens.spaceSm,
+              tokens.spaceLg,
+              tokens.spaceSm,
+            ),
+            child: TextField(
+              key: const Key('add-member-search'),
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: '搜索要关联的卡片',
+                isDense: true,
+              ),
+            ),
+          ),
+          Flexible(
+            child: candidates.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(semanticsLabel: '正在加载候选卡片'),
+              ),
+              error: (error, stackTrace) => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('候选卡片暂时无法加载'),
+                ),
+              ),
+              data: (items) {
+                final filtered = query.isEmpty
+                    ? items
+                    : items
+                          .where(
+                            (item) => item.name.toLowerCase().contains(query),
+                          )
+                          .toList(growable: false);
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(tokens.spaceLg),
+                      child: Text(query.isEmpty ? '没有可关联的卡片款式' : '没有匹配的卡片款式'),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final candidate = filtered[index];
+                    return ListTile(
+                      title: Text(candidate.name),
+                      subtitle: Text('已拥有 ${candidate.ownedQuantity} 张'),
+                      onTap: () => widget.onDone(
+                        _ExistingMemberResult(
+                          definitionId: candidate.definitionId,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.add_card_outlined),
+            title: const Text('定义缺失成员'),
+            subtitle: const Text('先记录尚未拥有的预期款式'),
+            onTap: () => widget.onDone(_MissingMemberMarker()),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _EmptyMembers extends StatelessWidget {
   const _EmptyMembers();
