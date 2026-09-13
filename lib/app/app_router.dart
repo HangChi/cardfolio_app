@@ -26,6 +26,7 @@ import '../features/sync/presentation/profile_screen.dart';
 import '../features/settings/presentation/app_settings_screen.dart';
 import '../features/settings/presentation/onboarding_screen.dart';
 import 'navigation/app_shell.dart';
+import 'app_theme.dart';
 
 const String homePath = '/home';
 const String libraryPath = '/library';
@@ -61,22 +62,47 @@ final class ImageEditorRouteArgs {
   final String outputId;
 }
 
-String cardDetailPath(String id) => '/cards/$id';
-String editCardPath(String id) => '/cards/$id/edit';
-String copyCardPath(String id) => '/cards/$id/copy';
-String cardOrganizationPath(String id) => '/cards/$id/organization';
-String cardSetDetailPath(String id) => '/sets/$id';
-String editCardSetPath(String id) => '/sets/$id/edit';
-String seriesDetailPath(String id) => '/series/$id';
-String editSeriesPath(String id) => '/series/$id/edit';
+/// 动态路由的路径模式。helper 与对应 GoRoute 引用同一常量，避免两处字符串漂移。
+const String cardDetailRoutePattern = '/cards/:id';
+const String editCardRoutePattern = '/cards/:id/edit';
+const String copyCardRoutePattern = '/cards/:id/copy';
+const String cardOrganizationRoutePattern = '/cards/:id/organization';
+const String cardSetDetailRoutePattern = '/sets/:id';
+const String editCardSetRoutePattern = '/sets/:id/edit';
+const String seriesDetailRoutePattern = '/series/:id';
+const String editSeriesRoutePattern = '/series/:id/edit';
+
+String _concrete(String pattern, String id) => pattern.replaceFirst(':id', id);
+
+String cardDetailPath(String id) => _concrete(cardDetailRoutePattern, id);
+String editCardPath(String id) => _concrete(editCardRoutePattern, id);
+String copyCardPath(String id) => _concrete(copyCardRoutePattern, id);
+String cardOrganizationPath(String id) =>
+    _concrete(cardOrganizationRoutePattern, id);
+String cardSetDetailPath(String id) => _concrete(cardSetDetailRoutePattern, id);
+String editCardSetPath(String id) => _concrete(editCardSetRoutePattern, id);
+String seriesDetailPath(String id) => _concrete(seriesDetailRoutePattern, id);
+String editSeriesPath(String id) => _concrete(editSeriesRoutePattern, id);
 
 /// Cardfolio 的五入口路由骨架。
-GoRouter createAppRouter({String initialLocation = homePath}) {
+GoRouter createAppRouter({
+  String initialLocation = homePath,
+  bool onboardingCompleted = true,
+}) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
 
   return GoRouter(
     initialLocation: initialLocation,
     navigatorKey: rootNavigatorKey,
+    errorBuilder: (context, state) =>
+        const _RouteFallbackScreen(message: '页面不存在或暂时无法打开。'),
+    redirect: (context, state) {
+      if (!onboardingCompleted) {
+        return state.matchedLocation == onboardingPath ? null : onboardingPath;
+      }
+      if (state.matchedLocation == onboardingPath) return homePath;
+      return null;
+    },
     routes: <RouteBase>[
       GoRoute(
         path: onboardingPath,
@@ -115,22 +141,22 @@ GoRouter createAppRouter({String initialLocation = homePath}) {
         builder: (context, state) => const BatchCardEntryScreen(),
       ),
       GoRoute(
-        path: '/cards/:id/edit',
+        path: editCardRoutePattern,
         builder: (context, state) =>
             EditCardScreen(cardItemId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/cards/:id/copy',
+        path: copyCardRoutePattern,
         builder: (context, state) =>
             CreateCardScreen(copyFromCardItemId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/cards/:id/organization',
+        path: cardOrganizationRoutePattern,
         builder: (context, state) =>
             CardOrganizationScreen(cardItemId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/cards/:id',
+        path: cardDetailRoutePattern,
         builder: (context, state) =>
             CardDetailScreen(cardItemId: state.pathParameters['id']!),
       ),
@@ -139,12 +165,12 @@ GoRouter createAppRouter({String initialLocation = homePath}) {
         builder: (context, state) => const CardSetFormScreen(),
       ),
       GoRoute(
-        path: '/sets/:id/edit',
+        path: editCardSetRoutePattern,
         builder: (context, state) =>
             CardSetFormScreen(setId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/sets/:id',
+        path: cardSetDetailRoutePattern,
         builder: (context, state) =>
             CardSetDetailScreen(setId: state.pathParameters['id']!),
       ),
@@ -153,12 +179,12 @@ GoRouter createAppRouter({String initialLocation = homePath}) {
         builder: (context, state) => const SeriesFormScreen(),
       ),
       GoRoute(
-        path: '/series/:id/edit',
+        path: editSeriesRoutePattern,
         builder: (context, state) =>
             SeriesFormScreen(seriesId: state.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/series/:id',
+        path: seriesDetailRoutePattern,
         builder: (context, state) =>
             SeriesDetailScreen(seriesId: state.pathParameters['id']!),
       ),
@@ -198,7 +224,11 @@ GoRouter createAppRouter({String initialLocation = homePath}) {
       GoRoute(
         path: imageEditorPath,
         builder: (context, state) {
-          final args = state.extra! as ImageEditorRouteArgs;
+          // extra 只在进程内导航时存在；深链接或状态恢复下可能缺失。
+          final args = state.extra;
+          if (args is! ImageEditorRouteArgs) {
+            return const _RouteFallbackScreen(message: '图片编辑器无法从外部直接打开。');
+          }
           return Consumer(
             builder: (context, ref, child) => ImageEditorScreen(
               sourcePath: args.sourcePath,
@@ -218,4 +248,47 @@ StatefulShellBranch _branch(String path, Widget child) {
       GoRoute(path: path, builder: (context, state) => child),
     ],
   );
+}
+
+/// 路由异常时的兜底页，保证任何导航失败都有可操作的出口。
+class _RouteFallbackScreen extends StatelessWidget {
+  const _RouteFallbackScreen({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(tokens.spaceLg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.map_outlined,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                SizedBox(height: tokens.spaceMd),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SizedBox(height: tokens.spaceLg),
+                FilledButton.icon(
+                  onPressed: () => context.go(homePath),
+                  icon: const Icon(Icons.home_outlined),
+                  label: const Text('回到首页'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

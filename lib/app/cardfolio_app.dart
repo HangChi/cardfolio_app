@@ -31,7 +31,7 @@ class CardfolioApp extends ConsumerWidget {
         AppThemePreference.system => ThemeMode.system,
       },
       locale: const Locale('zh', 'CN'),
-      supportedLocales: const <Locale>[Locale('zh', 'CN'), Locale('en')],
+      supportedLocales: const <Locale>[Locale('zh', 'CN')],
       localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

@@ -339,6 +339,8 @@ class _AppBootstrapState extends State<AppBootstrap> {
             initialLocation: dependencies.initialAppState.onboardingCompleted
                 ? homePath
                 : onboardingPath,
+            onboardingCompleted:
+                dependencies.initialAppState.onboardingCompleted,
           ),
         ),
       );
