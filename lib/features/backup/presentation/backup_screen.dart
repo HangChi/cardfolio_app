@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/errors/app_failure.dart';
+import '../../../core/widgets/app_confirm_dialog.dart';
 import '../data/backup_providers.dart';
 import '../domain/backup_models.dart';
 
@@ -152,24 +153,13 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
   }
 
   Future<void> _startExport() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('备份包含敏感内容'),
-        content: const Text('ZIP 将包含全部结构化数据、私人图片、备注和购买信息。'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('选择保存位置'),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '备份包含敏感内容',
+      message: 'ZIP 将包含全部结构化数据、私人图片、备注和购买信息。',
+      confirmLabel: '选择保存位置',
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     String? path;
     try {
       path = await ref

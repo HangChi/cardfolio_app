@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/errors/app_failure.dart';
+import '../../../core/widgets/app_confirm_dialog.dart';
 import '../data/sync_providers.dart';
 import '../domain/sync_models.dart';
 
@@ -556,24 +557,13 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
       );
 
   Future<void> _confirmSignOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('退出账号？'),
-        content: const Text('退出会停止同步并清除登录令牌，本地收藏和图片会完整保留。'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('退出并保留本地'),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '退出账号？',
+      message: '退出会停止同步并清除登录令牌，本地收藏和图片会完整保留。',
+      confirmLabel: '退出并保留本地',
     );
-    if (confirmed == true && mounted) {
+    if (confirmed && mounted) {
       await _run(ref.read(accountSyncRepositoryProvider).signOut);
     }
   }

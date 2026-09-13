@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/widgets/image_source_sheet.dart';
 import '../../../card_sets/data/card_set_providers.dart';
 import '../../../card_sets/domain/card_set_models.dart';
 import '../../../organization/data/organization_providers.dart';
@@ -543,32 +544,14 @@ class _DraftImagesEditor extends ConsumerWidget {
   final CreateCardState state;
 
   Future<void> _addImages(BuildContext context, WidgetRef ref) async {
-    final source = await showModalBottomSheet<_DraftImageSource>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('拍摄'),
-              subtitle: const Text('拍摄后直接添加，可稍后编辑'),
-              onTap: () => context.pop(_DraftImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('从相册选择'),
-              onTap: () => context.pop(_DraftImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+    final source = await showImageSourceSheet(
+      context,
+      cameraSubtitle: '拍摄后直接添加，可稍后编辑',
     );
     if (source == null || !context.mounted) return;
 
     final controller = ref.read(createCardControllerProvider.notifier);
-    if (source == _DraftImageSource.gallery) {
+    if (source == ImageSourceChoice.gallery) {
       if (state.images.isEmpty) {
         await controller.pickImage();
       } else {
@@ -806,8 +789,6 @@ class _DraftImagesEditor extends ConsumerWidget {
     );
   }
 }
-
-enum _DraftImageSource { camera, gallery }
 
 class _CardTextField extends StatelessWidget {
   const _CardTextField({

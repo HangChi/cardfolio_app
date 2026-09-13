@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../cards/data/card_providers.dart';
 import '../../../cards/presentation/widgets/card_image.dart';
 import '../../data/card_set_providers.dart';
@@ -395,25 +396,13 @@ class _CardSetDetailScreenState extends ConsumerState<CardSetDetailScreen> {
     CardSetDetail set,
     CardSetMemberDetail member,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('移除套卡成员？'),
-        content: Text('“${member.name}”将从成员清单移除，卡片本身不会删除。'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('移除成员'),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '移除套卡成员？',
+      message: '“${member.name}”将从成员清单移除，卡片本身不会删除。',
+      confirmLabel: '移除成员',
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await _run(
         () => ref
             .read(cardSetRepositoryProvider)

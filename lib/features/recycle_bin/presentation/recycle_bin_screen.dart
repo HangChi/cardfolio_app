@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/errors/app_failure.dart';
+import '../../../core/widgets/app_confirm_dialog.dart';
 import '../../cards/data/card_providers.dart';
 import '../../cards/presentation/widgets/card_image.dart';
 import '../data/recycle_bin_providers.dart';
@@ -291,33 +292,18 @@ class _EntryCard extends ConsumerWidget {
       return;
     }
     if (!context.mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('永久删除“${entry.name}”？'),
-        content: Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '永久删除“${entry.name}”？',
+      message:
           '将删除 ${impact.imageCount} 条图片记录、'
           '${impact.fileCount} 个图片文件，'
           '并移除 ${impact.purchaseAssociationCount} 条购买关联。'
           '此操作不可撤销。',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('永久删除'),
-          ),
-        ],
-      ),
+      confirmLabel: '永久删除',
+      destructive: true,
     );
-    if (confirmed != true || !context.mounted) return;
+    if (!confirmed || !context.mounted) return;
     await _run(
       context,
       () => ref

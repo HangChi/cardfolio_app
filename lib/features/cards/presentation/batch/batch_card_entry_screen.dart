@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/widgets/image_source_sheet.dart';
 import '../../../../core/preferences/local_app_state.dart';
 import '../../../../core/preferences/local_app_state_providers.dart';
 import '../../../../core/widgets/app_name_dialog.dart';
@@ -142,32 +143,12 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
 
   Future<void> _chooseImage(_BatchCardDraft draft, CardImageKind side) async {
     if (_saving || draft.saved) return;
-    final source = await showModalBottomSheet<_ImageSourceChoice>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('从相册选择'),
-              onTap: () => context.pop(_ImageSourceChoice.gallery),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('拍摄'),
-              onTap: () => context.pop(_ImageSourceChoice.camera),
-            ),
-          ],
-        ),
-      ),
-    );
+    final source = await showImageSourceSheet(context);
     if (source == null || !mounted) return;
 
     try {
       final String? path;
-      if (source == _ImageSourceChoice.gallery) {
+      if (source == ImageSourceChoice.gallery) {
         final images = await ref.read(galleryPickerProvider).pickMany(limit: 1);
         path = images.isEmpty ? null : images.first.path;
       } else {
@@ -889,5 +870,3 @@ final class _BatchCardDraft {
     shipping.dispose();
   }
 }
-
-enum _ImageSourceChoice { gallery, camera }

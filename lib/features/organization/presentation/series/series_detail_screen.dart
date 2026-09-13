@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../cards/presentation/widgets/card_image.dart';
 import '../../data/organization_providers.dart';
 import '../../domain/organization_models.dart';
@@ -141,24 +142,13 @@ class _SeriesDetailBody extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('删除“${series.name}”？'),
-        content: const Text('只会删除集卡册归类，不会删除卡片或套卡。'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除集卡册'),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '删除“${series.name}”？',
+      message: '只会删除集卡册归类，不会删除卡片或套卡。',
+      confirmLabel: '删除集卡册',
     );
-    if (confirmed != true || !context.mounted) return;
+    if (!confirmed || !context.mounted) return;
     try {
       await ref.read(organizationRepositoryProvider).deleteSeries(series.id);
       if (context.mounted && Navigator.of(context).canPop()) {

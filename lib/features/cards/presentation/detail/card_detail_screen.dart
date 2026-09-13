@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
+import '../../../../core/widgets/image_source_sheet.dart';
 import '../../../card_sets/data/card_set_providers.dart';
 import '../../../card_sets/domain/card_set_models.dart';
 import '../../../organization/data/organization_providers.dart';
@@ -63,24 +65,13 @@ class CardDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmCardDeletion(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('移入回收站？'),
-        content: const Text('卡片会从收藏和统计中隐藏，并可以在回收站恢复。'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('移入回收站'),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '移入回收站？',
+      message: '卡片会从收藏和统计中隐藏，并可以在回收站恢复。',
+      confirmLabel: '移入回收站',
     );
-    if (confirmed != true || !context.mounted) return;
+    if (!confirmed || !context.mounted) return;
     try {
       await ref.read(recycleBinRepositoryProvider).deleteCard(cardItemId);
       if (!context.mounted) return;
@@ -181,35 +172,16 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
   Future<void> _addImages() async {
     final remaining = CreateCardRequest.maxImages - card.images.length;
     if (remaining <= 0) return;
-    final source = await showModalBottomSheet<_DetailImageSource>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('拍摄'),
-              subtitle: const Text('拍摄后直接添加，可在图片管理中编辑'),
-              onTap: () => Navigator.of(context).pop(_DetailImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('从相册选择'),
-              onTap: () =>
-                  Navigator.of(context).pop(_DetailImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+    final source = await showImageSourceSheet(
+      context,
+      cameraSubtitle: '拍摄后直接添加，可在图片管理中编辑',
     );
     if (source == null || !mounted) return;
 
     late final List<PendingCardImage> pendingImages;
     try {
       final generator = ref.read(idGeneratorProvider);
-      if (source == _DetailImageSource.gallery) {
+      if (source == ImageSourceChoice.gallery) {
         final selections = await ref
             .read(galleryPickerProvider)
             .pickMany(limit: remaining);
@@ -636,8 +608,6 @@ class _ImageGalleryToolbar extends StatelessWidget {
     );
   }
 }
-
-enum _DetailImageSource { camera, gallery }
 
 class _OrganizationSummary extends ConsumerWidget {
   const _OrganizationSummary({required this.cardItemId});

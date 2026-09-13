@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../cards/data/card_providers.dart';
 import '../../data/organization_providers.dart';
 import '../../domain/organization_models.dart';
@@ -357,24 +358,13 @@ Future<void> _deleteTag(
     () => ref.read(organizationRepositoryProvider).previewTagChange(tag.id),
   );
   if (impact == null || !context.mounted) return;
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('删除“${tag.name}”？'),
-      content: Text('将影响 ${impact.associationCount} 款卡片，但不会删除任何卡片。'),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('删除标签'),
-        ),
-      ],
-    ),
+  final confirmed = await showAppConfirmDialog(
+    context,
+    title: '删除“${tag.name}”？',
+    message: '将影响 ${impact.associationCount} 款卡片，但不会删除任何卡片。',
+    confirmLabel: '删除标签',
   );
-  if (confirmed != true || !context.mounted) return;
+  if (!confirmed || !context.mounted) return;
   await _run(
     context,
     () => ref.read(organizationRepositoryProvider).deleteTag(tag.id),
@@ -409,24 +399,13 @@ Future<void> _handleFieldAction(
         ref.read(organizationRepositoryProvider).previewFieldDeletion(field.id),
   );
   if (impact == null || !context.mounted) return;
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('删除“${field.name}”？'),
-      content: Text('将隐藏 ${impact.valueCount} 个已有值。值会保留，供后续恢复与导出。'),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('删除字段'),
-        ),
-      ],
-    ),
+  final confirmed = await showAppConfirmDialog(
+    context,
+    title: '删除“${field.name}”？',
+    message: '将隐藏 ${impact.valueCount} 个已有值。值会保留，供后续恢复与导出。',
+    confirmLabel: '删除字段',
   );
-  if (confirmed != true || !context.mounted) return;
+  if (!confirmed || !context.mounted) return;
   await _run(
     context,
     () => ref.read(organizationRepositoryProvider).deleteField(field.id),
