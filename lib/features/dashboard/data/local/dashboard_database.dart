@@ -10,7 +10,7 @@ extension DashboardDatabase on AppDatabase {
     required DateTime nowUtc,
     required CostDisplayOptions options,
   }) {
-    return _dashboardSignal(this).asyncMap(
+    return _homeDashboardSignal(this).asyncMap(
       (_) => _loadHomeDashboard(this, nowUtc: nowUtc, options: options),
     );
   }
@@ -18,7 +18,7 @@ extension DashboardDatabase on AppDatabase {
   Stream<StatisticsSnapshot> watchStatisticsSnapshot(
     CostDisplayOptions options,
   ) {
-    return _dashboardSignal(
+    return _statisticsSignal(
       this,
     ).asyncMap((_) => _loadStatistics(this, options));
   }
@@ -28,7 +28,7 @@ extension DashboardDatabase on AppDatabase {
     required CostDisplayOptions options,
   }) {
     final normalizedMonth = DateTime(month.year, month.month);
-    return _dashboardSignal(this).asyncMap(
+    return _spendingCalendarSignal(this).asyncMap(
       (_) => _loadSpendingCalendarMonth(
         this,
         month: normalizedMonth,
@@ -38,24 +38,50 @@ extension DashboardDatabase on AppDatabase {
   }
 }
 
-Stream<List<QueryRow>> _dashboardSignal(AppDatabase db) {
+/// 各页面只监听真正会改变自身内容的表，避免任一表写入触发全量聚合重跑。
+Stream<List<QueryRow>> _tableSignal(
+  AppDatabase db,
+  Set<ResultSetImplementation<Table, Object?>> tables,
+) {
   return db
-      .customSelect(
-        'SELECT 1 AS dashboard_signal',
-        readsFrom: <ResultSetImplementation<Table, Object?>>{
-          db.cardDefinitions,
-          db.cardItems,
-          db.cardImages,
-          db.cardSets,
-          db.cardSetMembers,
-          db.seriesRecords,
-          db.tags,
-          db.cardTags,
-          db.purchases,
-          db.purchaseItems,
-        },
-      )
+      .customSelect('SELECT 1 AS dashboard_signal', readsFrom: tables)
       .watch();
+}
+
+Stream<List<QueryRow>> _homeDashboardSignal(AppDatabase db) {
+  return _tableSignal(db, <ResultSetImplementation<Table, Object?>>{
+    db.cardDefinitions,
+    db.cardItems,
+    db.cardImages,
+    db.cardSets,
+    db.cardSetMembers,
+    db.seriesRecords,
+    db.purchases,
+    db.purchaseItems,
+  });
+}
+
+Stream<List<QueryRow>> _statisticsSignal(AppDatabase db) {
+  return _tableSignal(db, <ResultSetImplementation<Table, Object?>>{
+    db.cardDefinitions,
+    db.cardItems,
+    db.tags,
+    db.cardTags,
+    db.cardSets,
+    db.cardSetMembers,
+    db.purchases,
+    db.purchaseItems,
+  });
+}
+
+Stream<List<QueryRow>> _spendingCalendarSignal(AppDatabase db) {
+  return _tableSignal(db, <ResultSetImplementation<Table, Object?>>{
+    db.cardDefinitions,
+    db.cardItems,
+    db.cardSets,
+    db.purchases,
+    db.purchaseItems,
+  });
 }
 
 Future<HomeDashboard> _loadHomeDashboard(
@@ -87,8 +113,6 @@ WHERE ci.deleted_at IS NULL
         ],
       )
       .getSingle();
-  final cards = await _loadDashboardCards(db);
-  final sets = await _loadDashboardSets(db);
   final seriesCount = await db
       .customSelect(
         'SELECT COUNT(*) AS series_count FROM series_records '
@@ -96,12 +120,14 @@ WHERE ci.deleted_at IS NULL
       )
       .getSingle()
       .then((row) => row.read<int>('series_count'));
+  final sets = await _loadDashboardSets(db);
   final costTotals = await _loadCostTotals(db, options);
-  final recentCards = cards.take(10).toList(growable: false);
-  final pendingCards = cards
-      .where((card) => card.needsCompletion)
-      .take(5)
-      .toList(growable: false);
+  final recentCards = await _loadDashboardCards(db, limit: 10);
+  final pendingCards = await _loadDashboardCards(
+    db,
+    limit: 5,
+    onlyNeedsCompletion: true,
+  );
   final nearlyComplete =
       sets
           .where((set) => set.status == DashboardSetStatus.nearlyComplete)
@@ -258,7 +284,15 @@ WHERE ci.deleted_at IS NULL
   );
 }
 
-Future<List<DashboardCard>> _loadDashboardCards(AppDatabase db) async {
+Future<List<DashboardCard>> _loadDashboardCards(
+  AppDatabase db, {
+  int? limit,
+  bool onlyNeedsCompletion = false,
+}) async {
+  final completionPredicate = onlyNeedsCompletion
+      ? 'AND cd.needs_completion = 1'
+      : '';
+  final limitClause = limit == null ? '' : 'LIMIT $limit';
   final rows = await db.customSelect('''
 SELECT
   ci.id AS card_item_id,
@@ -279,7 +313,9 @@ FROM card_items ci
 JOIN card_definitions cd ON cd.id = ci.definition_id
 WHERE ci.deleted_at IS NULL
   AND cd.deleted_at IS NULL
+  $completionPredicate
 ORDER BY ci.created_at DESC, ci.id ASC
+$limitClause
 ''').get();
   return rows
       .map(
@@ -426,7 +462,7 @@ Future<SpendingCalendarMonth> _loadSpendingCalendarMonth(
   required CostDisplayOptions options,
 }) async {
   final grouped = <DateTime, List<SpendingCalendarEntry>>{};
-  for (final row in await _loadActiveSpendingRows(db, options)) {
+  for (final row in await _loadActiveSpendingRows(db, options, month: month)) {
     final local = row.calendarDate
         ? row.effectiveAt
         : row.effectiveAt.toLocal();
@@ -466,12 +502,45 @@ Future<SpendingCalendarMonth> _loadSpendingCalendarMonth(
 
 Future<List<_ActiveSpendingRow>> _loadActiveSpendingRows(
   AppDatabase db,
-  CostDisplayOptions options,
-) async {
+  CostDisplayOptions options, {
+  DateTime? month,
+}) async {
   final shipping = options.includeShipping ? 'p.shipping_minor' : '0';
   final fees = options.includeFees ? 'p.fees_minor' : '0';
+  // 指定月份时在 SQL 层过滤，避免整表消费记录拉回后在 Dart 里逐月扫描。
+  // 两类记录的月界不同：
+  // - calendar_date = 1 的 effective_at 是“本地日历日编码为 UTC”（与 v9 迁移
+  //   _normalizeLegacyAcquiredDates 的编码一致），用 DateTime.utc 月界比较；
+  // - 其余是真实时刻，用本地时区月界换算成 UTC 时刻比较。
+  final String tailClause;
+  final variables = <Variable<Object>>[];
+  if (month != null) {
+    tailClause = '''
+) AS active
+WHERE (
+  (active.calendar_date = 1
+    AND active.effective_at >= ? AND active.effective_at < ?)
+  OR (active.calendar_date = 0
+    AND active.effective_at >= ? AND active.effective_at < ?)
+)
+ORDER BY active.effective_at ASC, active.purchase_id ASC
+''';
+    variables.addAll(<Variable<Object>>[
+      Variable<DateTime>(DateTime.utc(month.year, month.month)),
+      Variable<DateTime>(DateTime.utc(month.year, month.month + 1)),
+      Variable<DateTime>(DateTime(month.year, month.month)),
+      Variable<DateTime>(DateTime(month.year, month.month + 1)),
+    ]);
+  } else {
+    tailClause = '''
+ORDER BY effective_at ASC, p.id ASC
+''';
+  }
+  final headClause = month == null
+      ? 'SELECT'
+      : 'SELECT active.* FROM (\nSELECT';
   final rows = await db.customSelect('''
-SELECT
+$headClause
   p.id AS purchase_id,
   p.currency AS currency,
   p.amount_minor + $shipping + $fees AS ledger_minor,
@@ -530,8 +599,8 @@ SELECT
   ) AS card_item_id
 FROM purchases p
 WHERE $_activePurchasePredicate
-ORDER BY effective_at ASC, p.id ASC
-''').get();
+$tailClause
+''', variables: variables).get();
   return rows
       .map(
         (row) => _ActiveSpendingRow(
