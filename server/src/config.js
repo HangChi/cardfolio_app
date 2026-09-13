@@ -28,6 +28,13 @@ export function loadConfig(env = process.env) {
   if (!['http:', 'https:'].includes(supabaseUrl.protocol)) {
     throw new Error('SUPABASE_URL must use http or https');
   }
+  if (
+    supabaseUrl.protocol !== 'https:' &&
+    !['localhost', '127.0.0.1', '[::1]'].includes(supabaseUrl.hostname)
+  ) {
+    // 明文 http 会把 service key 与用户 JWT 暴露给链路窃听，只允许本机调试。
+    throw new Error('SUPABASE_URL must use https unless it points at localhost');
+  }
   return Object.freeze({
     host: env.HOST?.trim() || '127.0.0.1',
     port: positiveInteger(env.PORT, 8080, 'PORT'),
@@ -46,11 +53,16 @@ export function loadConfig(env = process.env) {
       15 * 60 * 1000,
       'AUTH_RATE_WINDOW_MS',
     ),
+    readyzRateLimit: positiveInteger(env.READYZ_RATE_LIMIT, 300, 'READYZ_RATE_LIMIT'),
     upstreamTimeoutMs: positiveInteger(
       env.UPSTREAM_TIMEOUT_MS,
       30 * 1000,
       'UPSTREAM_TIMEOUT_MS',
     ),
+    // 单次 push 的总时长预算：必须小于 server.js 的 requestTimeout(120s)
+    // 与 Nginx proxy_read_timeout，超时返回 504 让客户端按批次重试。
+    pushDeadlineMs: positiveInteger(env.PUSH_DEADLINE_MS, 100 * 1000, 'PUSH_DEADLINE_MS'),
+    exportMaxEntities: positiveInteger(env.EXPORT_MAX_ENTITIES, 10_000, 'EXPORT_MAX_ENTITIES'),
     trustProxy: env.TRUST_PROXY === 'true',
   });
 }

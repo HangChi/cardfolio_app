@@ -12,7 +12,10 @@ const config = Object.freeze({
   maxAttachmentBytes: 64 * 1024 * 1024,
   authRateLimit: 20,
   authRateWindowMs: 15 * 60 * 1000,
+  readyzRateLimit: 300,
   upstreamTimeoutMs: 30 * 1000,
+  pushDeadlineMs: 100 * 1000,
+  exportMaxEntities: 10_000,
   trustProxy: true,
 });
 
@@ -422,8 +425,12 @@ test('push returns acknowledgements and conflict changes without bypassing the u
   assert.deepEqual(JSON.parse(calls[1].init.body), { p_mutation: mutation });
 });
 
-test('attachment upload verifies SHA-256 before touching Storage', async () => {
-  const bytes = Buffer.from([1, 2, 3, 4]);
+test('attachment upload verifies SHA-256 and image magic before touching Storage', async () => {
+  // JPEG 魔数（FF D8 FF）开头的合法图片负载。
+  const bytes = Buffer.from([
+    0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46,
+    0x49, 0x46, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+  ]);
   const checksum = createHash('sha256').update(bytes).digest('hex');
   const calls = [];
   const app = createApp(config, {
@@ -447,6 +454,30 @@ test('attachment upload verifies SHA-256 before touching Storage', async () => {
   assert.equal(calls[1].url.pathname, `/storage/v1/object/cardfolio-private/user-1/${checksum}`);
   assert.equal(calls[1].init.headers['x-upsert'], 'true');
   assert.deepEqual(Buffer.from(calls[1].init.body), bytes);
+});
+
+test('attachment upload rejects non-image payloads', async () => {
+  const bytes = Buffer.from('%PDF-1.7 malicious payload................');
+  const checksum = createHash('sha256').update(bytes).digest('hex');
+  const app = createApp(config, {
+    fetchImpl: async (url) => {
+      if (new URL(url).pathname === '/auth/v1/user') {
+        return jsonResponse({ id: 'user-1', email: 'collector@example.test' });
+      }
+      return jsonResponse({}, 200);
+    },
+  });
+
+  const response = await app.handle(request(`/v1/sync/attachments/${checksum}`, {
+    method: 'PUT',
+    token: 'access-secret',
+    body: bytes,
+    headers: { 'content-type': 'application/octet-stream' },
+  }));
+  const body = await response.json();
+
+  assert.equal(response.status, 415);
+  assert.equal(body.code, 'attachment_type_rejected');
 });
 
 test('account deletion blocks new writes before cleanup and Auth removal', async () => {
@@ -473,27 +504,61 @@ test('account deletion blocks new writes before cleanup and Auth removal', async
   }));
 
   assert.equal(response.status, 204);
+  // 业务数据必须先于物理附件删除，失败窗口内不能出现“附件已删、数据仍在”。
   assert.deepEqual(calls.map((call) => call.url.pathname), [
     '/auth/v1/user',
     '/rest/v1/rpc/cardfolio_begin_account_deletion',
+    '/rest/v1/rpc/cardfolio_delete_my_cloud_data',
     '/storage/v1/object/list/cardfolio-private',
     '/storage/v1/object/cardfolio-private',
-    '/rest/v1/rpc/cardfolio_delete_my_cloud_data',
     '/auth/v1/admin/users/user-delete',
   ]);
   assert.equal(calls[1].init.headers.authorization, 'Bearer access-secret');
-  assert.deepEqual(JSON.parse(calls[2].init.body), {
+  assert.equal(calls[2].init.headers.authorization, 'Bearer access-secret');
+  assert.deepEqual(JSON.parse(calls[3].init.body), {
     prefix: 'user-delete',
     limit: 1000,
     offset: 0,
     sortBy: { column: 'name', order: 'asc' },
   });
-  assert.deepEqual(JSON.parse(calls[3].init.body), {
+  assert.deepEqual(JSON.parse(calls[4].init.body), {
     prefixes: [`user-delete/${checksum}`],
   });
-  assert.equal(calls[4].init.headers.authorization, 'Bearer access-secret');
   assert.equal(calls[5].init.headers.authorization, undefined);
   assert.equal(calls[5].init.headers.apikey, 'sb_secret_test');
+});
+
+test('push marks the failing operation for dead-lettering', async () => {
+  const app = createApp(config, {
+    fetchImpl: async (url) => {
+      if (new URL(url).pathname === '/auth/v1/user') {
+        return jsonResponse({ id: 'user-1', email: 'collector@example.test' });
+      }
+      return jsonResponse({ message: 'invalid_mutation', code: 'P0001' }, 400);
+    },
+  });
+  const mutation = {
+    operationId: '4f8d7a3e-28c2-4aa2-94b8-a08f2248d64c',
+    entityType: 'cardDefinitions',
+    entityId: 'definition-1',
+    operation: 'upsert',
+    baseServerVersion: 2,
+    payload: { id: 'definition-1', name: '本地名称' },
+    changedFields: ['name'],
+    createdAt: '2026-08-29T01:00:00.000Z',
+  };
+
+  const response = await app.handle(request('/v1/sync/push', {
+    method: 'POST',
+    token: 'access-secret',
+    body: { protocolVersion: 1, deviceId: 'device-1', mutations: [mutation] },
+  }));
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.code, 'invalid_mutation');
+  assert.equal(body.retryable, false);
+  assert.equal(body.failedOperationId, mutation.operationId);
 });
 
 test('errors never expose an upstream response body', async () => {

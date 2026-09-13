@@ -74,6 +74,11 @@ export function createApp(config, dependencies = {}) {
         return json({ status: 'ok' }, 200, requestId);
       }
       if (method === 'GET' && url.pathname === '/readyz') {
+        // /readyz 会触发一次带 service key 的上游调用，必须限流防放大。
+        const clientKey = clientAddress(request, config.trustProxy);
+        if (!limiter.consume(`readyz:${clientKey}`)) {
+          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
+        }
         const response = await upstream('/auth/v1/settings', {
           headers: serviceHeaders(),
         });
@@ -98,13 +103,15 @@ export function createApp(config, dependencies = {}) {
 
       const phoneAction = /^\/v1\/auth\/phone\/(send|verify)$/.exec(url.pathname);
       if (method === 'POST' && phoneAction) {
+        // 限流 key 只含客户端地址与动作：key 若包含请求体里的手机号/邮箱，
+        // 攻击者可轮换标识无限制造唯一 key，既绕过限流又撑爆内存。
+        const clientKey = clientAddress(request, config.trustProxy);
+        if (!limiter.consume(`${clientKey}:auth:phone-${phoneAction[1]}`)) {
+          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
+        }
         const body = await readJson(request, config.maxJsonBytes);
         requireProtocol(body);
         const phone = normalizePhone(body.phone);
-        const clientKey = clientAddress(request, config.trustProxy);
-        if (!limiter.consume(`${clientKey}:phone:${phone}:${phoneAction[1]}`)) {
-          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
-        }
         if (phoneAction[1] === 'send') {
           if (typeof body.createUser !== 'boolean') {
             throw new ApiError(400, 'invalid_request', '请求字段 createUser 无效。');
@@ -140,13 +147,13 @@ export function createApp(config, dependencies = {}) {
 
       const emailAction = /^\/v1\/auth\/email\/(send|verify)$/.exec(url.pathname);
       if (method === 'POST' && emailAction) {
+        const clientKey = clientAddress(request, config.trustProxy);
+        if (!limiter.consume(`${clientKey}:auth:email-${emailAction[1]}`)) {
+          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
+        }
         const body = await readJson(request, config.maxJsonBytes);
         requireProtocol(body);
         const email = normalizeEmail(body.email);
-        const clientKey = clientAddress(request, config.trustProxy);
-        if (!limiter.consume(`${clientKey}:email:${email}:${emailAction[1]}`)) {
-          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
-        }
         if (emailAction[1] === 'send') {
           if (typeof body.createUser !== 'boolean') {
             throw new ApiError(400, 'invalid_request', '请求字段 createUser 无效。');
@@ -181,14 +188,14 @@ export function createApp(config, dependencies = {}) {
 
       const registrationAction = /^\/v1\/auth\/register\/(verify|resend)$/.exec(url.pathname);
       if (method === 'POST' && registrationAction) {
+        const clientKey = clientAddress(request, config.trustProxy);
+        if (!limiter.consume(`${clientKey}:auth:register-${registrationAction[1]}`)) {
+          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
+        }
         const body = await readJson(request, config.maxJsonBytes);
         requireProtocol(body);
         const email = normalizeEmail(body.email);
         requireString(body.deviceId, 'deviceId', 200);
-        const clientKey = clientAddress(request, config.trustProxy);
-        if (!limiter.consume(`${clientKey}:register:${email}:${registrationAction[1]}`)) {
-          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
-        }
         if (registrationAction[1] === 'resend') {
           const response = await upstream('/auth/v1/resend', {
             method: 'POST',
@@ -213,14 +220,14 @@ export function createApp(config, dependencies = {}) {
 
       const passwordResetAction = /^\/v1\/auth\/password\/reset\/(send|verify)$/.exec(url.pathname);
       if (method === 'POST' && passwordResetAction) {
+        const clientKey = clientAddress(request, config.trustProxy);
+        if (!limiter.consume(`${clientKey}:auth:password-${passwordResetAction[1]}`)) {
+          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
+        }
         const body = await readJson(request, config.maxJsonBytes);
         requireProtocol(body);
         const email = normalizeEmail(body.email);
         requireString(body.deviceId, 'deviceId', 200);
-        const clientKey = clientAddress(request, config.trustProxy);
-        if (!limiter.consume(`${clientKey}:password-reset:${email}:${passwordResetAction[1]}`)) {
-          throw new ApiError(429, 'rate_limited', '请求过于频繁，请稍后重试。', true);
-        }
         if (passwordResetAction[1] === 'send') {
           const response = await upstream('/auth/v1/recover', {
             method: 'POST',
@@ -276,18 +283,20 @@ export function createApp(config, dependencies = {}) {
           },
         );
         if (!beginDeletion.ok) throw upstreamError(beginDeletion.status);
-        await deleteAccountAttachments({
-          token,
-          userId: user.id,
-          upstream,
-          userHeaders,
-        });
+        // 先删业务数据、后删附件：附件物理删除一旦失败，业务数据已不可恢复，
+        // 而残留附件只是存储孤儿。失败时用户重试删除即可继续清理。
         const cleanup = await upstream('/rest/v1/rpc/cardfolio_delete_my_cloud_data', {
           method: 'POST',
           headers: userHeaders(token, true),
           body: '{}',
         });
         if (!cleanup.ok) throw upstreamError(cleanup.status);
+        await deleteAccountAttachments({
+          token,
+          userId: user.id,
+          upstream,
+          userHeaders,
+        });
         const deletion = await upstream(`/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
           method: 'DELETE',
           headers: serviceHeaders(true),
@@ -299,14 +308,15 @@ export function createApp(config, dependencies = {}) {
       if (method === 'GET' && url.pathname === '/v1/account/export') {
         const token = bearer(request);
         await currentUser(token);
+        // 多取一行用于判断是否超限；上限可通过 EXPORT_MAX_ENTITIES 调整。
         const entitiesResponse = await upstream(
-          '/rest/v1/cardfolio_sync_entities?select=entity_type,entity_id,payload,deleted,server_version,updated_at&order=entity_type.asc,entity_id.asc&limit=10000',
+          `/rest/v1/cardfolio_sync_entities?select=entity_type,entity_id,payload,deleted,server_version,updated_at&order=entity_type.asc,entity_id.asc&limit=${config.exportMaxEntities + 1}`,
           { headers: userHeaders(token) },
         );
         if (!entitiesResponse.ok) throw upstreamError(entitiesResponse.status);
         const entities = await safeJson(entitiesResponse);
         if (!Array.isArray(entities)) throw new ApiError(502, 'upstream_protocol_error', '云端数据格式异常。', true);
-        if (entities.length === 10_000) {
+        if (entities.length > config.exportMaxEntities) {
           throw new ApiError(413, 'export_too_large', '云端数据量过大，暂时无法直接导出。');
         }
         const contents = Buffer.from(JSON.stringify({
@@ -336,14 +346,25 @@ export function createApp(config, dependencies = {}) {
         }
         const acknowledgements = [];
         const changes = [];
+        const pushStartedAt = now();
         for (const mutation of body.mutations) {
           validateMutation(mutation);
+          // 批次串行调用上游，总时长可能超过外层 HTTP 超时导致连接被切断；
+          // 超出预算时主动返回 504（可重试），已提交操作靠幂等重放收敛。
+          if (now() - pushStartedAt > config.pushDeadlineMs) {
+            throw new ApiError(
+              504,
+              'push_deadline_exceeded',
+              '同步批次处理超时，请稍后重试剩余操作。',
+              true,
+            );
+          }
           const response = await upstream('/rest/v1/rpc/cardfolio_apply_mutation', {
             method: 'POST',
             headers: userHeaders(token, true),
             body: JSON.stringify({ p_mutation: mutation }),
           });
-          if (!response.ok) throw await mutationError(response);
+          if (!response.ok) throw await mutationError(response, mutation.operationId);
           const result = await safeJson(response);
           if (result?.kind === 'ack') {
             acknowledgements.push({
@@ -402,6 +423,9 @@ export function createApp(config, dependencies = {}) {
         if (bytes.length === 0 || sha256(bytes) !== checksum) {
           throw new ApiError(400, 'attachment_checksum_mismatch', '同步图片校验失败。');
         }
+        if (!isAllowedImage(bytes)) {
+          throw new ApiError(415, 'attachment_type_rejected', '仅支持上传常见图片格式。');
+        }
         const response = await upstream(
           `/storage/v1/object/cardfolio-private/${encodeURIComponent(user.id)}/${checksum}`,
           {
@@ -446,7 +470,12 @@ export function createApp(config, dependencies = {}) {
       const safe = error instanceof ApiError
         ? error
         : new ApiError(500, 'internal_error', '服务暂时不可用，请稍后重试。', true);
-      return json({ code: safe.code, message: safe.message, retryable: safe.retryable }, safe.status, requestId);
+      return json({
+        code: safe.code,
+        message: safe.message,
+        retryable: safe.retryable,
+        ...(safe.details ?? {}),
+      }, safe.status, requestId);
     }
   }
 
@@ -684,7 +713,7 @@ async function safeJson(response) {
   }
 }
 
-async function mutationError(response) {
+async function mutationError(response, operationId) {
   let code = '';
   try {
     const body = await response.json();
@@ -693,10 +722,18 @@ async function mutationError(response) {
     // Never expose an upstream response body.
   }
   if (code.includes('idempotency_mismatch')) {
-    return new ApiError(409, 'idempotency_mismatch', '同步操作校验不一致，本地更改已保留。');
+    return new ApiError(
+      409,
+      'idempotency_mismatch',
+      '同步操作校验不一致，本地更改已保留。',
+      false,
+      { failedOperationId: operationId },
+    );
   }
   if (code.includes('invalid_mutation')) {
-    return new ApiError(400, 'invalid_mutation', '同步操作格式无效。');
+    return new ApiError(400, 'invalid_mutation', '同步操作格式无效。', false, {
+      failedOperationId: operationId,
+    });
   }
   if (code.includes('account_deleting')) {
     return new ApiError(409, 'account_deleting', '账号正在删除，不能再写入云端数据。');
@@ -756,7 +793,30 @@ function clientAddress(request, trustProxy) {
     const forwarded = request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim();
     if (forwarded) return forwarded.slice(0, 128);
   }
+  // server.js 注入的直连 socket 地址：总是覆盖客户端自报的同名头，不可伪造。
+  const directIp = request.headers.get('x-cardfolio-client-ip')?.trim();
+  if (directIp) return directIp.slice(0, 128);
   return 'unknown';
+}
+
+// 附件只承载卡片照片：嗅探魔数拒绝任意文件托管。覆盖相册/相机常见的
+// 光栅格式：JPEG、PNG、GIF、BMP、WebP、HEIF/HEIC 系与 AVIF。
+function isAllowedImage(bytes) {
+  if (bytes.length < 12) return false;
+  const latin = (start, end) => bytes.toString('latin1', start, end);
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+  if (latin(0, 8) === '\u0089PNG\r\n\u001a\n') return true;
+  if (latin(0, 3) === 'GIF') return true;
+  if (latin(0, 2) === 'BM') return true;
+  if (latin(0, 4) === 'RIFF' && latin(8, 12) === 'WEBP') return true;
+  if (latin(4, 8) === 'ftyp') {
+    const brand = latin(8, 12).toLowerCase();
+    return [
+      'avif', 'avis', 'heic', 'heim', 'heis', 'heix', 'hevc',
+      'hevm', 'mif1', 'msf1',
+    ].includes(brand);
+  }
+  return false;
 }
 
 function authError(status) {

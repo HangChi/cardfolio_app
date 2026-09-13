@@ -30,17 +30,22 @@ secret key 只用于服务就绪检查和删除 Auth 用户。
 3. `supabase/migrations/202608290030_sync_security_hardening.sql`
 
 第三个迁移撤销登录用户对同步表的直接写权限，把写入统一收口到带账号、操作和实体事务锁
-的 RPC，并在账号删除开始后阻止新的实体与附件写入。账号删除由网关通过 Storage API
-移除真实对象后再清理数据库元数据，禁止直接 SQL 删除 `storage.objects`。不要只执行前两个
-迁移上线。
+的 RPC，并在账号删除开始后阻止新的实体与附件写入。账号删除时网关先清理数据库元数据、
+再通过 Storage API 移除真实对象（失败可重试，残留对象只是存储孤儿），禁止直接 SQL 删除
+`storage.objects`。不要只执行前两个迁移上线。
 
 需要取得项目 URL、publishable key 和 secret key。secret key 只能保存在服务器，绝不能
 写入 Flutter `--dart-define`、Git、日志或反向代理配置。
 
-配置变量为 `SUPABASE_URL`、`SUPABASE_PUBLISHABLE_KEY` 和 `SUPABASE_SECRET_KEY`。网关也兼容
-旧项目的 `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`，但新旧两套不要同时配置。新式
-API key 只放入 `apikey` 请求头；只有登录用户的访问令牌会放入 `Authorization: Bearer`。
-`UPSTREAM_TIMEOUT_MS` 控制普通上游请求超时，默认 30000 毫秒。
+配置变量为 `SUPABASE_URL`、`SUPABASE_PUBLISHABLE_KEY` 和 `SUPABASE_SECRET_KEY`（非 localhost
+地址必须使用 https）。网关也兼容旧项目的 `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`，
+但新旧两套不要同时配置。新式 API key 只放入 `apikey` 请求头；只有登录用户的访问令牌会放入
+`Authorization: Bearer`。`UPSTREAM_TIMEOUT_MS` 控制普通上游请求超时，默认 30000 毫秒；
+`PUSH_DEADLINE_MS` 控制单次 push 批次总预算（默认 100 秒，必须小于网关 requestTimeout 120 秒
+与 Nginx `proxy_read_timeout`）；`READYZ_RATE_LIMIT` 限制 `/readyz` 调用频率；
+`EXPORT_MAX_ENTITIES` 控制云端导出单次返回的最大实体数。请求体大小按端点分流：只有
+`PUT /v1/sync/attachments/:checksum` 允许到 `MAX_ATTACHMENT_BYTES`，其余端点一律
+`MAX_JSON_BYTES`。
 
 邮箱注册使用“邮箱 + 密码 + 一次性验证码”：`register` 发送注册验证码，
 `register/verify` 验证后返回会话；后续 `login` 只使用邮箱和密码。忘记密码通过
@@ -120,7 +125,11 @@ flutter run \
 - 网关进程内登录限流适用于单实例；多实例部署需改为共享限流存储；
 - `sync_changes`、`sync_operations` 尚未自动清理，上线初期保留完整记录，后续应结合每台
   设备的确认游标设计安全压缩策略；
-- 网关会在校验附件时短暂占用最多一个附件大小的内存，因此容器并发和 64 MiB 上限不可
-  随意提高。
-- 普通 Supabase 上游请求默认 30 秒超时，由 `UPSTREAM_TIMEOUT_MS` 调整；Nginx 的
-  `proxy_read_timeout` 应大于该值，避免网关尚未返回结构化超时前由代理断开。
+- 网关只对附件上传端点短暂占用最多一个附件大小的内存（其余端点上限为 `MAX_JSON_BYTES`），
+  因此容器并发和 64 MiB 上限不可随意提高。
+- 普通 Supabase 上游请求默认 30 秒超时，由 `UPSTREAM_TIMEOUT_MS` 调整；push 批次总预算由
+  `PUSH_DEADLINE_MS`（默认 100 秒）控制。Nginx 的 `proxy_read_timeout` 应大于两者，避免网关
+  尚未返回结构化超时前由代理断开。
+- 认证限流按“客户端 IP + 动作”计数：`TRUST_PROXY=true` 时取 `X-Real-IP`/`X-Forwarded-For`
+  最后一跳，否则取网关注入的直连 socket 地址；直连暴露部署时不要开启 `TRUST_PROXY`。
+- 附件上传按魔数嗅探只接受常见图片格式（JPEG/PNG/GIF/BMP/WebP/HEIF 系/AVIF）。
