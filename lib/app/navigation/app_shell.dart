@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../features/sync/data/sync_scheduler.dart';
 
 /// 五个固定主入口，顺序与 Figma 底部导航一致：首页、收藏、拍摄、统计、我的。
 const List<AppDestination> appDestinations = <AppDestination>[
@@ -45,21 +48,47 @@ class AppDestination {
 }
 
 /// 承载五入口分支的导航壳。每个分支保留自己的导航栈。
-class AppShell extends StatefulWidget {
+///
+/// 同时承载同步自动调度：随壳启动周期检查，App 恢复前台时立即补一次。
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
   static const Duration _exitConfirmationWindow = Duration(seconds: 2);
   static const Duration _duplicateBackEventWindow = Duration(milliseconds: 160);
 
   DateTime? _lastBackPressedAt;
   DateTime? _lastBackEventAt;
+  SyncAutoScheduler? _syncScheduler;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _syncScheduler = ref.read(syncAutoSchedulerProvider)?..start();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncScheduler?.trigger();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _syncScheduler?.stop();
+    _syncScheduler = null;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

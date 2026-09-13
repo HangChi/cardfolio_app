@@ -33,6 +33,7 @@ import '../../features/sync/data/local/sync_local_store.dart';
 import '../../features/sync/data/rest_account_sync_remote.dart';
 import '../../features/sync/data/secure_session_store.dart';
 import '../../features/sync/data/sync_providers.dart';
+import '../../features/sync/data/sync_scheduler.dart';
 import '../../features/sync/domain/account_sync_repository.dart';
 import '../../features/sync/domain/sync_models.dart';
 import '../app_router.dart';
@@ -329,6 +330,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
           ),
           accountSyncRepositoryProvider.overrideWithValue(
             dependencies.accountSyncRepository,
+          ),
+          syncAutoSchedulerProvider.overrideWithValue(
+            SyncAutoScheduler(repository: dependencies.accountSyncRepository),
           ),
           localAppStateStoreProvider.overrideWithValue(
             dependencies.localAppStateStore,
