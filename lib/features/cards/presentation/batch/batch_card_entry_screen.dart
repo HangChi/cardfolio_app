@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_router.dart';
 import '../../../../app/app_theme.dart';
 import '../../../../core/errors/app_failure.dart';
+import '../../../../core/widgets/app_confirm_dialog.dart';
 import '../../../../core/widgets/image_source_sheet.dart';
 import '../../../../core/preferences/local_app_state.dart';
 import '../../../../core/preferences/local_app_state_providers.dart';
@@ -172,7 +173,7 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
   }
 
   Future<void> _editImage(_BatchCardDraft draft, CardImageKind side) async {
-    if (_saving || draft.saved || draft.confirmed) return;
+    if (_saving || draft.saved) return;
     final sourcePath = side == CardImageKind.front
         ? draft.frontDerivedPath ?? draft.frontPath
         : draft.backDerivedPath ?? draft.backPath;
@@ -195,16 +196,78 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
     _schedulePersist();
   }
 
-  Future<void> _saveAll() async {
+  /// 一次多选相册图片，按顺序填入各草稿的正面；空位不够时追加新草稿。
+  Future<void> _batchImportFrontImages() async {
     if (_saving) return;
-    if (_drafts.any((draft) => !draft.saved && !draft.confirmed)) {
-      _showMessage('请先逐张确认本批次中的卡片资料。');
+    final List<SelectedGalleryImage> selections;
+    try {
+      selections = await ref.read(galleryPickerProvider).pickMany(limit: 30);
+    } on AppFailure catch (failure) {
+      _showMessage(failure.userMessage);
       return;
     }
+    if (selections.isEmpty || !mounted) return;
+    setState(() {
+      var searchFrom = 0;
+      for (final selection in selections) {
+        var targetIndex = -1;
+        for (var index = searchFrom; index < _drafts.length; index++) {
+          final candidate = _drafts[index];
+          if (!candidate.saved && candidate.frontPath == null) {
+            targetIndex = index;
+            break;
+          }
+        }
+        if (targetIndex >= 0) {
+          final draft = _drafts[targetIndex];
+          draft.frontPath = selection.path;
+          draft.frontDerivedPath = null;
+          searchFrom = targetIndex + 1;
+        } else {
+          final generator = ref.read(idGeneratorProvider);
+          _drafts.add(
+            _BatchCardDraft(
+              ids: CardDraftIds.create(generator),
+              backImageId: generator.newId(),
+            )..frontPath = selection.path,
+          );
+        }
+      }
+    });
+    _schedulePersist();
+  }
+
+  Future<void> _saveAll() async {
+    if (_saving) return;
+    final pending = _drafts
+        .where((draft) => !draft.saved)
+        .toList(growable: false);
+    if (pending.isEmpty) {
+      _showMessage('没有待保存的卡片。');
+      return;
+    }
+    final ready = pending
+        .where((draft) => draft.name.text.trim().isNotEmpty)
+        .toList(growable: false);
+    if (ready.isEmpty) {
+      _showMessage('请先为卡片填写名称。');
+      return;
+    }
+    final skippedCount = pending.length - ready.length;
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: '保存全部卡片？',
+      message: skippedCount == 0
+          ? '将保存 ${ready.length} 张卡片。'
+          : '将保存 ${ready.length} 张卡片，'
+                '$skippedCount 张缺少名称的草稿会保留待补充。',
+      confirmLabel: '保存',
+    );
+    if (!confirmed || !mounted) return;
     setState(() => _saving = true);
     var savedCount = 0;
     try {
-      for (final draft in _drafts.where((draft) => !draft.saved)) {
+      for (final draft in ready) {
         final amountMinor = parseOptionalCnyMinor(draft.amount.text);
         final shippingMinor = parseOptionalCnyMinor(draft.shipping.text);
         final front = draft.frontPath;
@@ -278,7 +341,11 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
       _persistDebounce?.cancel();
       await ref.read(localAppStateProvider.notifier).clearBatchEntry();
       if (!mounted) return;
-      _showMessage('已保存 $savedCount 张卡片。');
+      _showMessage(
+        skippedCount == 0
+            ? '已保存 $savedCount 张卡片。'
+            : '已保存 $savedCount 张；$skippedCount 张草稿待补充名称。',
+      );
       context.go(libraryPath);
     } on AppFailure catch (failure) {
       _showMessage('已保存 $savedCount 张；当前草稿保存失败：${failure.userMessage}');
@@ -379,8 +446,22 @@ class _BatchCardEntryScreenState extends ConsumerState<BatchCardEntryScreen> {
         ),
         children: <Widget>[
           Text(
-            '每张卡片都可只录正面、只录背面或暂不添加图片；填写后请逐张确认，再一次保存。',
+            '每张卡片都可只录正面、只录背面或暂不添加图片；填写名称后保存全部即可。',
             style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          SizedBox(height: tokens.spaceMd),
+          OutlinedButton.icon(
+            key: const Key('batch-import-front-images'),
+            onPressed: _saving ? null : _batchImportFrontImages,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('从相册批量导入正面图'),
+          ),
+          SizedBox(height: tokens.spaceXs),
+          Text(
+            '一次选择多张图片，按顺序填入各卡正面，不足会自动补建草稿。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: context.palette.textSecondary,
+            ),
           ),
           SizedBox(height: tokens.spaceMd),
           Text('本批次共用资料', style: Theme.of(context).textTheme.titleMedium),
@@ -583,25 +664,14 @@ class _BatchDraftCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: tokens.spaceSm),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('已确认此卡资料'),
-              subtitle: const Text('确认后锁定本卡草稿；取消勾选可继续修改。'),
-              value: draft.confirmed,
-              onChanged: enabled && !draft.saved
-                  ? (value) {
-                      draft.confirmed = value ?? false;
-                      onChanged();
-                    }
-                  : null,
-            ),
+            SizedBox(height: tokens.spaceSm),
             Row(
               children: <Widget>[
                 Expanded(
                   child: _SideImage(
                     label: '正面',
                     path: draft.frontDerivedPath ?? draft.frontPath,
-                    enabled: enabled && !draft.saved && !draft.confirmed,
+                    enabled: enabled && !draft.saved,
                     onPressed: onChooseFront,
                     onEdit: onEditFront,
                   ),
@@ -611,7 +681,7 @@ class _BatchDraftCard extends StatelessWidget {
                   child: _SideImage(
                     label: '背面',
                     path: draft.backDerivedPath ?? draft.backPath,
-                    enabled: enabled && !draft.saved && !draft.confirmed,
+                    enabled: enabled && !draft.saved,
                     onPressed: onChooseBack,
                     onEdit: onEditBack,
                   ),
@@ -620,8 +690,9 @@ class _BatchDraftCard extends StatelessWidget {
             ),
             SizedBox(height: tokens.spaceMd),
             TextField(
+              key: Key('batch-draft-name-$index'),
               controller: draft.name,
-              enabled: enabled && !draft.saved && !draft.confirmed,
+              enabled: enabled && !draft.saved,
               onChanged: (_) => onChanged(),
               decoration: const InputDecoration(labelText: '名称'),
             ),
@@ -629,7 +700,7 @@ class _BatchDraftCard extends StatelessWidget {
             OptionalDateField(
               label: '发行日期',
               value: draft.issuedAt,
-              enabled: enabled && !draft.saved && !draft.confirmed,
+              enabled: enabled && !draft.saved,
               onChanged: (value) {
                 draft.issuedAt = value;
                 onChanged();
@@ -645,9 +716,7 @@ class _BatchDraftCard extends StatelessWidget {
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: enabled && !draft.saved && !draft.confirmed
-                      ? onCreateTag
-                      : null,
+                  onPressed: enabled && !draft.saved ? onCreateTag : null,
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('新建标签'),
                 ),
@@ -665,7 +734,7 @@ class _BatchDraftCard extends StatelessWidget {
                     FilterChip(
                       label: Text(tag.name),
                       selected: draft.tagIds.contains(tag.id),
-                      onSelected: enabled && !draft.saved && !draft.confirmed
+                      onSelected: enabled && !draft.saved
                           ? (selected) {
                               selected
                                   ? draft.tagIds.add(tag.id)
@@ -690,7 +759,7 @@ class _BatchDraftCard extends StatelessWidget {
                     FilterChip(
                       label: Text(cardSet.name),
                       selected: draft.setIds.contains(cardSet.id),
-                      onSelected: enabled && !draft.saved && !draft.confirmed
+                      onSelected: enabled && !draft.saved
                           ? (selected) {
                               selected
                                   ? draft.setIds.add(cardSet.id)
@@ -705,7 +774,7 @@ class _BatchDraftCard extends StatelessWidget {
             CardEntryCostFields(
               amountController: draft.amount,
               shippingController: draft.shipping,
-              enabled: enabled && !draft.saved && !draft.confirmed,
+              enabled: enabled && !draft.saved,
               onChanged: (_) => onChanged(),
             ),
           ],
@@ -818,7 +887,6 @@ final class _BatchCardDraft {
     draft.frontDerivedPath = json['frontDerivedPath'] as String?;
     draft.backDerivedPath = json['backDerivedPath'] as String?;
     draft.issuedAt = DateTime.tryParse(json['issuedAt'] as String? ?? '');
-    draft.confirmed = json['confirmed'] as bool? ?? false;
     draft.tagIds.addAll(
       (json['tagIds'] as List<Object?>? ?? const <Object?>[])
           .whereType<String>(),
@@ -843,7 +911,6 @@ final class _BatchCardDraft {
   String? backDerivedPath;
   DateTime? issuedAt;
   bool saved = false;
-  bool confirmed = false;
   String? savedCardItemId;
 
   Map<String, Object?> toJson() => <String, Object?>{
@@ -859,7 +926,6 @@ final class _BatchCardDraft {
     'frontDerivedPath': frontDerivedPath,
     'backDerivedPath': backDerivedPath,
     'issuedAt': issuedAt?.toIso8601String(),
-    'confirmed': confirmed,
     'tagIds': tagIds.toList(growable: false),
     'setIds': setIds.toList(growable: false),
   };

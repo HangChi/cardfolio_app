@@ -425,7 +425,50 @@ void main() {
     expect(find.text('添加正面'), findsOneWidget);
     expect(find.text('添加背面'), findsOneWidget);
     expect(find.text('名称'), findsOneWidget);
-    expect(find.text('已确认此卡资料'), findsOneWidget);
+  });
+
+  testWidgets('batch gallery import fills drafts and summary saves them', (
+    tester,
+  ) async {
+    final harness = CardFlowHarness.empty(
+      selections: const <SelectedGalleryImage>[
+        SelectedGalleryImage(path: 'C:/test/batch-1.jpg'),
+        SelectedGalleryImage(path: 'C:/test/batch-2.jpg'),
+      ],
+    );
+    addTearDown(harness.dispose);
+    await harness.pump(tester, initialLocation: batchCardEntryPath);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('batch-import-front-images')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('batch-draft-name-0')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(find.byKey(const Key('batch-draft-name-0')), '批次卡一');
+    await tester.pump();
+
+    await tester.dragUntilVisible(
+      find.text('保存全部卡片'),
+      find.byType(ListView),
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('卡片 2'), findsOneWidget);
+    await tester.tap(find.text('保存全部卡片'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('保存全部卡片？'), findsOneWidget);
+    expect(find.textContaining('将保存 1 张卡片'), findsOneWidget);
+    expect(find.textContaining('1 张缺少名称'), findsOneWidget);
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(harness.createCalls, 1);
   });
 
   testWidgets('saving disables repeated submission', (tester) async {
