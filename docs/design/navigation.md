@@ -10,7 +10,7 @@
 | 收藏 | `/library` | 卡片/套卡/集卡册三视图、搜索、筛选和排序 |
 | 拍摄 | `/capture` | 单卡拍摄、相册导入、批量建卡 |
 | 统计 | `/stats` | 固定收藏指标、消费趋势、六维数量分布 |
-| 我的 | `/profile` | 账号同步、整理、备份、CSV、回收站和应用设置 |
+| 我的 | `/profile` | 账号状态卡、整理、备份、CSV、回收站和应用设置 |
 
 手机使用底部 NavigationBar；宽屏使用 NavigationRail。五个分支通过
 `StatefulShellRoute.indexedStack` 保留各自导航状态。首次安装先进入 `/onboarding`，完成后
@@ -29,6 +29,7 @@
 | `/sets/new`、`/sets/:id`、`/sets/:id/edit` | 套卡创建、详情、编辑 |
 | `/series/new`、`/series/:id`、`/series/:id/edit` | 集卡册创建、详情、编辑 |
 | `/spending-calendar?year=&month=` | 消费日历 |
+| `/account` | 账号与同步：登录/注册、同步开关、冲突处理、账号管理 |
 | `/recycle-bin` | 回收站 |
 | `/backup` | ZIP 备份/恢复 |
 | `/csv-export` | CSV 导出 |
