@@ -32,4 +32,5 @@ _和 MEMORY.md 不同：MEMORY.md 记录"我们做了什么决定"，这里记�
 
 ## 成功标准
 
-- Drift 1..8 到 v9 的分步迁移、410 项测试、严格静态分析和 Android debug APK 构建全部通过。
+- Drift 1..8 到 v9 的分步迁移、全量宿主机测试（2026-09-13 为 429 项）、严格静态分析和
+  Android debug APK 构建全部通过。
