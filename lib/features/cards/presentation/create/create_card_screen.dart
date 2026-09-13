@@ -92,6 +92,7 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
           .read(cardSetRepositoryProvider)
           .watchMemberships(organization.definitionId)
           .first;
+      if (!mounted) return;
       ref
           .read(createCardControllerProvider.notifier)
           .prefill(
@@ -172,48 +173,52 @@ class _CreateCardScreenState extends ConsumerState<CreateCardScreen> {
     if (!mounted || id == null) return;
     final draft = ref.read(createCardControllerProvider);
     try {
-      final fieldValues = await mergeReservedCardMetadata(
-        repository: ref.read(organizationRepositoryProvider),
-        idGenerator: ref.read(idGeneratorProvider),
-        definitions:
-            ref.read(organizationFieldDefinitionsProvider).value ??
-            const <CustomFieldDefinition>[],
-        existingValues: const <CustomFieldValueInput>[],
-        metadata: ReservedCardMetadata(
-          condition: metadataInput.condition,
-          itemNotes: metadataInput.itemNotes,
-          issueQuantity: metadataInput.issueQuantity,
-          issuePrice: metadataInput.issuePrice,
-        ),
-      );
-      await ref
-          .read(organizationRepositoryProvider)
-          .saveCardOrganization(
-            SaveCardOrganizationRequest(
-              cardItemId: id,
-              cardType: _cardType.text,
-              acquiredAt: _acquiredAt,
-              needsCompletion: _needsCompletion,
-              tagIds: _selectedTags.toList(growable: false),
-              seriesIds: _selectedAlbums.toList(growable: false),
-              fieldValues: fieldValues,
-            ),
-          );
-      await saveCardSetSelections(
-        ref: ref,
-        definitionId: draft.ids!.definitionId,
-        selectedSetIds: _selectedSets,
-      );
-      await ref
-          .read(purchaseRepositoryProvider)
-          .saveCardEntryCost(
-            SaveCardEntryCostRequest(
-              cardItemId: id,
-              amountMinor: amountMinor,
-              shippingMinor: shippingMinor,
-              purchasedAt: _acquiredAt,
-            ),
-          );
+      // 整理、套卡与成本三步写入包进单个数据库事务：任一步失败整体
+      // 回滚，卡片创建保持独立（自带幂等保护）。
+      await ref.read(appDatabaseProvider).transaction(() async {
+        final fieldValues = await mergeReservedCardMetadata(
+          repository: ref.read(organizationRepositoryProvider),
+          idGenerator: ref.read(idGeneratorProvider),
+          definitions:
+              ref.read(organizationFieldDefinitionsProvider).value ??
+              const <CustomFieldDefinition>[],
+          existingValues: const <CustomFieldValueInput>[],
+          metadata: ReservedCardMetadata(
+            condition: metadataInput.condition,
+            itemNotes: metadataInput.itemNotes,
+            issueQuantity: metadataInput.issueQuantity,
+            issuePrice: metadataInput.issuePrice,
+          ),
+        );
+        await ref
+            .read(organizationRepositoryProvider)
+            .saveCardOrganization(
+              SaveCardOrganizationRequest(
+                cardItemId: id,
+                cardType: _cardType.text,
+                acquiredAt: _acquiredAt,
+                needsCompletion: _needsCompletion,
+                tagIds: _selectedTags.toList(growable: false),
+                seriesIds: _selectedAlbums.toList(growable: false),
+                fieldValues: fieldValues,
+              ),
+            );
+        await saveCardSetSelections(
+          ref: ref,
+          definitionId: draft.ids!.definitionId,
+          selectedSetIds: _selectedSets,
+        );
+        await ref
+            .read(purchaseRepositoryProvider)
+            .saveCardEntryCost(
+              SaveCardEntryCostRequest(
+                cardItemId: id,
+                amountMinor: amountMinor,
+                shippingMinor: shippingMinor,
+                purchasedAt: _acquiredAt,
+              ),
+            );
+      });
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
       return;

@@ -136,71 +136,75 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
 
     setState(() => _saving = true);
     try {
-      final fieldValues = await mergeReservedCardMetadata(
-        repository: ref.read(organizationRepositoryProvider),
-        idGenerator: ref.read(idGeneratorProvider),
-        definitions:
-            ref.read(organizationFieldDefinitionsProvider).value ??
-            const <CustomFieldDefinition>[],
-        existingValues: _fieldValues,
-        metadata: ReservedCardMetadata(
-          condition: metadataInput.condition,
-          itemNotes: metadataInput.itemNotes,
-          issueQuantity: metadataInput.issueQuantity,
-          issuePrice: metadataInput.issuePrice,
-        ),
-      );
-      await ref
-          .read(cardRepositoryProvider)
-          .updateCard(
-            UpdateCardRequest(
-              cardItemId: widget.cardItemId,
-              name: _name.text,
-              city: _city.text,
-              issuer: _issuer.text,
-              issuedAt: _issuedAt,
-              code: _code.text,
-              notes: _notes.text,
-              quantity: quantity,
-            ),
-          );
-      await ref
-          .read(organizationRepositoryProvider)
-          .saveCardOrganization(
-            SaveCardOrganizationRequest(
-              cardItemId: widget.cardItemId,
-              cardType: _cardType.text,
-              needsCompletion: _needsCompletion,
-              acquiredAt: _acquiredAt,
-              tagIds: _selectedTags.toList(growable: false),
-              seriesIds: _selectedAlbums.toList(growable: false),
-              fieldValues: fieldValues,
-            ),
-          );
-      final definitionId = _definitionId;
-      if (definitionId == null) {
-        throw StateError('卡片整理信息尚未加载完成');
-      }
-      await saveCardSetSelections(
-        ref: ref,
-        definitionId: definitionId,
-        selectedSetIds: _selectedSets,
-      );
-      await ref
-          .read(purchaseRepositoryProvider)
-          .saveCardEntryCost(
-            SaveCardEntryCostRequest(
-              cardItemId: widget.cardItemId,
-              amountMinor: amountMinor,
-              shippingMinor: shippingMinor,
-              purchasedAt: _acquiredAt,
-            ),
-          );
+      // 卡片、整理、套卡与成本写入跨四个仓库，包进单个数据库事务：
+      // 任一步失败整体回滚，不再留下半保存状态。
+      await ref.read(appDatabaseProvider).transaction(() async {
+        final fieldValues = await mergeReservedCardMetadata(
+          repository: ref.read(organizationRepositoryProvider),
+          idGenerator: ref.read(idGeneratorProvider),
+          definitions:
+              ref.read(organizationFieldDefinitionsProvider).value ??
+              const <CustomFieldDefinition>[],
+          existingValues: _fieldValues,
+          metadata: ReservedCardMetadata(
+            condition: metadataInput.condition,
+            itemNotes: metadataInput.itemNotes,
+            issueQuantity: metadataInput.issueQuantity,
+            issuePrice: metadataInput.issuePrice,
+          ),
+        );
+        await ref
+            .read(cardRepositoryProvider)
+            .updateCard(
+              UpdateCardRequest(
+                cardItemId: widget.cardItemId,
+                name: _name.text,
+                city: _city.text,
+                issuer: _issuer.text,
+                issuedAt: _issuedAt,
+                code: _code.text,
+                notes: _notes.text,
+                quantity: quantity,
+              ),
+            );
+        await ref
+            .read(organizationRepositoryProvider)
+            .saveCardOrganization(
+              SaveCardOrganizationRequest(
+                cardItemId: widget.cardItemId,
+                cardType: _cardType.text,
+                needsCompletion: _needsCompletion,
+                acquiredAt: _acquiredAt,
+                tagIds: _selectedTags.toList(growable: false),
+                seriesIds: _selectedAlbums.toList(growable: false),
+                fieldValues: fieldValues,
+              ),
+            );
+        final definitionId = _definitionId;
+        if (definitionId == null) {
+          throw StateError('卡片整理信息尚未加载完成');
+        }
+        await saveCardSetSelections(
+          ref: ref,
+          definitionId: definitionId,
+          selectedSetIds: _selectedSets,
+        );
+        await ref
+            .read(purchaseRepositoryProvider)
+            .saveCardEntryCost(
+              SaveCardEntryCostRequest(
+                cardItemId: widget.cardItemId,
+                amountMinor: amountMinor,
+                shippingMinor: shippingMinor,
+                purchasedAt: _acquiredAt,
+              ),
+            );
+      });
       if (mounted) context.pop(true);
     } on AppFailure catch (failure) {
       _showMessage(failure.userMessage);
     } catch (_) {
-      _showMessage('保存失败，请重试。');
+      _showMessage('保存失败，更改未写入，请重试。');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

@@ -81,7 +81,7 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
         facets: facets,
       ),
     );
-    if (result != null) {
+    if (result != null && mounted) {
       ref.read(cardLibraryQueryProvider.notifier).replace(result);
     }
   }

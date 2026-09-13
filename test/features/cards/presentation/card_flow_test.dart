@@ -6,6 +6,7 @@ import 'package:cardfolio_app/app/cardfolio_app.dart';
 import 'package:cardfolio_app/core/id/id_generator.dart';
 import 'package:cardfolio_app/features/cards/data/card_providers.dart';
 import 'package:cardfolio_app/features/cards/data/files/managed_image_store.dart';
+import 'package:cardfolio_app/features/cards/data/local/card_database.dart';
 import 'package:cardfolio_app/features/cards/domain/card_models.dart';
 import 'package:cardfolio_app/features/cards/domain/card_repository.dart';
 import 'package:cardfolio_app/features/cards/domain/camera_capture.dart';
@@ -16,6 +17,7 @@ import 'package:cardfolio_app/features/organization/data/organization_providers.
 import 'package:cardfolio_app/features/organization/domain/organization_models.dart';
 import 'package:cardfolio_app/features/organization/domain/organization_repository.dart';
 import 'package:cardfolio_app/features/purchases/data/purchase_providers.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -258,6 +260,7 @@ class CardFlowHarness {
   final List<CapturedImage?> captures;
   final Directory imageRoot;
   ProviderContainer? _container;
+  AppDatabase? _database;
 
   bool get hasDraft =>
       _container?.read(createCardControllerProvider).hasImage ?? false;
@@ -275,6 +278,10 @@ class CardFlowHarness {
   }) async {
     _container = ProviderContainer(
       overrides: [
+        // 保存流程会把整理/套卡/成本写入包进数据库事务，测试用内存库承载。
+        appDatabaseProvider.overrideWithValue(
+          _database = AppDatabase(NativeDatabase.memory()),
+        ),
         galleryPickerProvider.overrideWithValue(_FakeGalleryPicker(selections)),
         cameraCaptureProvider.overrideWithValue(_FakeCameraCapture(captures)),
         cardRepositoryProvider.overrideWithValue(_repository),
@@ -339,6 +346,7 @@ class CardFlowHarness {
 
   void dispose() {
     _container?.dispose();
+    _database?.close();
     if (imageRoot.existsSync()) {
       imageRoot.deleteSync(recursive: true);
     }
