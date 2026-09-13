@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_router.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/widgets/app_layout.dart';
 import '../../../core/widgets/app_surface.dart';
-import 'account_sync_panel.dart';
+import '../data/sync_providers.dart';
+import 'sync_status_label.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -28,7 +30,7 @@ class ProfileScreen extends StatelessWidget {
               icon: Icons.cloud_sync_outlined,
               subtitle: '本地收藏始终可用，登录后可选择开启同步。',
             ),
-            const AccountSyncPanel(),
+            const _AccountStatusTile(),
             SizedBox(height: tokens.spaceLg),
             const AppSectionHeader(
               title: '收藏整理',
@@ -80,6 +82,55 @@ class ProfileScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 我的页的账号状态卡：本地模式或登录邮箱 + 同步状态，点击进入账号页。
+class _AccountStatusTile extends ConsumerWidget {
+  const _AccountStatusTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overview = ref.watch(syncOverviewProvider);
+    return Card(
+      child: overview.when(
+        loading: () => const ListTile(
+          leading: CircleAvatar(child: Icon(Icons.cloud_outlined)),
+          title: Text('正在读取同步状态…'),
+        ),
+        error: (error, stackTrace) => ListTile(
+          key: const Key('account-status-tile'),
+          leading: const CircleAvatar(child: Icon(Icons.cloud_off_outlined)),
+          title: const Text('账号与同步'),
+          subtitle: const Text('同步状态暂时无法读取，本地数据不受影响。'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push(accountPath),
+        ),
+        data: (value) {
+          final account = value.account;
+          return ListTile(
+            key: const Key('account-status-tile'),
+            leading: CircleAvatar(
+              child: Icon(
+                account == null
+                    ? Icons.cloud_off_outlined
+                    : Icons.cloud_done_outlined,
+              ),
+            ),
+            title: Text(
+              account == null ? '本地模式 · 未登录' : account.email,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              account == null ? '登录后可开启云同步' : syncStatusLabel(value),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(accountPath),
+          );
+        },
       ),
     );
   }

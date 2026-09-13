@@ -26,128 +26,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('email login uses email and password', (tester) async {
-    await pumpProfile(tester);
-
-    expect(find.text('本地模式'), findsOneWidget);
-    expect(find.textContaining('无需账号'), findsOneWidget);
-
-    await tester.enterText(
-      find.byKey(const Key('account-email')),
-      'collector@example.test',
-    );
-    await tester.enterText(
-      find.byKey(const Key('account-password')),
-      'password-123',
-    );
-    final loginButton = find.text('登录');
-    await tester.ensureVisible(loginButton);
-    await tester.pumpAndSettle();
-    await tester.tap(loginButton);
-    await tester.pumpAndSettle();
-
-    expect(repository.loginEmail, 'collector@example.test');
-    expect(repository.loginPassword, 'password-123');
-  });
-
-  testWidgets('email registration verifies one OTP', (tester) async {
-    await pumpProfile(tester);
-
-    await tester.enterText(
-      find.byKey(const Key('account-email')),
-      'new@example.test',
-    );
-    await tester.enterText(
-      find.byKey(const Key('account-password')),
-      'password-123',
-    );
-    final registerButton = find.text('注册');
-    await tester.ensureVisible(registerButton);
-    await tester.pumpAndSettle();
-    await tester.tap(registerButton);
-    await tester.pumpAndSettle();
-
-    expect(repository.registerEmail, 'new@example.test');
-    expect(repository.registerPassword, 'password-123');
-
-    await tester.enterText(
-      find.byKey(const Key('account-email-otp')),
-      '123456',
-    );
-    final verifyButton = find.text('验证并完成注册');
-    await tester.ensureVisible(verifyButton);
-    await tester.pumpAndSettle();
-    await tester.tap(verifyButton);
-    await tester.pumpAndSettle();
-
-    expect(repository.verifiedEmail, 'new@example.test');
-    expect(repository.registrationCode, '123456');
-  });
-
-  testWidgets('forgot password verifies email OTP and sets new password', (
-    tester,
-  ) async {
-    await pumpProfile(tester);
-    await tester.enterText(
-      find.byKey(const Key('account-email')),
-      'collector@example.test',
-    );
-    final forgotButton = find.text('忘记密码？');
-    await tester.ensureVisible(forgotButton);
-    await tester.pumpAndSettle();
-    await tester.tap(forgotButton);
-    await tester.pumpAndSettle();
-
-    expect(repository.passwordResetEmail, 'collector@example.test');
-    await tester.enterText(
-      find.byKey(const Key('account-email-otp')),
-      '654321',
-    );
-    await tester.enterText(
-      find.byKey(const Key('account-new-password')),
-      'new-password-123',
-    );
-    final resetButton = find.text('验证并重置密码');
-    await tester.ensureVisible(resetButton);
-    await tester.pumpAndSettle();
-    await tester.tap(resetButton);
-    await tester.pumpAndSettle();
-
-    expect(repository.passwordResetCode, '654321');
-    expect(repository.newPassword, 'new-password-123');
-  });
-
-  testWidgets('phone registration sends and verifies an SMS OTP', (
+  testWidgets('profile shows a compact local-mode account tile', (
     tester,
   ) async {
     await pumpProfile(tester);
 
-    await tester.tap(find.text('手机号'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.byKey(const Key('account-phone')),
-      '+8613812345678',
-    );
-    await tester.tap(find.text('注册并获取验证码'));
-    await tester.pumpAndSettle();
-
-    expect(repository.otpPhone, '+8613812345678');
-    expect(repository.otpCreateUser, isTrue);
-    expect(find.byKey(const Key('account-otp')), findsOneWidget);
-
-    await tester.enterText(find.byKey(const Key('account-otp')), '123456');
-    final verifyButton = find.text('验证并登录');
-    await tester.ensureVisible(verifyButton);
-    await tester.pumpAndSettle();
-    await tester.tap(verifyButton);
-    await tester.pumpAndSettle();
-
-    expect(repository.verifiedPhone, '+8613812345678');
-    expect(repository.verifiedCode, '123456');
+    final tile = find.byKey(const Key('account-status-tile'));
+    expect(tile, findsOneWidget);
+    expect(find.text('本地模式 · 未登录'), findsOneWidget);
+    expect(find.text('登录后可开启云同步'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
   });
 
-  testWidgets('signed-in mode shows queue, toggle and manual retry', (
+  testWidgets('profile account tile surfaces email and pending count', (
     tester,
   ) async {
     repository.overview = SyncOverview(
@@ -166,84 +57,19 @@ void main() {
 
     expect(find.text('collector@example.test'), findsOneWidget);
     expect(find.text('待同步 20 项'), findsOneWidget);
-    expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-      isTrue,
-    );
-
-    await tester.tap(find.text('立即同步'));
-    await tester.pumpAndSettle();
-    expect(repository.syncCalls, 1);
   });
 
-  testWidgets('conflict copy offers local and remote resolution', (
-    tester,
-  ) async {
-    repository.overview = SyncOverview(
-      account: const AccountSummary(
-        userId: 'user-1',
-        email: 'collector@example.test',
-      ),
-      enabled: true,
-      phase: SyncPhase.conflicts,
-      pendingCount: 1,
-      conflictCount: 1,
-      lastSyncedAt: null,
-      lastErrorCode: null,
-    );
-    repository.conflicts = <SyncConflict>[
-      SyncConflict(
-        id: 'conflict-1',
-        entityType: 'cardDefinitions',
-        entityId: 'definition-1',
-        localOperation: SyncOperation.upsert,
-        localPayload: const <String, Object?>{'name': '本地名称'},
-        remoteOperation: SyncOperation.upsert,
-        remotePayload: const <String, Object?>{'name': '远端名称'},
-        remoteServerVersion: 2,
-        conflictingFields: const <String>{'name'},
-        detectedAt: DateTime.utc(2026, 7, 29),
-      ),
-    ];
+  testWidgets('profile keeps the rest of the hub entries', (tester) async {
     await pumpProfile(tester);
 
-    expect(find.text('需要处理 1 个冲突'), findsWidgets);
-    expect(find.textContaining('本地名称'), findsOneWidget);
-    expect(find.textContaining('远端名称'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('保留本地'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('保留本地'));
-    await tester.pumpAndSettle();
-    expect(repository.resolvedConflictId, 'conflict-1');
-    expect(repository.resolution, SyncConflictResolution.keepLocal);
-  });
-
-  testWidgets('account deletion confirms whether to remove local copy', (
-    tester,
-  ) async {
-    repository.overview = SyncOverview(
-      account: const AccountSummary(
-        userId: 'user-1',
-        email: 'collector@example.test',
-      ),
-      enabled: false,
-      phase: SyncPhase.disabled,
-      pendingCount: 0,
-      conflictCount: 0,
-      lastSyncedAt: null,
-      lastErrorCode: null,
+    expect(find.text('整理管理'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.text('回收站'),
+      find.byType(Scrollable).first,
+      const Offset(0, -200),
     );
-    await pumpProfile(tester);
-
-    await tester.tap(find.text('删除账号与云端数据'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('不可撤销'), findsOneWidget);
-
-    await tester.tap(find.text('同时删除本地副本'));
-    await tester.tap(find.widgetWithText(FilledButton, '确认删除账号'));
-    await tester.pumpAndSettle();
-
-    expect(repository.deleteLocalCopy, isTrue);
+    expect(find.text('导入与导出'), findsOneWidget);
+    expect(find.text('回收站'), findsOneWidget);
   });
 }

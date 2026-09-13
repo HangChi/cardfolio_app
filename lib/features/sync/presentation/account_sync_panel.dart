@@ -8,6 +8,7 @@ import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/app_confirm_dialog.dart';
 import '../data/sync_providers.dart';
 import '../domain/sync_models.dart';
+import 'sync_status_label.dart';
 
 enum _EmailAuthStep { credentials, registrationCode, passwordResetCode }
 
@@ -45,17 +46,31 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
   @override
   Widget build(BuildContext context) {
     final overview = ref.watch(syncOverviewProvider);
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(context.tokens.spaceLg),
-        child: overview.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(semanticsLabel: '正在读取同步状态'),
+    final inAuthSubStep = _otpSent || _emailStep != _EmailAuthStep.credentials;
+    return PopScope(
+      // 认证进行到验证码 / 重置步骤时，返回键先回到上一步而不是退出页面。
+      canPop: !inAuthSubStep,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_otpSent) {
+          setState(() => _otpSent = false);
+          _otp.clear();
+        } else {
+          _backToLogin();
+        }
+      },
+      child: Card(
+        child: Padding(
+          padding: EdgeInsets.all(context.tokens.spaceLg),
+          child: overview.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(semanticsLabel: '正在读取同步状态'),
+            ),
+            error: (error, stackTrace) => const Text('同步状态暂时无法读取，本地数据不受影响。'),
+            data: (value) => value.account == null
+                ? _buildSignedOut(context)
+                : _buildSignedIn(context, value),
           ),
-          error: (error, stackTrace) => const Text('同步状态暂时无法读取，本地数据不受影响。'),
-          data: (value) => value.account == null
-              ? _buildSignedOut(context)
-              : _buildSignedIn(context, value),
         ),
       ),
     );
@@ -65,8 +80,6 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text('账号与同步', style: Theme.of(context).textTheme.titleLarge),
-        SizedBox(height: context.tokens.spaceXs),
         Text(
           '本地模式',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -291,13 +304,11 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text('账号与同步', style: Theme.of(context).textTheme.titleLarge),
-        SizedBox(height: context.tokens.spaceSm),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const CircleAvatar(child: Icon(Icons.person_outline)),
           title: Text(overview.account!.email),
-          subtitle: Text(_statusLabel(overview)),
+          subtitle: Text(syncStatusLabel(overview)),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -640,19 +651,6 @@ class _AccountSyncPanelState extends ConsumerState<AccountSyncPanel> {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
-}
-
-String _statusLabel(SyncOverview overview) {
-  if (!overview.enabled) return '同步已关闭';
-  if (overview.conflictCount > 0) {
-    return '需要处理 ${overview.conflictCount} 个冲突';
-  }
-  if (overview.lastErrorCode != null) {
-    return '同步失败，本地更改已保留';
-  }
-  if (overview.pendingCount > 0) return '待同步 ${overview.pendingCount} 项';
-  if (overview.lastSyncedAt != null) return '已同步';
-  return '等待首次同步';
 }
 
 String _payloadSummary(Map<String, Object?>? payload) {

@@ -23,6 +23,7 @@ import '../features/organization/presentation/management/organization_settings_s
 import '../features/organization/presentation/series/series_detail_screen.dart';
 import '../features/organization/presentation/series/series_form_screen.dart';
 import '../features/recycle_bin/presentation/recycle_bin_screen.dart';
+import '../features/sync/presentation/account_screen.dart';
 import '../features/sync/presentation/profile_screen.dart';
 import '../features/settings/presentation/app_settings_screen.dart';
 import '../features/settings/presentation/onboarding_screen.dart';
@@ -35,6 +36,7 @@ const String capturePath = '/capture';
 const String statsPath = '/stats';
 const String spendingCalendarPath = '/spending-calendar';
 const String profilePath = '/profile';
+const String accountPath = '/account';
 const String createCardPath = '/cards/new';
 const String batchCardEntryPath = '/cards/batch';
 const String createCardSetPath = '/sets/new';
@@ -193,6 +195,10 @@ GoRouter createAppRouter({
         path: seriesDetailRoutePattern,
         builder: (context, state) =>
             SeriesDetailScreen(seriesId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: accountPath,
+        builder: (context, state) => const AccountScreen(),
       ),
       GoRoute(
         path: recycleBinPath,
