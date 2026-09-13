@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/id/id_generator.dart';
 import '../../../core/time/clock.dart';
 import '../domain/card_models.dart';
 import '../domain/card_repository.dart';
@@ -12,6 +11,9 @@ import 'files/managed_image_store.dart';
 import 'local/card_database.dart';
 import 'platform/image_picker_camera_capture.dart';
 import 'platform/image_picker_gallery.dart';
+
+// idGeneratorProvider 已下沉到 core，这里转发导出以免既有引用全部改动。
+export '../../../core/id/id_generator_providers.dart' show idGeneratorProvider;
 
 /// 数据库实例。需要应用支持目录，由启动流程在 `ProviderScope` 中覆盖。
 final Provider<AppDatabase> appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -26,10 +28,6 @@ final Provider<ManagedImageStore> managedImageStoreProvider =
 
 final Provider<Clock> clockProvider = Provider<Clock>(
   (ref) => const SystemClock(),
-);
-
-final Provider<IdGenerator> idGeneratorProvider = Provider<IdGenerator>(
-  (ref) => const UuidGenerator(),
 );
 
 final Provider<GalleryPicker> galleryPickerProvider = Provider<GalleryPicker>(
@@ -63,6 +61,10 @@ final StreamProvider<List<CardSummary>> cardListProvider =
 /// 单张卡片详情数据流。
 ///
 /// flutter_riverpod 3 不再导出 family 的具体类型，这里依赖类型推断。
-final cardDetailProvider = StreamProvider.family<CardDetail?, String>(
-  (ref, cardItemId) => ref.watch(cardRepositoryProvider).watchCard(cardItemId),
-);
+/// autoDispose 确保离开详情页后释放底层的 Drift watch 流，避免长会话下
+/// 累积的流在每次写库时被全部唤醒。
+final cardDetailProvider = StreamProvider.autoDispose
+    .family<CardDetail?, String>(
+      (ref, cardItemId) =>
+          ref.watch(cardRepositoryProvider).watchCard(cardItemId),
+    );

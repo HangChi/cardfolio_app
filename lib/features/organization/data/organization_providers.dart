@@ -95,10 +95,11 @@ final StreamProvider<List<SeriesSummary>> organizationSeriesProvider =
       return ref.watch(organizationRepositoryProvider).watchSeries();
     });
 
-final seriesDetailProvider = StreamProvider.family<SeriesDetail?, String>(
-  (ref, seriesId) =>
-      ref.watch(organizationRepositoryProvider).watchSeriesDetail(seriesId),
-);
+final seriesDetailProvider = StreamProvider.autoDispose
+    .family<SeriesDetail?, String>(
+      (ref, seriesId) =>
+          ref.watch(organizationRepositoryProvider).watchSeriesDetail(seriesId),
+    );
 
 final StreamProvider<List<CustomFieldDefinition>>
 organizationFieldDefinitionsProvider =
@@ -106,8 +107,8 @@ organizationFieldDefinitionsProvider =
       return ref.watch(organizationRepositoryProvider).watchFieldDefinitions();
     });
 
-final cardOrganizationProvider =
-    StreamProvider.family<CardOrganizationDetail?, String>(
+final cardOrganizationProvider = StreamProvider.autoDispose
+    .family<CardOrganizationDetail?, String>(
       (ref, cardItemId) => ref
           .watch(organizationRepositoryProvider)
           .watchCardOrganization(cardItemId),

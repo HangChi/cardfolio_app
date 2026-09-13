@@ -1,8 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/cards/data/card_providers.dart';
-import '../../features/organization/domain/organization_models.dart';
+import '../id/id_generator_providers.dart';
 import 'local_app_state.dart';
+
+// organization_models 里的 CardLibraryQuery 是收藏筛选的领域模型，
+// 被 core 的应用状态引用是已知取舍：把它整体迁入 core 需要改动全部
+// feature 引用，收益有限；此处仅依赖纯模型，不触达 feature 的 data 层。
+import '../../features/organization/domain/organization_models.dart';
 
 final Provider<LocalAppStateStore> localAppStateStoreProvider =
     Provider<LocalAppStateStore>((ref) => MemoryLocalAppStateStore());

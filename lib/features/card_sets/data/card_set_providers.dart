@@ -18,18 +18,19 @@ final StreamProvider<List<CardSetSummary>> cardSetListProvider =
       (ref) => ref.watch(cardSetRepositoryProvider).watchSets(),
     );
 
-final cardSetMembershipsProvider =
-    StreamProvider.family<List<CardSetMembership>, String>(
+final cardSetMembershipsProvider = StreamProvider.autoDispose
+    .family<List<CardSetMembership>, String>(
       (ref, definitionId) =>
           ref.watch(cardSetRepositoryProvider).watchMemberships(definitionId),
     );
 
-final cardSetDetailProvider = StreamProvider.family<CardSetDetail?, String>(
-  (ref, setId) => ref.watch(cardSetRepositoryProvider).watchSet(setId),
-);
+final cardSetDetailProvider = StreamProvider.autoDispose
+    .family<CardSetDetail?, String>(
+      (ref, setId) => ref.watch(cardSetRepositoryProvider).watchSet(setId),
+    );
 
-final cardSetCandidatesProvider =
-    StreamProvider.family<List<CardSetCandidate>, String>(
+final cardSetCandidatesProvider = StreamProvider.autoDispose
+    .family<List<CardSetCandidate>, String>(
       (ref, setId) =>
           ref.watch(cardSetRepositoryProvider).watchCandidates(setId),
     );
