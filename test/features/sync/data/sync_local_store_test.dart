@@ -190,6 +190,77 @@ void main() {
     expect(conflict.remotePayload?['name'], '远端名称');
     expect(conflict.conflictingFields, <String>{'name'});
   });
+
+  test('dead-letter removes the operation and suppresses recapture', () async {
+    final id = _uuid(10);
+    await _insertDefinition(database, id: id, name: '死信卡');
+    await store.captureLocalChanges();
+    final mutation = (await store.pendingMutations()).single;
+
+    await store.markMutationDead(mutation.operationId, 'invalid_mutation');
+
+    expect(await store.pendingMutations(), isEmpty);
+    final overview = await store.watchOverview().first;
+    expect(overview.lastErrorCode, 'dead_letter:invalid_mutation');
+    // 实体状态已推进到死信载荷，重新捕获不能复活同一更改。
+    await store.captureLocalChanges();
+    expect(await store.pendingMutations(), isEmpty);
+  });
+
+  test('push ordering ranks parent upserts before children', () async {
+    Future<void> insert(String operationId, String entityType) => database
+        .into(database.syncOutboxEntries)
+        .insert(
+          SyncOutboxEntriesCompanion.insert(
+            operationId: operationId,
+            entityType: entityType,
+            entityId: 'entity-$entityType',
+            operation: 'upsert',
+            baseServerVersion: 0,
+            payloadJson: Value('{"id":"entity-$entityType"}'),
+            changedFieldsJson: '[]',
+            createdAt: DateTime.utc(2026, 7, 29, 8),
+          ),
+        );
+    // operationId 字典序故意与实体层级相反，验证排序不依赖随机 id。
+    await insert('a0000000-0000-4000-8000-000000000001', 'cardImages');
+    await insert('b0000000-0000-4000-8000-000000000002', 'cardItems');
+    await insert('c0000000-0000-4000-8000-000000000003', 'cardDefinitions');
+
+    final mutations = await store.pendingMutations();
+
+    expect(mutations.map((item) => item.entityType).toList(), <String>[
+      'cardDefinitions',
+      'cardItems',
+      'cardImages',
+    ]);
+  });
+
+  test('push ordering ranks child deletes before parents', () async {
+    Future<void> insert(String operationId, String entityType) => database
+        .into(database.syncOutboxEntries)
+        .insert(
+          SyncOutboxEntriesCompanion.insert(
+            operationId: operationId,
+            entityType: entityType,
+            entityId: 'entity-$entityType',
+            operation: 'delete',
+            baseServerVersion: 0,
+            payloadJson: const Value(null),
+            changedFieldsJson: '[]',
+            createdAt: DateTime.utc(2026, 7, 29, 8),
+          ),
+        );
+    await insert('a0000000-0000-4000-8000-000000000004', 'cardDefinitions');
+    await insert('f0000000-0000-4000-8000-000000000005', 'cardItems');
+
+    final mutations = await store.pendingMutations();
+
+    expect(mutations.map((item) => item.entityType).toList(), <String>[
+      'cardItems',
+      'cardDefinitions',
+    ]);
+  });
 }
 
 Future<void> _insertDefinition(

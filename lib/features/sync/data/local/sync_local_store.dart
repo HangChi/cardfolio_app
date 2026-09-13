@@ -247,6 +247,10 @@ final class SyncLocalStore {
       throw ArgumentError.value(limit, 'limit', '必须在 1..100');
     }
     final now = _clock.nowUtc();
+    // 同批记录的 createdAt 相同，二级排序不能依赖随机 operationId：
+    // upsert 必须父实体先于子实体（消费端按外键应用），delete 反之，
+    // 否则坏顺序会在每次重试中原样复现，永久卡死整批推送。
+    final rank = _entityRankCaseSql();
     final query = _db.select(_db.syncOutboxEntries)
       ..where(
         (row) =>
@@ -255,6 +259,11 @@ final class SyncLocalStore {
       )
       ..orderBy(<OrderingTerm Function(SyncOutboxEntries)>[
         (row) => OrderingTerm.asc(row.createdAt),
+        (row) => OrderingTerm.asc(
+          CustomExpression<int>(
+            "CASE WHEN operation = 'delete' THEN -($rank) ELSE ($rank) END",
+          ),
+        ),
         (row) => OrderingTerm.asc(row.operationId),
       ])
       ..limit(limit);
@@ -320,9 +329,15 @@ final class SyncLocalStore {
             ? -1
             : 1;
         if (byOperation != 0) return byOperation;
-        return left.operation == SyncOperation.upsert
+        final byType = left.operation == SyncOperation.upsert
             ? leftOrder.compareTo(rightOrder)
             : rightOrder.compareTo(leftOrder);
+        if (byType != 0) return byType;
+        // 同页内同一实体的多版本必须按服务端顺序应用，否则旧版本可能
+        // 最后写入，回退 state 里记录的版本号并破坏后续增量基线。
+        final leftChangeId = int.tryParse(left.changeId) ?? 0;
+        final rightChangeId = int.tryParse(right.changeId) ?? 0;
+        return leftChangeId.compareTo(rightChangeId);
       });
 
     return _db.transaction(() async {
@@ -489,6 +504,56 @@ final class SyncLocalStore {
         ),
       );
     });
+  }
+
+  /// 把被服务端以 `retryable: false` 拒绝且无法通过重试恢复的单条操作移出
+  /// outbox（死信），否则它会以固定失败顺序无限退避并卡住整批推送。
+  ///
+  /// 同时把实体状态推进到该操作的载荷：若保持旧状态，下一次
+  /// [captureLocalChanges] 会立即重新捕获同一更改，形成死信循环。
+  /// 被丢弃的更改通过 `lastErrorCode = dead_letter:<code>` 暴露给用户。
+  Future<void> markMutationDead(String operationId, String errorCode) {
+    return _db.transaction(() async {
+      final row =
+          await (_db.select(_db.syncOutboxEntries)
+                ..where((item) => item.operationId.equals(operationId)))
+              .getSingleOrNull();
+      if (row != null) {
+        final operation = SyncOperation.values.byName(row.operation);
+        await _writeState(
+          entityType: row.entityType,
+          entityId: row.entityId,
+          serverVersion: row.baseServerVersion,
+          operation: operation,
+          payloadJson: row.payloadJson,
+        );
+        await (_db.delete(
+          _db.syncOutboxEntries,
+        )..where((item) => item.operationId.equals(operationId))).go();
+      }
+      await settings();
+      await (_db.update(
+        _db.syncSettingsRows,
+      )..where((row) => row.id.equals(1))).write(
+        SyncSettingsRowsCompanion(
+          lastErrorCode: Value('dead_letter:$errorCode'),
+          updatedAt: Value(_clock.nowUtc()),
+        ),
+      );
+    });
+  }
+
+  /// 仅记录同步失败原因，不影响 outbox 的重试状态（如分页超限等协议错误）。
+  Future<void> markSyncFailed({required String errorCode}) async {
+    await settings();
+    await (_db.update(
+      _db.syncSettingsRows,
+    )..where((row) => row.id.equals(1))).write(
+      SyncSettingsRowsCompanion(
+        lastErrorCode: Value(errorCode),
+        updatedAt: Value(_clock.nowUtc()),
+      ),
+    );
   }
 
   Future<void> markSyncSucceeded({required String? cursor}) async {
@@ -750,6 +815,14 @@ Set<String> _decodeStringSet(String value) {
 
 String _entityKey(String entityType, String entityId) =>
     '$entityType\u0001$entityId';
+
+/// 由 [_entityOrder] 生成 SQL CASE 表达式，供推送排序引用同一份实体层级。
+String _entityRankCaseSql() {
+  final branches = _entityOrder.entries
+      .map((entry) => "WHEN '${entry.key}' THEN ${entry.value}")
+      .join(' ');
+  return 'CASE entity_type $branches ELSE 99 END';
+}
 
 const Map<String, int> _entityOrder = <String, int>{
   'cardDefinitions': 0,

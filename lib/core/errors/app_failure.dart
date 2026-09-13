@@ -168,12 +168,17 @@ final class SyncTransportFailure extends AppFailure {
   const SyncTransportFailure({
     required this.code,
     required this.retryable,
+    this.failedOperationId,
     String userMessage = '暂时无法同步，本地更改已保留。',
     Object? cause,
   }) : super(userMessage, cause);
 
   final String code;
   final bool retryable;
+
+  /// 服务端明确拒绝且不可重试时，指出是哪条 outbox 操作被拒绝，
+  /// 客户端据此做死信处理；其余场景为 null。
+  final String? failedOperationId;
 }
 
 /// 协议版本、载荷、幂等确认或附件校验不符合冻结契约。

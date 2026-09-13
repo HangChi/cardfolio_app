@@ -35,6 +35,7 @@ final class AccountSyncRepositoryImpl implements AccountSyncRepository {
   final Clock _clock;
 
   Future<void>? _activeSync;
+  Future<AccountSession>? _refreshingSession;
 
   @override
   Stream<SyncOverview> watchOverview() => _local.watchOverview();
@@ -194,11 +195,24 @@ final class AccountSyncRepositoryImpl implements AccountSyncRepository {
       session = await _refreshSession(session, settings.deviceId);
       await _syncWithSession(session, await _local.settings());
     } on SyncTransportFailure catch (failure) {
+      // 服务端明确指出被拒操作且不可重试时，把该操作死信移出 outbox；
+      // 其余操作保持退避重试，下一次同步会继续推送剩余部分。
+      final deadOperationId = failure.retryable
+          ? null
+          : failure.failedOperationId;
       final pending = await _local.pendingMutations();
-      await _local.markMutationsFailed(
-        pending.map((item) => item.operationId),
-        errorCode: failure.code,
-      );
+      final retryableIds = pending
+          .map((item) => item.operationId)
+          .where((operationId) => operationId != deadOperationId);
+      await _local.markMutationsFailed(retryableIds, errorCode: failure.code);
+      if (deadOperationId != null) {
+        await _local.markMutationDead(deadOperationId, failure.code);
+      }
+      rethrow;
+    } on SyncProtocolFailure {
+      // 协议错误（如分页超限）不涉及 outbox 重试策略，但要落到
+      // lastErrorCode，避免同步概览一直显示一切正常。
+      await _local.markSyncFailed(errorCode: 'sync_protocol_failure');
       rethrow;
     }
   }
@@ -455,7 +469,23 @@ final class AccountSyncRepositoryImpl implements AccountSyncRepository {
     _clock.nowUtc().add(const Duration(minutes: 1)),
   );
 
+  /// 会话刷新必须全局单飞：启动恢复同步、手动同步与云端下载可能并发进入，
+  /// 服务端轮换 refresh token 后旧令牌立即作废，并发刷新会导致后写回的
+  /// 令牌已失效，下次同步直接被登出。
   Future<AccountSession> _refreshSession(
+    AccountSession current,
+    String deviceId,
+  ) {
+    final active = _refreshingSession;
+    if (active != null) return active;
+    final operation = _doRefreshSession(current, deviceId);
+    _refreshingSession = operation;
+    return operation.whenComplete(() {
+      if (identical(_refreshingSession, operation)) _refreshingSession = null;
+    });
+  }
+
+  Future<AccountSession> _doRefreshSession(
     AccountSession current,
     String deviceId,
   ) async {

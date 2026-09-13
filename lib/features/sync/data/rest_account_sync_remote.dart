@@ -549,13 +549,19 @@ final class RestAccountSyncRemote implements AccountSyncRemote {
         response.statusCode == 408 ||
         response.statusCode == 429 ||
         response.statusCode >= 500;
+    String? failedOperationId;
     try {
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, Object?>) {
         final remoteCode = decoded['code'];
         final remoteRetryable = decoded['retryable'];
+        final remoteFailedOperationId = decoded['failedOperationId'];
         if (remoteCode is String && remoteCode.isNotEmpty) code = remoteCode;
         if (remoteRetryable is bool) retryable = remoteRetryable;
+        if (remoteFailedOperationId is String &&
+            remoteFailedOperationId.isNotEmpty) {
+          failedOperationId = remoteFailedOperationId;
+        }
       }
     } on Object {
       // 错误正文永不展示；无法解析时使用状态码分类。
@@ -569,9 +575,20 @@ final class RestAccountSyncRemote implements AccountSyncRemote {
       );
     }
     if (response.statusCode == 409 && code == 'idempotency_mismatch') {
-      throw const SyncProtocolFailure('同步操作校验不一致，本地更改已保留。');
+      // 幂等校验失败对单条操作是确定性错误，必须能被死信处理，
+      // 否则会以固定顺序无限退避并卡住整批推送。
+      throw SyncTransportFailure(
+        code: code,
+        retryable: false,
+        failedOperationId: failedOperationId,
+        userMessage: '同步操作校验不一致，本地更改已保留。',
+      );
     }
-    throw SyncTransportFailure(code: code, retryable: retryable);
+    throw SyncTransportFailure(
+      code: code,
+      retryable: retryable,
+      failedOperationId: failedOperationId,
+    );
   }
 
   Uri _uri(String path, Map<String, String>? query) {
