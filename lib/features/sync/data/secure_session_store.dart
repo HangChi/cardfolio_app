@@ -22,7 +22,13 @@ abstract interface class SecretKeyValueStore {
 
 final class FlutterSecureKeyValueStore implements SecretKeyValueStore {
   const FlutterSecureKeyValueStore([
-    this._storage = const FlutterSecureStorage(),
+    // 首次解锁后即可读会话（后台同步需要在锁屏时取 token），且不随设备
+    // 迁移；Android 侧 resetOnError 默认开启，密文损坏时自动清空重建。
+    this._storage = const FlutterSecureStorage(
+      iOptions: IOSOptions(
+        accessibility: KeychainAccessibility.first_unlock_this_device,
+      ),
+    ),
   ]);
 
   final FlutterSecureStorage _storage;
