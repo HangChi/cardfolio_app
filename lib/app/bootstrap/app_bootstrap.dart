@@ -155,6 +155,7 @@ final class CardfolioDependencies {
       );
 
       // 安全存储暂时不可用不能阻断本地收藏库启动。
+      bool shouldResumeSync = false;
       try {
         final session = await secureSessions.read();
         final syncSettings = await syncLocal.settings();
@@ -166,7 +167,7 @@ final class CardfolioDependencies {
           );
         }
         if (session != null && (await syncLocal.settings()).enabled) {
-          unawaited(_resumeSyncQuietly(accountSyncRepository));
+          shouldResumeSync = true;
         }
       } on Object {
         // 用户仍可使用全部本地能力，并可稍后从“我的”重试登录。
@@ -178,6 +179,12 @@ final class CardfolioDependencies {
       // 先成功读取数据库引用，再执行清理。数据库打不开时绝不触碰现有图片。
       final referencedPaths = await repository.referencedImagePaths();
       await imageStore.removeOrphans(referencedPaths);
+
+      // 孤儿清理必须先于同步完成：同步先落盘图片文件、后提交数据库事务，
+      // 若与按引用快照删除孤儿并发，会把刚落盘、事务未提交的图片误当孤儿删掉。
+      if (shouldResumeSync) {
+        unawaited(_resumeSyncQuietly(accountSyncRepository));
+      }
 
       return CardfolioDependencies._(
         database: database,
