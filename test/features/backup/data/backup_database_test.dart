@@ -55,12 +55,22 @@ void main() {
         mode: BackupMode.emptyLibrary,
       );
 
-      expect(result.addedCount, 17);
+      // fileCleanupQueue 是设备本地实体：导出保留、导入跳过。
+      expect(result.addedCount, 16);
       expect(result.skippedCount, 0);
       expect(
-        jsonEncode((await target.exportLogicalBackup()).toJson()),
-        jsonEncode(snapshot.toJson()),
+        await target.select(target.fileCleanupQueueEntries).get(),
+        isEmpty,
       );
+      final restored = await target.exportLogicalBackup();
+      for (final name in BackupSnapshot.entityNames) {
+        if (BackupSnapshot.deviceLocalEntityNames.contains(name)) continue;
+        expect(
+          jsonEncode(restored.rows(name)),
+          jsonEncode(snapshot.rows(name)),
+          reason: '实体 $name 往返后应一致',
+        );
+      }
     },
   );
 
@@ -114,7 +124,7 @@ void main() {
         mode: BackupMode.mergeAddOnly,
       );
       expect(identical.addedCount, 0);
-      expect(identical.skippedCount, 17);
+      expect(identical.skippedCount, 16);
       expect(identical.conflicts, isEmpty);
 
       final raw =

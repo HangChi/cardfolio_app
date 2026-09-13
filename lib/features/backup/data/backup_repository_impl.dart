@@ -158,15 +158,18 @@ final class BackupRepositoryImpl implements BackupRepository {
       }
       _checkCancelled(cancellationToken);
       _progress(onProgress, BackupStage.committing, 0.9);
+      // 图片复制/哈希在数据库事务外完成：大库恢复时不再长时间持有
+      // SQLite 写锁。失败通过 committedFiles 补偿删除；提交前崩溃留下的
+      // 孤儿文件由启动清理按引用收敛，语义与原先一致。
+      await _commitImages(
+        stagedImages,
+        validated.imagePaths,
+        validated.imageChecksums,
+        committedFiles,
+      );
       final result = await _database.importLogicalBackup(
         validated.snapshot,
         mode: mode,
-        beforeCommit: () => _commitImages(
-          stagedImages,
-          validated.imagePaths,
-          validated.imageChecksums,
-          committedFiles,
-        ),
       );
       _progress(onProgress, BackupStage.completed, 1);
       return BackupImportReport(

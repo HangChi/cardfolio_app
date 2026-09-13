@@ -65,6 +65,15 @@ final class BackupSnapshot {
     'fileCleanupQueue',
   ];
 
+  /// 设备本地实体：随备份导出以保持格式兼容，但恢复时绝不导入。
+  ///
+  /// 文件清理队列记录的是“导出设备”上待删除的文件路径；导入到另一台设备
+  /// （或同设备合并旧备份）时，本地可能仍引用这些路径，重放会误删仍被引用
+  /// 的图片。未重放的队列由启动孤儿清理按实际引用收敛。
+  static const Set<String> deviceLocalEntityNames = <String>{
+    'fileCleanupQueue',
+  };
+
   final Map<String, List<Map<String, Object?>>> _entities;
 
   List<Map<String, Object?>> rows(String name) => _entities[name]!;
@@ -222,7 +231,6 @@ extension BackupDatabase on AppDatabase {
   Future<LogicalImportResult> importLogicalBackup(
     BackupSnapshot snapshot, {
     required BackupMode mode,
-    Future<void> Function()? beforeCommit,
   }) async {
     final preview = await previewLogicalImport(snapshot, mode: mode);
     if (preview.conflicts.isNotEmpty) {
@@ -234,7 +242,6 @@ extension BackupDatabase on AppDatabase {
         final current = await exportLogicalBackup();
         final missing = _missingRows(current, snapshot);
         await _insertSnapshotRows(this, missing);
-        if (beforeCommit != null) await beforeCommit();
       });
     } on BackupValidationFailure {
       rethrow;
@@ -494,8 +501,11 @@ LogicalImportPreview _compareSnapshots(
   BackupMode mode,
 ) {
   if (mode == BackupMode.emptyLibrary) {
+    final deviceLocalRows = BackupSnapshot.deviceLocalEntityNames
+        .map(incoming.rows)
+        .fold<int>(0, (sum, rows) => sum + rows.length);
     return LogicalImportPreview(
-      addedCount: incoming.totalEntityCount,
+      addedCount: incoming.totalEntityCount - deviceLocalRows,
       skippedCount: 0,
       conflicts: const <BackupConflict>[],
     );
@@ -505,6 +515,7 @@ LogicalImportPreview _compareSnapshots(
   var skipped = 0;
   final conflicts = <BackupConflict>[];
   for (final name in BackupSnapshot.entityNames) {
+    if (BackupSnapshot.deviceLocalEntityNames.contains(name)) continue;
     final local = <String, Map<String, Object?>>{
       for (final row in current.rows(name)) _rowKey(name, row): row,
     };
@@ -648,13 +659,7 @@ Future<void> _insertSnapshotRows(
           RecycleBinSettingsRow.fromJson(row, serializer: _utcSerializer),
         );
   }
-  for (final row in snapshot.rows('fileCleanupQueue')) {
-    await db
-        .into(db.fileCleanupQueueEntries)
-        .insert(
-          FileCleanupQueueEntry.fromJson(row, serializer: _utcSerializer),
-        );
-  }
+  // fileCleanupQueue 属设备本地实体，导入时跳过（见 deviceLocalEntityNames）。
 }
 
 String _rowKey(String entity, Map<String, Object?> row) {
