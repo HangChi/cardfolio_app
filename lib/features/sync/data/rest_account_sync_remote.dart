@@ -16,8 +16,7 @@ final class RestAccountSyncRemote implements AccountSyncRemote {
     Duration requestTimeout = const Duration(seconds: 30),
     Duration attachmentTimeout = const Duration(minutes: 2),
   }) {
-    if (requestTimeout <= Duration.zero ||
-        attachmentTimeout <= Duration.zero) {
+    if (requestTimeout <= Duration.zero || attachmentTimeout <= Duration.zero) {
       throw ArgumentError('同步超时必须大于零');
     }
     return RestAccountSyncRemote._(
