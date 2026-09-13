@@ -19,6 +19,12 @@ class RecycleBinScreen extends ConsumerWidget {
         settings.value?.retentionDays ??
         RecycleBinSettings.defaultRetentionDays;
 
+    Widget retentionCard() => _RetentionCard(
+      days: retentionDays,
+      enabled: !settings.isLoading,
+      onChanged: (days) => _updateRetention(context, ref, days),
+    );
+
     return Scaffold(
       appBar: AppBar(title: const Text('回收站')),
       body: RefreshIndicator(
@@ -26,34 +32,84 @@ class RecycleBinScreen extends ConsumerWidget {
           ref.invalidate(recycleBinEntriesProvider);
           ref.invalidate(recycleBinSettingsProvider);
         },
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            context.tokens.spaceLg,
-            context.tokens.spaceMd,
-            context.tokens.spaceLg,
-            context.tokens.spaceXl,
+        child: entries.when(
+          loading: () => ListView(
+            padding: _screenPadding(context),
+            children: <Widget>[
+              retentionCard(),
+              SizedBox(height: context.tokens.spaceLg),
+              const _Loading(),
+            ],
           ),
-          children: <Widget>[
-            _RetentionCard(
-              days: retentionDays,
-              enabled: !settings.isLoading,
-              onChanged: (days) => _updateRetention(context, ref, days),
-            ),
-            SizedBox(height: context.tokens.spaceLg),
-            entries.when(
-              loading: () => const _Loading(),
-              error: (error, stackTrace) => _LoadError(
+          error: (error, stackTrace) => ListView(
+            padding: _screenPadding(context),
+            children: <Widget>[
+              retentionCard(),
+              SizedBox(height: context.tokens.spaceLg),
+              _LoadError(
                 onRetry: () => ref.invalidate(recycleBinEntriesProvider),
               ),
-              data: (items) => items.isEmpty
-                  ? const _EmptyState()
-                  : _EntryList(entries: items, retentionDays: retentionDays),
-            ),
-          ],
+            ],
+          ),
+          data: (items) => items.isEmpty
+              ? ListView(
+                  padding: _screenPadding(context),
+                  children: <Widget>[
+                    retentionCard(),
+                    SizedBox(height: context.tokens.spaceLg),
+                    const _EmptyState(),
+                  ],
+                )
+              : _buildEntryList(
+                  context,
+                  ref,
+                  retentionCard(),
+                  items,
+                  retentionDays,
+                ),
         ),
       ),
     );
   }
+
+  // 列表项含封面图，必须用 builder 懒构建，避免回收站条目多时
+  // 一次性构建并解码全部图片。
+  Widget _buildEntryList(
+    BuildContext context,
+    WidgetRef ref,
+    Widget retentionCard,
+    List<RecycleBinEntry> entries,
+    int retentionDays,
+  ) {
+    final now = ref.watch(clockProvider).nowUtc();
+    return ListView.builder(
+      padding: _screenPadding(context),
+      itemCount: entries.length + 2,
+      itemBuilder: (context, index) {
+        if (index == 0) return retentionCard;
+        if (index == 1) return SizedBox(height: context.tokens.spaceLg);
+        final entry = entries[index - 2];
+        final isLast = index == entries.length + 1;
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : context.tokens.spaceMd),
+          child: _EntryCard(
+            entry: entry,
+            remainingDays: entry.remainingDays(
+              nowUtc: now,
+              retentionDays: retentionDays,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  EdgeInsets _screenPadding(BuildContext context) => EdgeInsets.fromLTRB(
+    context.tokens.spaceLg,
+    context.tokens.spaceMd,
+    context.tokens.spaceLg,
+    context.tokens.spaceXl,
+  );
 
   Future<void> _updateRetention(
     BuildContext context,
@@ -123,33 +179,6 @@ class _RetentionCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _EntryList extends ConsumerWidget {
-  const _EntryList({required this.entries, required this.retentionDays});
-
-  final List<RecycleBinEntry> entries;
-  final int retentionDays;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final now = ref.watch(clockProvider).nowUtc();
-    return Column(
-      children: <Widget>[
-        for (var index = 0; index < entries.length; index++) ...<Widget>[
-          _EntryCard(
-            entry: entries[index],
-            remainingDays: entries[index].remainingDays(
-              nowUtc: now,
-              retentionDays: retentionDays,
-            ),
-          ),
-          if (index != entries.length - 1)
-            SizedBox(height: context.tokens.spaceMd),
-        ],
-      ],
     );
   }
 }

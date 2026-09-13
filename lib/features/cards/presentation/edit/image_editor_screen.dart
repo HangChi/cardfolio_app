@@ -299,11 +299,23 @@ class _AdjustmentPreview extends StatelessWidget {
           Image.file(
             File(path),
             fit: BoxFit.contain,
+            // 预览基准图按屏幕降采样解码：原图最大可达 48MP，
+            // 不必全量进内存；保存时仍按原尺寸重新处理。
+            cacheWidth: _previewCacheWidth(context),
             errorBuilder: (context, error, stackTrace) => const Center(
               child: Icon(Icons.broken_image_outlined, color: Colors.white),
             ),
           ),
     );
+  }
+
+  static int _previewCacheWidth(BuildContext context) {
+    final logicalWidth = MediaQuery.sizeOf(context).width;
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    // 2048 像素封顶，避免超大屏或高 DPR 设备仍解码过大位图。
+    const maxCacheWidth = 2048.0;
+    final target = logicalWidth * pixelRatio;
+    return target < maxCacheWidth ? target.round() : maxCacheWidth.round();
   }
 }
 
