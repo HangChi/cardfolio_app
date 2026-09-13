@@ -85,7 +85,11 @@ class _EmptyCardRepository implements CardRepository {
 }
 
 void main() {
-  Future<void> pumpShell(WidgetTester tester, {String? initialLocation}) async {
+  Future<void> pumpShell(
+    WidgetTester tester, {
+    String? initialLocation,
+    bool onboardingCompleted = true,
+  }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -113,6 +117,7 @@ void main() {
         child: CardfolioApp(
           router: createAppRouter(
             initialLocation: initialLocation ?? libraryPath,
+            onboardingCompleted: onboardingCompleted,
           ),
         ),
       ),
@@ -146,6 +151,22 @@ void main() {
     await pumpShell(tester);
 
     expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).title, '卡迹');
+  });
+
+  testWidgets('completing onboarding enters the home screen', (tester) async {
+    await pumpShell(
+      tester,
+      initialLocation: onboardingPath,
+      onboardingCompleted: false,
+    );
+
+    await tester.tap(find.text('跳过'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始使用'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('home-create-card')), findsOneWidget);
+    expect(find.text('正在进入…'), findsNothing);
   });
 
   testWidgets('selecting a destination navigates to its branch', (

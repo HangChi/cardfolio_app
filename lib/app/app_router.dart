@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/preferences/local_app_state_providers.dart';
 import '../features/backup/presentation/backup_screen.dart';
 import '../features/card_sets/presentation/detail/card_set_detail_screen.dart';
 import '../features/card_sets/presentation/form/card_set_form_screen.dart';
@@ -97,10 +98,15 @@ GoRouter createAppRouter({
     errorBuilder: (context, state) =>
         const _RouteFallbackScreen(message: '页面不存在或暂时无法打开。'),
     redirect: (context, state) {
-      if (!onboardingCompleted) {
+      final currentOnboardingCompleted =
+          onboardingCompleted ||
+          (ProviderScope.containerOf(
+                context,
+              ).read(localAppStateProvider).value?.onboardingCompleted ??
+              false);
+      if (!currentOnboardingCompleted) {
         return state.matchedLocation == onboardingPath ? null : onboardingPath;
       }
-      if (state.matchedLocation == onboardingPath) return homePath;
       return null;
     },
     routes: <RouteBase>[
