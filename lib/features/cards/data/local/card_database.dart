@@ -1206,13 +1206,26 @@ class AppDatabase extends _$AppDatabase {
           !orderedImageIds.every(activeIds.contains)) {
         throw StateError('图片顺序已变化，请刷新后重试。');
       }
-      for (var index = 0; index < orderedImageIds.length; index++) {
-        await (update(cardImages)
-              ..where((image) => image.id.equals(orderedImageIds[index])))
-            .write(CardImagesCompanion(sortOrder: Value(index)));
-      }
+      await _writeSortOrders(orderedImageIds);
       await _touchItem(cardItemId, updatedAt);
     });
+  }
+
+  /// 单条 CASE 语句批量写回排序值，避免 N 张图 N 次更新往返。
+  Future<void> _writeSortOrders(List<String> orderedImageIds) async {
+    if (orderedImageIds.isEmpty) return;
+    final assignments = List.generate(
+      orderedImageIds.length,
+      (index) => 'WHEN ? THEN $index',
+    ).join(' ');
+    await customUpdate(
+      'UPDATE card_images SET sort_order = CASE id $assignments END '
+      'WHERE id IN (${List.filled(orderedImageIds.length, '?').join(', ')})',
+      variables: <Variable<Object>>[
+        for (final id in orderedImageIds) Variable<String>(id),
+        ...orderedImageIds.map(Variable<String>.new),
+      ],
+    );
   }
 
   Future<RemovedImageRecord> removeImage({
@@ -1266,19 +1279,15 @@ class AppDatabase extends _$AppDatabase {
         )..where((image) => image.id.equals(imageId))).go();
       }
 
-      final remaining = active
+      final remainingIds = active
           .where((image) => image.id != imageId)
+          .map((image) => image.id)
           .toList(growable: false);
-      for (var index = 0; index < remaining.length; index++) {
-        final promote = target.isCover && index == 0;
-        await (update(
-          cardImages,
-        )..where((image) => image.id.equals(remaining[index].id))).write(
-          CardImagesCompanion(
-            sortOrder: Value(index),
-            isCover: promote ? const Value(true) : const Value.absent(),
-          ),
-        );
+      await _writeSortOrders(remainingIds);
+      if (target.isCover && remainingIds.isNotEmpty) {
+        await (update(cardImages)
+              ..where((image) => image.id.equals(remainingIds.first)))
+            .write(const CardImagesCompanion(isCover: Value(true)));
       }
       await _touchItem(cardItemId, deletedAt);
       return RemovedImageRecord(

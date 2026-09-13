@@ -88,7 +88,6 @@ class _CardLibraryScreenState extends ConsumerState<CardLibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(createCardControllerProvider);
     final cards = ref.watch(organizedCardListProvider);
     final facets = ref.watch(cardFilterFacetsProvider);
     final query = ref.watch(cardLibraryQueryProvider);

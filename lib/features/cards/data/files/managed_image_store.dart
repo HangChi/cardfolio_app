@@ -118,6 +118,15 @@ class ManagedImageStore {
     );
   }
 
+  /// 派生图的受管相对路径，与 [importDerivedImage] 的落盘位置保持一致。
+  ///
+  /// 展示层需要按路径失效图片缓存时必须经由本方法取路径，不得自行拼接
+  /// `derived/` 目录规则。
+  String derivedRelativePath({
+    required String cardItemId,
+    required String imageId,
+  }) => p.url.join(_derivedDir, cardItemId, '$imageId.jpg');
+
   /// 导入处理管线生成的展示图。派生图固定为 JPEG，绝不覆盖原图目录。
   Future<ManagedImage> importDerivedImage({
     required String sourcePath,
@@ -142,7 +151,10 @@ class ManagedImageStore {
       throw const ImageImportFailure('派生图必须为 JPEG，请重新生成。');
     }
 
-    final relativePath = p.url.join(_derivedDir, cardItemId, '$imageId.jpg');
+    final relativePath = derivedRelativePath(
+      cardItemId: cardItemId,
+      imageId: imageId,
+    );
     final staged = File(
       p.join(root.path, _stagingDir, '$imageId-derived', '$imageId.tmp'),
     );

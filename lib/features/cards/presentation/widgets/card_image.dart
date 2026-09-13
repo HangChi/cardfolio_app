@@ -60,22 +60,43 @@ class CardImage extends ConsumerWidget {
       borderRadius: radius,
     );
 
-    if (file == null || !file.existsSync()) return placeholder;
+    if (file == null) return placeholder;
+    final resolvedFile = file;
 
     return Semantics(
       image: true,
       label: semanticLabel,
       child: ClipRRect(
         borderRadius: radius,
-        child: Image.file(
-          file,
-          fit: fit,
-          width: double.infinity,
-          height: double.infinity,
-          errorBuilder: (context, error, stackTrace) => placeholder,
+        child: LayoutBuilder(
+          builder: (context, constraints) => Image.file(
+            resolvedFile,
+            fit: fit,
+            width: double.infinity,
+            height: double.infinity,
+            cacheWidth: _decodeWidth(context, constraints),
+            errorBuilder: (context, error, stackTrace) => placeholder,
+          ),
         ),
       ),
     );
+  }
+
+  /// 按显示约束降采样解码，避免列表缩略图整图解码原图。
+  ///
+  /// cover 裁剪会让实际显示尺寸略大于约束盒，留出余量避免可见失真；
+  /// 约束不有限（如无界横向滚动）时返回 null，退回原始解码。
+  int? _decodeWidth(BuildContext context, BoxConstraints constraints) {
+    final double bound;
+    if (constraints.maxWidth.isFinite) {
+      bound = constraints.maxWidth;
+    } else if (constraints.maxHeight.isFinite) {
+      bound = constraints.maxHeight;
+    } else {
+      return null;
+    }
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    return (bound * devicePixelRatio * 1.3).round();
   }
 }
 

@@ -435,7 +435,9 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
             derivedSourcePath: processed.path,
           ),
     );
-    final derived = store.resolve('derived/${card.cardItemId}/${image.id}.jpg');
+    final derived = store.resolve(
+      store.derivedRelativePath(cardItemId: card.cardItemId, imageId: image.id),
+    );
     PaintingBinding.instance.imageCache.evict(FileImage(derived));
   }
 
