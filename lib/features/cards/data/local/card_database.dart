@@ -718,7 +718,19 @@ class AppDatabase extends _$AppDatabase {
             );
             await m.addColumn(schema.cardImages, schema.cardImages.isCover);
             await m.addColumn(schema.cardImages, schema.cardImages.deletedAt);
-            await customStatement('UPDATE card_images SET is_cover = 1;');
+            // v1 允许一卡多图；唯一部分索引要求每卡至多一张未删除封面，
+            // 因此只把每卡按 sort_order（并列时按 rowid）最早的一张设为封面。
+            await customStatement(
+              'UPDATE card_images SET is_cover = 1 '
+              'WHERE id IN ('
+              '  SELECT img.id FROM card_images AS img '
+              '  WHERE NOT EXISTS ('
+              '    SELECT 1 FROM card_images AS earlier '
+              '    WHERE earlier.card_item_id = img.card_item_id '
+              '      AND (earlier.sort_order < img.sort_order '
+              '        OR (earlier.sort_order = img.sort_order '
+              '          AND earlier.rowid < img.rowid))))',
+            );
             await _createImageIndexes();
           },
           from2To3: (m, schema) async {

@@ -5,6 +5,7 @@ import 'package:drift_dev/api/migrations_native.dart';
 import 'package:cardfolio_app/features/cards/data/local/card_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'generated/schema.dart';
+import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -36,6 +37,63 @@ void main() {
         }
       });
     }
+  });
+
+  test('v1 multi-image cards survive the v2 cover migration', () async {
+    final schema = await verifier.schemaAt(1);
+    final oldDb = v1.DatabaseAtV1(schema.newConnection());
+    final createdAt =
+        DateTime.utc(2026, 7, 26).millisecondsSinceEpoch ~/
+        Duration.millisecondsPerSecond;
+    await oldDb
+        .into(oldDb.cardDefinitions)
+        .insert(
+          v1.CardDefinitionsCompanion.insert(
+            id: 'definition-v1',
+            name: '多图迁移卡片',
+            createdAt: createdAt,
+            updatedAt: createdAt,
+          ),
+        );
+    await oldDb
+        .into(oldDb.cardItems)
+        .insert(
+          v1.CardItemsCompanion.insert(
+            id: 'item-v1',
+            definitionId: 'definition-v1',
+            createdAt: createdAt,
+            updatedAt: createdAt,
+          ),
+        );
+    // 同一卡片三张图：sort_order 依次为 2、0、0（后两张并列，靠 rowid 决胜）。
+    final sortOrders = <int>[2, 0, 0];
+    for (final (index, sortOrder) in sortOrders.indexed) {
+      await oldDb
+          .into(oldDb.cardImages)
+          .insert(
+            v1.CardImagesCompanion.insert(
+              id: 'image-v1-$index',
+              cardItemId: 'item-v1',
+              kind: 'front',
+              relativePath: 'originals/item-v1/image-v1-$index.jpg',
+              sortOrder: Value(sortOrder),
+              checksum: 'sha256-v1-$index',
+              createdAt: createdAt,
+            ),
+          );
+    }
+    await oldDb.close();
+
+    final db = AppDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 9);
+
+    final card = await db.watchCardDetail('item-v1').first;
+    expect(card?.name, '多图迁移卡片');
+    // 封面必须是唯一一张：sort_order 最小（并列时 rowid 最小）的 image-v1-1。
+    expect(card?.cover?.id, 'image-v1-1');
+    final images = await db.select(db.cardImages).get();
+    expect(images.where((image) => image.isCover), hasLength(1));
+    await db.close();
   });
 
   test('v2 card data survives the v3 card-set migration', () async {
